@@ -1,0 +1,5 @@
+no_triples 	loading_time_sec      size_on_disk
+10k	        1.617		         1.5MB
+100k	        4.214		         7.8MB			
+0.7mil        22.162		         56MB
+5mil		     160.612		      449MB

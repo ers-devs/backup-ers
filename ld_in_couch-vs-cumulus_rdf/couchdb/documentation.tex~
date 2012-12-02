@@ -1,0 +1,273 @@
+\documentclass[a4paper,10pt]{article}
+\usepackage[utf8x]{inputenc}
+\usepackage[pdftex]{graphicx}
+\usepackage{hyperref}
+\usepackage{array}
+\hypersetup{
+    colorlinks,
+    citecolor=black,
+    filecolor=black,
+    linkcolor=black,
+    urlcolor=black
+}
+\hypersetup{linktocpage}
+
+
+%opening
+\title{Brief benchmark of LD-in-Couch and cumulusRDF}
+\author{Teodor Macicas, University of Fribourg - Switzerland}
+
+\begin{document}
+
+\maketitle
+\clearpage
+\clearpage
+
+\begin{abstract}
+The target of this document is to provide a brief benchmark of both CouchDB and cumulusRDF as a storage system for RDF triples. 
+LD-in-Couch extension has been used. It easily adapts CouchDB original document based storage back-end to allow loading and 
+querying (subject, predicate, object) triples. Our motivation is related to the VeriSign project where this unconventional 
+database may be used as a starting point for the local ad-hoc network as well as for the global network. 
+As alternative to this we will take into consideration cumulusRDF project based on the well-known and widely used Casandra key-value store. 
+\end{abstract}
+\vspace{20 mm}
+
+\section{Introduction}
+\subsection{CouchDB}
+Note the following information are copied from Wikipedia. I would just add that the last feature seems the most appealing for our One-Laptop-per-Child project.
+\paragraph{Document storage}
+CouchDB stores data as "documents", as one or more field/value pairs expressed as JSON. Field values can be simple things like strings, numbers, 
+or dates; but you can also use ordered lists and associative arrays. Every document in a CouchDB database has a unique id and there is no required document schema.
+\paragraph{ACID semantics}
+CouchDB provides ACID semantics.It does this by implementing a form of Multi-Version Concurrency Control, meaning that CouchDB can handle a high 
+volume of concurrent readers and writers without conflict.
+\paragraph{Map/Reduce views and indexes}
+The stored data is structured using views. In CouchDB, each view is constructed by a JavaScript function that acts as the Map half of a map/reduce operation. 
+The function takes a document and transforms it into a single value which it returns. CouchDB can index views and keep those indexes updated as documents 
+are added, removed, or updated.
+\paragraph{Distributed Architecture with Replication}
+CouchDB was designed with bi-direction replication (or synchronization) and off-line operation in mind. That means multiple replicas can have their own 
+copies of the same data, modify it, and then sync those changes at a later time.
+\paragraph{REST API}
+All items have a unique URI that gets exposed via HTTP. REST uses the HTTP methods POST, GET, PUT and DELETE for the four basic CRUD (Create, Read, 
+Update, Delete) operations on all resources.
+\paragraph{Eventual consistency}
+CouchDB guarantees eventual consistency to be able to provide both availability and partition tolerance.
+\paragraph{Built for offline}
+CouchDB can replicate to devices (like smartphones) that can go offline and handle data sync for you when the device is back online.
+
+\subsection{LD-in-Couch}
+It uses all the features offered by CouchDB plus it makes possible the insertion of RDF triples. It parses the input file, creates (subject, predicate, 
+objects) documents as well as back-links if exist. 
+
+\subsection{Cassandra}
+Note the following information are copied from Wikipedia.
+\paragraph{Decentralized}
+Every node in the cluster has the same role. There is no single point of failure. Data is distributed across the cluster (so each node contains different data), 
+but there is no master as every node can service any request.
+\paragraph{Supports replication and multi data center replication}
+Replication strategies are configurable. Cassandra is designed as a distributed system, for deployment of large numbers of nodes across multiple data centers. 
+Key features of Cassandra’s distributed architecture are specifically tailored for multiple-data center deployment, for redundancy, for failover and disaster recovery.
+\paragraph{Scalability}
+Read and write throughput both increase linearly as new machines are added, with no downtime or interruption to applications.
+\paragraph{Fault-tolerant}
+Data is automatically replicated to multiple nodes for fault-tolerance. Replication across multiple data centers is supported. 
+Failed nodes can be replaced with no downtime.
+\paragraph{Tunable consistency}
+Writes and reads offer a tunable level of consistency, all the way from "writes never fail" to "block for all replicas to be readable", with the quorum level in the middle.
+\paragraph{MapReduce support}
+Cassandra has Hadoop integration, with MapReduce support. There is support also for Apache Pig and Apache Hive.
+\paragraph{Query language}
+CQL (Cassandra Query Language) was introduced, an SQL-like alternative to the traditional RPC interface. Language drivers are available for Java (JDBC) and Python (DBAPI2).
+
+\subsection{cumulusRDF}
+CumulusRDF is an RDF store on cloud-based architectures. CumulusRDF provides a REST-based API with CRUD operations to manage RDF data. 
+This version uses Apache Cassandra as storage backend.
+
+\subsection{The test computer}
+Hardware used: 8-core INTEL i7-2600, 8GB main memory, 500GB. \newline
+Software: CouchDB 1.2.0, Erlang 5.8.5, Linux OS 3.2.0 kernel version. 
+
+\section{CouchDB - LD-in-Couch}
+The following tests were executed on a single machine. However, CouchDB does offer replication, but an auto-sharding mechanism is not available by default. Thus, 
+for the moment we restrict the tests on one single machine. 3 different data sets were used as it can be seen in the following tables. 
+
+\subsection{Loading tests}
+Three empty databases have been set and for each of them 1 view has been created. This view uses only a map function for emitting document.subject + 
+document.graph as key and the entire document as value. Shortly, it permits querying by subject. 
+The total loading time can be seen in the following graphs. On y axis the proportion of loaded triples is showed. For instance, 0.6 means that
+60\% of them have been already loaded. Intuitively, x axis plots the time in seconds that passed since the beginning of loading.
+One note should be made here: the third dataset has been shrinked to 0.7m because the loading time turned out to be too long. 
+
+\paragraph{}
+The loading time it may be a bit longer than expected. However, for the first 2 data sets the insertion rate is kept constant across all triples. That is, ~6.7 RDF triples
+per second. However, for the bigger dataset it came down to an average of 2.7 RDF triples per second. Taking into considertaion the sizes of input as well as output, we can
+assume that often it happened to fill entirely the memory (or different cache layers) and consequently the permanent storage was extensively used. Moreover, the loading process
+might also interfered with other higher priority processes of the system. This may explain the time frames with lower insertion rates that are observable on the 
+graph as well.
+
+\begin{figure}[h!]
+  \centering
+  \includegraphics[height=200px]{plots/diff_loading_time.png}
+  \caption{Loading time in LD-in-Couch}
+  \label{fig:1}
+\end{figure}
+
+\paragraph{}
+The input file is read line by line and for each it does the following:
+\begin{itemize}
+ \item create a new document if none exists with the same subject 
+ \item if it exists, then update the predicate and object (append) 
+ \item query the view to search for a document having as subject the current object 
+ \item if found, then create a back link 
+\end{itemize}
+Internally, couchDB creates 2 B-Trees for each database. One uses document IDs and the other stores document revisions.
+If a view is designed, then the view is incrementally updated each time it is used. Thus, in our case, the view gets updated after 
+each insertion. However, being an incremental algorithm this has not much impact on the speed. Not to forget is that the view contains
+only a map function and it uses the map-reduce paradigm. 
+One can argue that the storage size is used by CouchDB unefficiently as for 122k RDF documents it needs 43.2GB. This is partially true 
+and a compaction action can be undertaken. 
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|>{\centering}p{2cm}|>{\centering}p{3cm}|>{\centering}p{2cm}|>{\centering}p{2cm}|>{\centering}p{2cm}|}
+    \hline 
+    \# triples & \# different documents (unique subjects) & \# document updates & total size  & total loading time\tabularnewline
+    \hline
+    \hline 
+    10,693 & 1,740 & 17,928 & 97.6MB &  26m51s\tabularnewline
+    \hline 
+    97,336 & 15,493 & 166,161 & 1.9GB & 4h18m13s\tabularnewline
+    \hline 
+    704,882 & 122,206 & 1,206,010 & 43.2GB & 2days 23h41m32s\tabularnewline
+    \hline
+\end{tabular}
+\caption{Statistics on loading RDF triples using LD-in-Couch}
+\label{tab:loading_couch}
+\end{table}
+
+\paragraph{}
+As CouchDB uses MVCC and is append-only database, each insertion and update create a new document. In case only the last revision of each 
+document is intended to be used, one can run a compaction operation which may create another database but storing only the most recent 
+versions of each document. As can be seen from the below table, the size dramatically decreased. The duration of this operation 
+was in matter of tens of minutes for the biggest data set.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|>{\centering}p{2cm}|>{\centering}p{3cm}|>{\centering}p{2cm}|}
+    \hline 
+    \# triples & total size & size after compaction \tabularnewline
+    \hline
+    \hline 
+    10,693 & 97.6MB & 2.3MB \tabularnewline
+    \hline 
+    97,336 & 1.9GB & 24.0 MB \tabularnewline
+    \hline 
+    704,882 & 43.2GB & 194.4MB \tabularnewline
+    \hline
+\end{tabular}
+\caption{Compaction effect on storage size}
+\label{tab:compacting_couch}
+\end{table}
+
+
+\subsection{Querying tests}
+Three different types of queries have been used as follows: 
+\begin{itemize}
+ \item select query by subject: given a random existing subject, get the RDF document 
+ \item select query by id: given a random document ID, get the RDF document 
+ \item range query by id: given both start and end key, return all RDF documents (a range can be also provided)
+\end{itemize}
+
+\subsubsection{By subject}
+\begin{figure}[h]
+  \centering
+  \includegraphics[height=200px]{plots/plot_q_time_1_10.png}
+  \caption{Querying by SUBJECT - response time in LD-in-Couch}
+\end{figure}
+
+As depicted in these pictures, a series of queries have been run for making the statistics. Every set of queries is run on 
+cold cache (hopefully) - couchDB is restarted after every run. Also the views have been updated before running queries. Otherwise, the 
+response time of a query might have been influenced by the updates done to the views. 
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[height=200px]{plots/plot_q_time_10_100.png}
+  \caption{Querying by SUBJECT - response time in LD-in-Couch}
+\end{figure}
+
+\paragraph{}
+On both graphs there are plotted two different versions of our data sets. One just after loading where all document versions are kept, the 
+other called 'compacted' where only the last revision is stored. The latter has been created after loading and represents a different database. 
+
+\paragraph{}
+It can be seen that for a single query, the response time is slightly different but it makes no big impact. However, some differences were 
+noticed for the 10 queries set. One observation may be that the time remained constant for the compacted versions of databases. 
+
+\paragraph{}
+The same trend keeps for bigger query sets. The bigger the database, the slower a query is. However, the retrieving algorithm is O(logN) 
+where N is the size of a B-Tree. Since for the 0.7m data set we are talking about a 43GB database, this has a bad impact on the response time 
+as well as it may not take advantage of cache locality. Anyhow, the compacted databases still keep an almost constant query time. 
+
+\subsubsection{By ID}
+\begin{figure}[h!]
+  \centering
+  \includegraphics[height=200px]{plots/plot_q_time_id.png}
+  \caption{Querying by ID - response time in LD-in-Couch}
+\end{figure}
+Only the 100 and 1000 query sets have been used as the smaller ones do not give enough hints about how it scales.
+As noticed before, the query time still increases with the data size. Again, it keeps almost constant on the compacted versions. This is 
+because the actual sizes are way smaller - as it can be seen in Table~\ref{tab:compacting_couch}.
+
+\subsubsection{By ID setting LIMIT}
+\begin{figure}[h!]
+  \centering
+  \includegraphics[height=200px]{plots/plot_q_time_id_range.png}
+  \caption{Querying by ID LIMIT=1000 - response time in LD-in-Couch}
+\end{figure}
+The difference between a query by ID and this is that a range of documents are returned. As input a start key and a limit is given. Then 
+the system finds the document with the given key and traverse the B-Tree leaves (presumably being a B+-tree) and retrieve a maximum of 
+'limit' documents (if available). The limit has been set to 1000 documents. 
+For this experiment, the data set of 1000 queries has been excluded. Retrieving 1000 times 1000 documents has proved to take quite long time 
+especially on the 0.7m non-compacted.
+\begin{figure}[h!]
+  \centering
+  \includegraphics[height=200px]{plots/plot_q_time_id_range_100.png}
+  \caption{Querying by ID LIMIT=1000 - response time in LD-in-Couch}
+\end{figure}
+Each query returned 1000 documents. Thus, for example, the 100 queries set returned 100,000 documents. 
+Somehow expected from previous experiments, the running time is a function of real size on disk (as it uses B-trees). Hence the 
+running time for 0.7m data set is quite high. Luckly, the time decreased notably and kept constant for the compacted 
+datasets. 
+
+\subsection{Conclusion}
+CouchDB is quite a powerful document-oriented database. Being an append-only and using MVCC the storage size could grow fast, but this 
+is solved by a compaction operation (storing only most recent versions). The querying time is satisfactory and it's a function (logarithmic) 
+of how many documents are stored, including all versions. 
+\paragraph{}
+The RESTful API proved to be quite easy to use and it integrates well with an web-based application (also the JSON documents' format). 
+It's said it has been built to be used offline (even though not tested yet) and this is may be a strong reason to use this system for 
+our One-Laptop-per-Child project. 
+
+\section{Cassandra - cumulusRDF}
+The following tests were executed on a single machine. However, Cassandra does definitely offer replication and it's able to distribute the tasks.
+But for the moment we restrict the tests on one single machine. One reason is to have the same case as we had for CouchDB.
+
+\subsection{Loading tests}
+
+\section{Conclusions}
+cumulusRDF uses SPARQL and Sesame (unoptimized) as a query processor. 
+cumulusRDF offers many capabilities for querying - 6 different paterns - SP?, S?O, ?PO, S??, ?P?, ??O (besides SPO, ???). 
+LD-in-Couch offers by default just S?? pattern. Views can be created for the other patterns as well. 
+
+\section{Future tasks} 
+\begin{itemize}
+ \item assess the two systems using replication and/or sharding with many machines 
+ \item test how the conflicts caused by updating the same document by multiple clients is solved
+ \item evaluate the usability offline
+ \item evaluate performance on other query patterns than S?? (given a subject, what are Ps and Os) 
+\end{itemize}
+
+
+\clearpage
+\end{document}

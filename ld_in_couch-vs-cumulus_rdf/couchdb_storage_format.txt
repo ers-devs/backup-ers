@@ -1,0 +1,86 @@
+Riyad KallaDec 22, 2011 (edited)  -  Public
+CouchDB's File Format is brilliantly simple and speed-efficient (at the cost of disk space).
+
+The more time I spend trying to learn the file format behind CouchDB (and log-based filesystems in general), the more I think Damien was a genius to get so many aspects of it correct, right out of the gate.
+
+
+SSD-optimized format
+------------------------------------
+I've been doing search on next-generation file storage mechanisms (filesystem and database) that are optimized for flash-based (SSD) use. There seems to be a general consensus that log-based formats are the way to go (http://lwn.net/Articles/353411/ -- http://www.acunu.com/blogs/andy-twigg/log-file-systems-and-ssds-made-each-other/)
+
+Oddly enough, log style R/W access is also critical when it comes to spindle drives where seeking to a position on the disk is the most expensive operation you can perform.
+
+
+Write-optimized
+--------------------------------------
+While reads to satisfy a query likely include random I/O, writes are beautifully sequential in nature; constantly appending to the end of the file/filesystem.
+
+That is the FIRST win of the CouchDB file format; its append-only, copy-on-write behavior. CouchDB never steps backwards in the file to update existing data, it just continually writes to the end allowing for writes to stream as fast as the disk can manage.
+
+The SECOND win of the CouchDB file format is the use of B+ trees for indices used to find documents (_id index) as well as replay update sequences for replication (_seq index). As the internal nodes of a B+ tree contain no values (**not entirely true, they do contain the values from incremental reductions, but not the actual document data -- Thanks Robert!) and are only used to guide searching down a shallow tree to find the actual data point, frequent access to the index will typically keep the data "hot" in a disk or OS cache. (http://www.cecs.csulb.edu/~monge/classes/share/B+TreeIndexes.html)
+
+More specifically, since the internal nodes of the B+ tree (as opposed to a classic B-tree) do not contain the on-disk values (i.e. the documents themselves) you can fit more traversable tree links together in a block on disk; which means being able to load more searchable space in your index with less I/O off the disk.
+
+Only the leaf nodes contains offsets into the data file where the documents themselves live. This allows the actual space requirement of the B+ tree indices to be very compact and just provide directions to data and no data itself.
+
+The THIRD win of the CouchDB file format is the forced locality of data by placing the document data and both indices inside the same file (doc data, _id index and _seq index). This means when a document is updated a new revision needs to be written, the doc is appended to the database file, then the updated _id index path is streamed right behind it and then the updated _seq index path right behind that.
+
+Had the _id or _seq indices been kept in separate files for clarity sake***, that would have forced 3x more head seeks when writing an updated file to disk as 3 disparate files on the disk would need to be seeked to and written to and then the head seeked BACK to the end of the data file for the next write as opposed to the head staying put for all 3 updates.
+
+* Some other databases store indices in separate files which can make it easier to backup a database or reset a corrupt index by simply erasing the index file and letting the database re-create it. These benefits are unnecessary for CouchDB because of the append-only design avoiding the corruption problem all together. It also allows computed indices to be carrier easily to other machines without incurring re-creation costs at next bootup (again, at the cost of extra disk space... but the wins seems worth it).
+
+
+Space inefficient
+-------------------------------------
+With all the pros of this approach, there has to be a cost somewhere, and that is a storage-space cost.
+
+Every time a document is inserted, updated or deleted (which is considered an update), the new document version of the document is appended to the end of the data file as a complete copy (you probably knew that already).
+
+What is appended right after it though is the updated B+ path ONLY for that document (in reverse order, leaf-to-root) pointing at that new revision of the document... for both the _id and _seq indices (e.g. last picture in here: http://eclipsesource.com/blogs/2009/12/13/persistent-trees-in-git-clojure-and-couchdb-data-structure-convergence/)
+
+You may have noticed that if you manually insert thousands or millions of documents to an empty CouchDB database (WITHOUT using bulk insertion) that the disk space used by the data file will explode in size (many GBs) and when you compact it, it will shrink to a mere fraction of what it was (a few MBs).
+
+The reason for that is because the index paths that are appended between each document revision are re-creations of the individual path from the updated leaf node back to the root node of the b+ tree... a COMPLETE re-creation.
+
+That means for every internal node rewritten (say C -> B -> A) that represents a path from that changed document all the way back up to the root includes all the internal child pointers for all the internal nodes to all the other documents that never changed as well; put another way, the direct path from the updated doc to the root that gets written after every update does fully rewrite each of the nodes it includes... it DOES NOT just rewrite the nodes pathing from the leaf to the node and ONLY the connections for that single document... it includes all the other links to all the other documents that those internal nodes tracked as well (Slides 16, 17 and 18 here: http://www.slideshare.net/jchrisa/btree-nosql-oak?from=embed)
+
+This means that you can start reading the root of the index from the end of the file and still get to every node in the index for brand new revisions of docs, new docs or old docs without randomly seeking back to the previous index root at any point. Look at the slides above, it clarifies how the root gets rewritten.
+
+In a shallow B+ tree (which CouchDB uses) this can mean 100s or 1000s of child elements per node (read the section on children under 'Structure': http://www.cecs.csulb.edu/~monge/classes/share/B+TreeIndexes.html)
+
+So as your CouchDB database grows larger and larger, updates progressively get more and more expensive as the index paths that are getting written between each update are getting bigger and bigger (the path might still just be C > B > A, but at nodes "B" and "A", there might be 100 or 1000 pointer values written to many other nodes as well).
+
+This is an interesting side-effect to be aware of if you plan on working with data sets that are 10s of millions of elements big that will get updated OR inserted frequently.
+
+The bigger your dataset gets with CouchDB, the better idea sharding or batching updates becomes; when you use bulk doc operations, all of the revisions of the docs are written together in a single run with a single index update AFTER all of the documents; as opposed to between each individual revision.
+
+For example, I would think this behavior makes CouchDB a poor choice for analytics tracking where insertion of single discrete events is occurring millions of times an hour and something that updates in-place like MongoDB a much better choice (assuming you are fully aware of the durability implications here - but that is a different discussion).
+
+That being said, I think the CouchDB file store design is brilliantly simple, elegant and performant in all the ways you would want a database to be in every other usage scenario besides ultra-fast/constant writes into the hundreds of millions of records. 
+
+Couch's design makes this decision of space inefficiency in the name of maximum efficiency in every other aspect of using a data store... crash recovery (there is no rebuild/reindex phase), write performance, replication simplicity, backup and restoration of a running CouchDB instance***
+
+
+Yes, but Backup & Restore is Simple
+------------------------------------------------------------
+
+* I think this is a critically important point to be aware of... especially on Amazon EC2 while utilizing something like their EBS volumes.
+
+Many developers know how to snapshot EBS volumes... it seems easy enough, but when your database maintains write locks and updates/potentially corrupts the datastore in-place, how are you suppose to accurately take a snapshot of your datastore in production AND restore it in the case of a crash?
+
+Witch CouchDB, you just snapshot the EBS volume and you are done... you don't need to lock the DB, flush it or temporarily disable it. You don't need to login to the host and issue any special command to flush writes or drain connections before you do it... you just snapshot the EBS volume in its current state and walk away.
+
+With something like MySQL (w/ MyISAM) or MongoDB (w/o Journaling), you need temporarily freeze the database, ensure everything is flushed to disk, THEN snapshot the EBS volume, then re-instate the server to ensure the datastore was in a consistent state. (there are entire scripts for this to snapshot MySQL on EBS in the AWS forums).
+
+Not only that, what happens if your EBS volume explodes and you need to restore from a previous backup? 
+
+With CouchDB, just copy the file back into its place and hit Run.
+
+Again, at the cost of extra disk space, the approach to data storage is brilliant in every way except it takes up extra space when your data sets get huge.
+
+
+Conclusion
+-----------------
+I have been reading up on log structured file systems, efficient data formats, database storage engines and copy-on-write semantics for a while now trying to get a feel for next-generation file storage optimized for flash-based technology... reading about the pros and cons of different approaches and seeing it all come together so smoothly in a single design like Couch's really deserves a hat-tip to the Couch team.
+
+Nice job guys, really nice job.

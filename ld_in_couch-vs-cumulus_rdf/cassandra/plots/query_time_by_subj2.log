@@ -1,0 +1,3 @@
+no_queries	10k_triples	100k_triples	0.7mil_triples	5mil_triples_
+100		1.368		   1.414		      1.567		      1.418
+1000   	12.122		10.72		      12.159         11.318      
