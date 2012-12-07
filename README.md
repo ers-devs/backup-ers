@@ -41,9 +41,9 @@ Loading an RDF .nt file. The file must be white-spaces separed values and for be
 
 	$: python 2_optimized_ld-in-couch.py -i mdb-sorted-fixed.nt -g optimized_linkedmdb -d optimized_linkedmdb
 	Parameters: 
-	1. -i \<input_file\> 
-	2. -g \<RDF_target_graph\>
-	3. -d \<DB_name\>
+	1. -i <input_file> 
+	2. -g <RDF_target_graph>
+	3. -d <DB_name>
 	
 
 Query by subject example:
