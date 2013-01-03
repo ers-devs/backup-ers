@@ -167,11 +167,17 @@ class LDInCouchBinBackend(object):
 		self.dbname = dbname
 		self.username = username
 		self.pwd = pwd
+<<<<<<< HEAD
 		
 		# auth is bypassed here (by TEODOR)
 		# self.server = Server(self.serverURL)
 		self.server = Server(self.serverURL, filters=[BasicAuth(self.username, self.pwd)])
 
+=======
+# auth is bypassed here (by TEODOR)
+		self.server = Server(self.serverURL, filters=[BasicAuth(self.username, self.pwd)])
+#		self.server = Server(self.serverURL)
+>>>>>>> 794006f8fcb818a6e45008662b163e9705af8383
 		set_logging('info') # suppress DEBUG output of the couchdbkit/restkit
 	
 	# looks up a document via its ID 
