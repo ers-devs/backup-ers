@@ -167,17 +167,10 @@ class LDInCouchBinBackend(object):
 		self.dbname = dbname
 		self.username = username
 		self.pwd = pwd
-<<<<<<< HEAD
-		
+
 		# auth is bypassed here (by TEODOR)
 		# self.server = Server(self.serverURL)
 		self.server = Server(self.serverURL, filters=[BasicAuth(self.username, self.pwd)])
-
-=======
-# auth is bypassed here (by TEODOR)
-		self.server = Server(self.serverURL, filters=[BasicAuth(self.username, self.pwd)])
-#		self.server = Server(self.serverURL)
->>>>>>> 794006f8fcb818a6e45008662b163e9705af8383
 		set_logging('info') # suppress DEBUG output of the couchdbkit/restkit
 	
 	# looks up a document via its ID 
@@ -241,6 +234,8 @@ class LDInCouchBinBackend(object):
 			triple = input_line.split(' ') # naively assumes SPO is separated by a single whitespace
 			is_literal_object = False
 			s = triple[0][1:-1] # get rid of the <>, naively assumes no bNodes for now
+			# append the target graph as subject 
+			s = s + "#" + target_graph
 			p = triple[1][1:-1] # get rid of the <>
 			o = triple[2][1:-1] # get rid of the <> or "", naively assumes no bNodes for now
 			if not triple[2][0] == '<':
