@@ -17,7 +17,7 @@ Downscaling Entity Registries Project (with VeriSign)
 - for futher information about installing CouchDB, please check this: http://wiki.apache.org/couchdb/Installatio	n
 - we used CouchDB version 1.2.0 
 
-2.Couchdbkit (a framwork for allowing Python application to use CouchDB):
+2.Couchdbkit (a framework for allowing Python application to use CouchDB):
 - check its website for futher information: http://couchdbkit.org/download.html
 
 3.LD-in-Couch (optional):    
