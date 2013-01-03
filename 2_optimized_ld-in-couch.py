@@ -7,7 +7,6 @@
 
 """ 
   Enables you to store, process and query RDF-based Linked Data in Apache CouchDB.
-
 	!!! THIS CREATES AT THE END ALL THE VIEWS, SO NOT INCREMENTALLY AS v3
 		NO REDUCE FUNCTION ARE USED AS THEY ARE INCREDIBLE SLOW ... SO JUST 
 		CREATE ONE DOCUMENT FOR EACH TRIPLE FOR THE VIEWS
@@ -44,21 +43,19 @@ from couchdbkit.loaders import FileSystemDocsLoader
 # Configuration, change as you see fit
 #DEBUG = True
 DEBUG = False
+# not quite used :)  
 PORT = 7172
+
 COUCHDB_SERVER = 'http://127.0.0.1:5984/'
-# modified by TEODOR
-#COUCHDB_DB = 'rdf10k'
 COUCHDB_USERNAME = 'admin'
 COUCHDB_PASSWORD = 'admin'
-
 # cache BULK_LOAD_DOCS and then bulk load all of them once :) 
 BULK_LOAD_DOCS = 10000
-ADD_BACK_LINKS = False
-PATH_TO_DESIGN_DOCS = '/home/teodor/couchdb/_design/'
+PATH_TO_DESIGN_DOCS = './_design/'
+#PATH_TO_DESIGN_DOCS = '/home/teodor/couchdb/_design/'
 
-# CouchDB views, don't touch unless you know what you're doing
-# modified by TEODOR
-#LOOKUP_BY_SUBJECT_PATH = 'rdf/_design/entity/_view/by_subject?key='
+# way slower if this is activated, so we prefer creating views instead of this
+ADD_BACK_LINKS = False
 
 if DEBUG:
 	FORMAT = '%(asctime)-0s %(levelname)s %(message)s [at line %(lineno)d]'
@@ -170,9 +167,11 @@ class LDInCouchBinBackend(object):
 		self.dbname = dbname
 		self.username = username
 		self.pwd = pwd
-# auth is bypassed here (by TEODOR)
-#		self.server = Server(self.serverURL, filters=[BasicAuth(self.username, self.pwd)])
-		self.server = Server(self.serverURL)
+		
+		# auth is bypassed here (by TEODOR)
+		# self.server = Server(self.serverURL)
+		self.server = Server(self.serverURL, filters=[BasicAuth(self.username, self.pwd)])
+
 		set_logging('info') # suppress DEBUG output of the couchdbkit/restkit
 	
 	# looks up a document via its ID 
