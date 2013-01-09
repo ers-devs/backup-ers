@@ -231,15 +231,21 @@ class LDInCouchBinBackend(object):
 		# scan each line (triple) of the input document
 		for input_line in input_doc:
 			 # parsing a triple @@FIXME: employ real NTriples parser here!
-			triple = input_line.split(' ') # naively assumes SPO is separated by a single whitespace
+			triple = input_line.split(' ', 2) # naively assumes SPO is separated by a single whitespace
 			is_literal_object = False
 			s = triple[0][1:-1] # get rid of the <>, naively assumes no bNodes for now
 			# append the target graph as subject 
 			s = s + "#" + target_graph
 			p = triple[1][1:-1] # get rid of the <>
 			o = triple[2][1:-1] # get rid of the <> or "", naively assumes no bNodes for now
-			if not triple[2][0] == '<':
+			oquote = triple[2][0]
+			if oquote == '"':
+				o = triple[2][1:].rsplit('"')[0]
 				is_literal_object = True
+			elif oquote == '<':
+				o = triple[2][1:].rsplit('>')[0]
+			else:
+				o = triple[2].split(' ')[0] # might be a named node
 
 			logging.debug('-'*20)
 			logging.debug('#%d: S: %s P: %s O: %s' %(triple_count, s, p, o))
