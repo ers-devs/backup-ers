@@ -50,7 +50,7 @@ COUCHDB_SERVER = 'http://127.0.0.1:5984/'
 COUCHDB_USERNAME = 'admin'
 COUCHDB_PASSWORD = 'admin'
 # cache BULK_LOAD_DOCS and then bulk load all of them once :) 
-BULK_LOAD_DOCS = 10000
+BULK_LOAD_DOCS = 500
 PATH_TO_DESIGN_DOCS = './_design/'
 #PATH_TO_DESIGN_DOCS = '/home/teodor/couchdb/_design/'
 
@@ -326,7 +326,7 @@ class LDInCouchBinBackend(object):
 			# save all documents here once ! (hope it's possible :) )		
 			try:
 				tmp = db.save_docs(doc_cache.values(), use_uuids=False)
-			except BulkSaveError as e : 
+			except BulkSaveError as e :
 				print e.errors
 			#logging.info(tmp)
 			# now empty the cache
@@ -378,6 +378,7 @@ if __name__ == '__main__':
 		# extract and validate options and their arguments
 		logging.info('-'*80)
 		logging.info('*** CONFIGURATION ***')
+		logging.info('Using Bulk Document API to load %d documents at once' %BULK_LOAD_DOCS)
 		opts, args = getopt.getopt(sys.argv[1:], 'hi:g:c:u:p:d:', ['help', 'import=', 'graph=', 'couchdbserver=', 'username=', 'password=', 'database='])
 		for opt, arg in opts:
 			if opt in ('-h', '--help'):
