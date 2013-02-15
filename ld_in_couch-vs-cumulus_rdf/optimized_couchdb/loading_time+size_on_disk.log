@@ -1,7 +1,7 @@
-no_triples 	  Optimized1_CouchDB_loading_time_sec      Optimized1_CouchDB_size_on_disk  Optimized2_CouchDB_loading_time_sec Optimized2_CouchDB_size_on_disk    Cumulus_RDF_loading_time_sec      Cumulus_RDF_size_on_disk
-100k	        30.125                                   55.2MB                           15.023                              16.2MB                             4.214		                         7.8MB
-0.7mil        186.095                                  504MB                            163.020                             126.5MB                            22.162		                      56MB
-5mil		     1510.5                                   4100MB                           1247.24                             993MB                             160.612		                      381MB
+no_triples 	  Optimized1_CouchDB_loading_time_sec      Optimized1_CouchDB_size_on_disk  Optimized_LD-in-Couch Optimized2_CouchDB_size_on_disk    Cumulus_RDF  Cumulus_RDF_size_on_disk Base_LD-in-Couch
+100k	        30.125                                   55.2MB                           15.023                              16.2MB                             4.214		                         7.8MB			1575
+0.7mil        186.095                                  504MB                            163.020                             126.5MB                            22.162		                      56MB			255600
+5mil		     1510.5                                   4100MB                           1247.24                             993MB                             160.612		                      381MB			N/A
 
 
 10k	        5.098                                   6.7MB                             2.1                                1.8MB                               1.617		                        1.5MB
