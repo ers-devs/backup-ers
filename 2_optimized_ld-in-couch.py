@@ -50,7 +50,7 @@ COUCHDB_SERVER = 'http://127.0.0.1:5984/'
 COUCHDB_USERNAME = 'admin'
 COUCHDB_PASSWORD = 'admin'
 # cache BULK_LOAD_DOCS and then bulk load all of them once :) 
-BULK_LOAD_DOCS = 10000
+BULK_LOAD_DOCS = 500
 PATH_TO_DESIGN_DOCS = './_design/'
 #PATH_TO_DESIGN_DOCS = '/home/teodor/couchdb/_design/'
 
@@ -231,15 +231,21 @@ class LDInCouchBinBackend(object):
 		# scan each line (triple) of the input document
 		for input_line in input_doc:
 			 # parsing a triple @@FIXME: employ real NTriples parser here!
-			triple = input_line.split(' ') # naively assumes SPO is separated by a single whitespace
+			triple = input_line.split(' ', 2) # naively assumes SPO is separated by a single whitespace
 			is_literal_object = False
 			s = triple[0][1:-1] # get rid of the <>, naively assumes no bNodes for now
 			# append the target graph as subject 
 			s = s + "#" + target_graph
 			p = triple[1][1:-1] # get rid of the <>
 			o = triple[2][1:-1] # get rid of the <> or "", naively assumes no bNodes for now
-			if not triple[2][0] == '<':
+			oquote = triple[2][0]
+			if oquote == '"':
+				o = triple[2][1:].rsplit('"')[0]
 				is_literal_object = True
+			elif oquote == '<':
+				o = triple[2][1:].rsplit('>')[0]
+			else:
+				o = triple[2].split(' ')[0] # might be a named node
 
 			logging.debug('-'*20)
 			logging.debug('#%d: S: %s P: %s O: %s' %(triple_count, s, p, o))
@@ -288,21 +294,15 @@ class LDInCouchBinBackend(object):
 				# add here the new predicate + object
 				doc_from_cache.p.append(p)
 				doc_from_cache.o.append(o)
-			else: 
-				doc = RDFEntity(_id=s, g=target_graph, s=s,  p=[p], o=[o])
-				# being in subj_ht means here that the document is already flushed
-				if first_flush is 1 and s in subj_ht: 	
-					# then get the documents attributes from disk
-					ret = self.look_up_by_id(s)
-					while ret[0] is False and ret[1] is False : 
-						ret = self.look_up_by_id(s)
-					if ret[0] is True: 
-						# there is already such a document, 
-						# so get it's _rev value and use it in order to update it
-						doc = RDFEntity(_id=s, _rev=ret[1]['_rev'], g=target_graph, s=s,  p=[p], o=[o]) 
-						doc.p.extend(ret[1]['p'])
-						doc.o.extend(ret[1]['o'])
-				# ... so create a new entity doc
+			else:
+				# check if the document exists in DB
+				ret = self.look_up_by_id(s)
+				if ret[0]: 
+					# yes, use the _rev, p, o from the found document
+					doc = RDFEntity(_id=s, _rev=ret[1]['_rev'], g=target_graph,
+									s=s,  p=ret[1]['p']+[p], o=ret[1]['o']+[o]) 
+				else:
+					doc = RDFEntity(_id=s, g=target_graph, s=s,  p=[p], o=[o])
 				# add here in cache 
 				doc_cache[s] = doc
 				subj_ht[s] = 1
@@ -310,7 +310,7 @@ class LDInCouchBinBackend(object):
 			triple_count += 1
 		 	if len(doc_cache) >= BULK_LOAD_DOCS: 
 				try:
-					tmp = db.save_docs(doc_cache.values())
+					tmp = db.save_docs(doc_cache.values(), use_uuids=False)
 				except BulkSaveError as e:
 					print e.errors 
 #				logging.info(tmp)
@@ -325,8 +325,8 @@ class LDInCouchBinBackend(object):
 	 	if len(doc_cache) >= 0: 
 			# save all documents here once ! (hope it's possible :) )		
 			try:
-				tmp = db.save_docs(doc_cache.values())
-			except BulkSaveError as e : 
+				tmp = db.save_docs(doc_cache.values(), use_uuids=False)
+			except BulkSaveError as e :
 				print e.errors
 			#logging.info(tmp)
 			# now empty the cache
@@ -378,6 +378,7 @@ if __name__ == '__main__':
 		# extract and validate options and their arguments
 		logging.info('-'*80)
 		logging.info('*** CONFIGURATION ***')
+		logging.info('Using Bulk Document API to load %d documents at once' %BULK_LOAD_DOCS)
 		opts, args = getopt.getopt(sys.argv[1:], 'hi:g:c:u:p:d:', ['help', 'import=', 'graph=', 'couchdbserver=', 'username=', 'password=', 'database='])
 		for opt, arg in opts:
 			if opt in ('-h', '--help'):
