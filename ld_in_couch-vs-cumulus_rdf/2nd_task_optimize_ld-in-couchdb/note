@@ -1,8 +1,0 @@
-THERE ARE 2 VERSIONS OF OPTIMIZATIONS ! 
-
-
-2ND:
-check 2_optimize_ld-in-couch.py script ! 
-now we have arrays of p and o for one unique s 
-there is code that handles back link as well, maybe not so smart ?! 
-however, backlinks are quite slow, maybe having a by_object view is better ! 

@@ -1,4 +1,0 @@
-no_queries 10k_triples 10k_triples_compacted 100k_triples 100k_triples_compacted 0.7m_triples 0.7m_triples_compacted
-100        13.51       11.828                13.204         11.778               270.079      12.709
-
-LIMIT=1000
