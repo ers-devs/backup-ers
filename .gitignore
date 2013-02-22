@@ -1,0 +1,4 @@
+*.pyc
+
+ers-local/couch/couchdata/*
+
