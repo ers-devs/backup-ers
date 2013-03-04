@@ -2,3 +2,5 @@
 
 ers-local/couch/couchdata/*
 
+.DS_Store
+.idea/
