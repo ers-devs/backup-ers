@@ -1,0 +1,1 @@
+curl -v -X POST -H "Content-Type: application/x-www-form-urlencoded" --data "e=<bla>&p=<cla>&v=<ha>"  "http://diufpc304.unifr.ch:8080/cumulusrdf/crud"

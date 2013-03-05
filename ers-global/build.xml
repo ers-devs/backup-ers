@@ -1,0 +1,89 @@
+<?xml version="1.0"?>
+<project name="cumulusrdf" default="war">
+
+	<property name="app.name" value="ers" />
+	<property name="app.version" value="0.6.0" />
+	<property name="src.home" value="src" />
+	<property name="build.home" value="bin" />
+	<property name="dist.home" value="dist" />
+	<property name="lib.home" value="war/WEB-INF/lib" />
+	<property name="jarname" value="${app.name}-${app.version}.jar" />
+	<property name="zipname" value="${app.name}-${app.version}.zip" />
+	<property name="warname" value="${app.name}.war" />
+
+	<target name="prepare">
+		<tstamp />
+		<mkdir dir="${build.home}" />
+		<mkdir dir="${dist.home}" />
+	</target>
+
+	<target name="clean">
+		<delete dir="${build.home}" />
+		<delete>
+			<fileset dir="${dist.home}">
+				<include name="*" />
+			</fileset>
+		</delete>
+	</target>
+
+	<path id="classpath">
+		<fileset dir="${lib.home}">
+			<include name="*.jar" />
+		</fileset>
+	</path>
+
+	<target name="zip" depends="war">
+		<zip destfile="${dist.home}/${zipname}">
+			<zipfileset prefix="${app.name}-${app.version}" dir=".">
+				<include name="src/**" />
+				<include name="test/**" />
+				<include name="data/dogfood-crawled/data.nq" />
+				<include name="data/dogfood-crawled/redirects.nx" />
+				<include name="dist/${jarname}" />
+				<include name="dist/${warname}" />
+				<include name="config/**" />
+				<include name="war/**" />
+				<include name=".project" />
+				<include name=".classpath" />
+				<include name="build.xml" />
+				<include name="README" />
+				<include name="CHANGES" />
+				<exclude name="war/WEB-INF/classes/**" />
+				<exclude name="**/.svn" />
+				<exclude name="${dist.home}/${zipname}" />
+			</zipfileset>
+		</zip>
+	</target>
+
+	<target name="war" depends="jar">
+		<war destfile="${dist.home}/${warname}" webxml="war/WEB-INF/web.xml">
+			<classes file="war/WEB-INF/logging.properties" />
+			<fileset dir="war">
+				<include name="index.html" />
+			</fileset>
+
+			<lib file="dist/${jarname}" />
+		</war>
+	</target>
+
+	<target name="jar" depends="compile">
+		<jar destfile="${dist.home}/${jarname}" filesetmanifest="mergewithoutmain" basedir="${build.home}">
+			<manifest>
+				<attribute name="Main-Class" value="edu.kit.aifb.cumulus.cli.Main" />
+				<attribute name="Class-Path" value="." />
+			</manifest>
+			<fileset dir="${src.home}" includes="log4j.properties" />
+			<fileset dir="${src.home}" includes="logging.properties" />
+
+			<zipgroupfileset dir="${lib.home}" excludes="servlet-api.jar" />
+		</jar>
+	</target>
+
+
+	<target name="compile" depends="prepare">
+		<javac destdir="${build.home}" srcdir="${src.home}" includeantruntime="false" debug="yes">
+			<compilerarg value="-Xlint" />
+			<classpath refid="classpath" />
+		</javac>
+	</target>
+</project>
