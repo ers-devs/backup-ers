@@ -1,4 +1,5 @@
 *.pyc
+*.class
 
 ers-local/couch/couchdata/*
 
