@@ -30,7 +30,14 @@
   <listener>
     <listener-class>edu.kit.aifb.cumulus.webapp.Listener</listener-class>
   </listener>
-  
+
+   <!-- TM: used to test the trasition from Hector to cassandraio --> 
+  <servlet>
+   	<servlet-name>readcio</servlet-name> 
+	<servlet-class>edu.kit.aifb.cumulus.webapp.ReadCIOServlet</servlet-class> 
+  </servlet>
+  <!-- END -->  
+
   <servlet>
   	<servlet-name>dispatcher</servlet-name>
   	<servlet-class>edu.kit.aifb.cumulus.webapp.DispatcherServlet</servlet-class>

@@ -16,11 +16,12 @@ import org.openrdf.query.resultio.TupleQueryResultFormat;
 import org.openrdf.query.resultio.TupleQueryResultWriterRegistry;
 import org.yaml.snakeyaml.Yaml;
 
-import edu.kit.aifb.cumulus.store.CassandraRdfHectorHierHash;
-import edu.kit.aifb.cumulus.store.CassandraRdfHectorFlatHash;
-import edu.kit.aifb.cumulus.store.CassandraRdfHectorQuads;
-import edu.kit.aifb.cumulus.store.Store;
-import edu.kit.aifb.cumulus.store.StoreException;
+import edu.kit.aifb.cumulus.store.cassandraio.CassandraRdfCIOHierHash;
+import edu.kit.aifb.cumulus.store.cassandraio.CassandraRdfCIOFlatHash;
+import edu.kit.aifb.cumulus.store.cassandraio.CassandraRdfCIOQuads;
+import edu.kit.aifb.cumulus.store.cassandraio.Store;
+import edu.kit.aifb.cumulus.store.cassandraio.StoreException;
+
 import edu.kit.aifb.cumulus.store.sesame.SPARQLResultsNxWriterFactory;
 import edu.kit.aifb.cumulus.webapp.formatter.HTMLFormat;
 import edu.kit.aifb.cumulus.webapp.formatter.NTriplesFormat;
@@ -73,7 +74,7 @@ public class Listener implements ServletContextListener {
 
 //	public static final String DATASET_HANDLER = "dataset_handler";
 //	public static final String PROXY_HANDLER = "proxy_handler";
-	
+
 	private Store _crdf = null;
 	
 	private final Logger _log = Logger.getLogger(this.getClass().getName());
@@ -159,12 +160,11 @@ public class Listener implements ServletContextListener {
 			_log.info("storage layout: " + layout);
 			
 			if (LAYOUT_SUPER.equals(layout))
-				_crdf = new CassandraRdfHectorHierHash(hosts, keyspace);
+				_crdf = new CassandraRdfCIOHierHash(hosts, keyspace);
 			else if (LAYOUT_FLAT.equals(layout))
-				_crdf = new CassandraRdfHectorFlatHash(hosts, keyspace);
+				_crdf = new CassandraRdfCIOFlatHash(hosts, keyspace);
 			else
 				throw new IllegalArgumentException("unknown storage layout");
-			
 			_crdf.open();
 			ctx.setAttribute(STORE, _crdf);
 		} catch (Exception e) {
