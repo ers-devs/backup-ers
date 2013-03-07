@@ -9,7 +9,8 @@
 -->
   	<context-param> 
  		<param-name>cassandra-hosts</param-name>
-  		<param-value>127.0.0.1:9160</param-value> 
+<!--  		<param-value>127.0.0.1:9160</param-value>  -->
+		<param-value>127.0.0.1:9171</param-value>  
  	</context-param> 
 
   	<context-param>
