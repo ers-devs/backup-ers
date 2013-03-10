@@ -9,8 +9,8 @@
 -->
   	<context-param> 
  		<param-name>cassandra-hosts</param-name>
-<!--  		<param-value>127.0.0.1:9160</param-value>  -->
-		<param-value>127.0.0.1:9171</param-value>  
+  		<param-value>127.0.0.1:9160</param-value>  
+<!--		<param-value>127.0.0.1:9171</param-value>   -->
  	</context-param> 
 
   	<context-param>
@@ -30,14 +30,8 @@
 
   <listener>
     <listener-class>edu.kit.aifb.cumulus.webapp.Listener</listener-class>
+    <listener-class>org.apache.commons.fileupload.servlet.FileCleanerCleanup</listener-class>
   </listener>
-
-   <!-- TM: used to test the trasition from Hector to cassandraio --> 
-  <servlet>
-   	<servlet-name>readcio</servlet-name> 
-	<servlet-class>edu.kit.aifb.cumulus.webapp.ReadCIOServlet</servlet-class> 
-  </servlet>
-  <!-- END -->  
 
   <servlet>
   	<servlet-name>dispatcher</servlet-name>
@@ -70,6 +64,10 @@
   <servlet>
   	<servlet-name>delete</servlet-name>
   	<servlet-class>edu.kit.aifb.cumulus.webapp.DeleteServlet</servlet-class>
+  </servlet>
+  <servlet>
+	<servlet-name>bulkload</servlet-name>
+	<servlet-class>edu.kit.aifb.cumulus.webapp.BulkLoadServlet</servlet-class>
   </servlet>
 
 

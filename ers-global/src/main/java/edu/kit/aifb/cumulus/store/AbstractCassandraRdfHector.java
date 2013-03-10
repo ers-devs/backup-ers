@@ -347,9 +347,8 @@ public abstract class AbstractCassandraRdfHector extends Store {
 	}
 
 	public void batchBulkLoad(InputStream fis, String format, String columnFamily, int threadCount) throws IOException, InterruptedException {
-		//_log.info("bulk loading " + columnFamily);
+		_log.info("bulk loading " + columnFamily);
 		List<LoadThread> threads = new ArrayList<LoadThread>();
-		
 		if (threadCount < 0)
 			threadCount = Math.max(1, (int)(_cluster.getConnectionManager().getHosts().size() / 1.5));
 
@@ -359,7 +358,6 @@ public abstract class AbstractCassandraRdfHector extends Store {
 			t.start();
 		}
 		_log.info("created " + threads.size() + " loading threads");
-		
 		int curThread = 0;
 		
 		Iterator<Node[]> nxp = null;
@@ -376,7 +374,6 @@ public abstract class AbstractCassandraRdfHector extends Store {
 				throw new IOException(e);
 			}
 		}
-
 		List<Node[]> triples = new ArrayList<Node[]>();
 		
 		long start = System.currentTimeMillis();
@@ -395,7 +392,6 @@ public abstract class AbstractCassandraRdfHector extends Store {
 //			nx[1] = urlDecode(nx[1]);
 //			nx[2] = urlDecode(nx[2]);
 //			triples.add(Util.reorder(nx, map));
-
 			triples.add(nx);
 			i++;
 			for (int k=0; k < nx.length; k++) {
@@ -452,6 +448,19 @@ public abstract class AbstractCassandraRdfHector extends Store {
 			FileInputStream fis = new FileInputStream(file);
 			batchBulkLoad(fis, format, cf, threads);
 			fis.close();
+		} catch (InterruptedException e) {
+			throw new StoreException(e);
+		} catch (IOException e) {
+			throw new StoreException(e);
+		}
+	}
+
+	//TM: added for enabling bulk load from servlet
+	public void bulkLoad(InputStream fis, String format, int threads) throws StoreException, IOException {
+		try {
+			for (String cf : _cfs) {
+				batchBulkLoad(fis, format, cf, threads);
+			}			
 		} catch (InterruptedException e) {
 			throw new StoreException(e);
 		} catch (IOException e) {

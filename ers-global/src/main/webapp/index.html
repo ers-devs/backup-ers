@@ -33,6 +33,20 @@
       <input type="submit" value="Create"/>
     </form>
 
+   <h3>BulkLoad</h3>
+    <p>
+      You can bulkload entities via HTTP POST.
+    </p>
+    <p>
+      <code>
+	curl -v -X POST -i -F filedata=@./rdf_ntriples/repo10k.nt http://diufpc304.unifr.ch:8080/ers/bulkload
+      </code>
+    </p>
+    <form action="./bulkload" enctype="multipart/form-data" method="post">
+      Entities file: <input type="file" name="file" size="30" value=""/>
+      <input type="submit" value="BulkLoad"/>
+    </form>
+
    <h3>Read (it returns also the back links)</h3>
     <p>
       You can access the contents of an object by performing a HTTP GET request.

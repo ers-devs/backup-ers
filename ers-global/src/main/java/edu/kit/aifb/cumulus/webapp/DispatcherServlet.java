@@ -25,6 +25,7 @@ public class DispatcherServlet extends AbstractHttpServlet {
 	private static final String READ = "/read";
 	private static final String UPDATE = "/update"; 
 	private static final String DELETE = "/delete"; 
+	private static final String BULKLOAD = "/bulkload";
 
 	public void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
 		ServletContext ctx = getServletContext();
@@ -105,6 +106,8 @@ public class DispatcherServlet extends AbstractHttpServlet {
 					ctx.getNamedDispatcher("update").forward(req, resp);
 				} else if (path.startsWith(DELETE)) { 
 					ctx.getNamedDispatcher("delete").forward(req, resp);
+				} else if (path.startsWith(BULKLOAD)) { 
+					ctx.getNamedDispatcher("bulkload").forward(req, resp);
 				}
 			}
 			catch (ServletException e) {
