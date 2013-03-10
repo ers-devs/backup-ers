@@ -16,19 +16,11 @@ import org.openrdf.query.resultio.TupleQueryResultFormat;
 import org.openrdf.query.resultio.TupleQueryResultWriterRegistry;
 import org.yaml.snakeyaml.Yaml;
 
-/*
-import edu.kit.aifb.cumulus.store.cassandraio.CassandraRdfCIOHierHash;
-import edu.kit.aifb.cumulus.store.cassandraio.CassandraRdfCIOFlatHash;
-import edu.kit.aifb.cumulus.store.cassandraio.CassandraRdfCIOQuads;
-import edu.kit.aifb.cumulus.store.cassandraio.Store;
-import edu.kit.aifb.cumulus.store.cassandraio.StoreException; */
-
 import edu.kit.aifb.cumulus.store.CassandraRdfHectorHierHash;
 import edu.kit.aifb.cumulus.store.CassandraRdfHectorFlatHash;
 import edu.kit.aifb.cumulus.store.CassandraRdfHectorQuads;
 import edu.kit.aifb.cumulus.store.Store;
 import edu.kit.aifb.cumulus.store.StoreException;
-
 
 import edu.kit.aifb.cumulus.store.sesame.SPARQLResultsNxWriterFactory;
 import edu.kit.aifb.cumulus.webapp.formatter.HTMLFormat;
@@ -36,7 +28,7 @@ import edu.kit.aifb.cumulus.webapp.formatter.NTriplesFormat;
 import edu.kit.aifb.cumulus.webapp.formatter.SerializationFormat;
 import edu.kit.aifb.cumulus.webapp.formatter.StaxRDFXMLFormat;
 
-import org.cassandraunit.utils.EmbeddedCassandraServerHelper;
+//import org.cassandraunit.utils.EmbeddedCassandraServerHelper;
 /** 
  * 
  * @author aharth
@@ -168,7 +160,8 @@ public class Listener implements ServletContextListener {
 			_log.info("keyspace: " + keyspace);
 			_log.info("storage layout: " + layout);
 
-			EmbeddedCassandraServerHelper.startEmbeddedCassandra();
+			// start embedded Cassandra
+			//beddedCassandraServerHelper.startEmbeddedCassandra();
 			
 			if (LAYOUT_SUPER.equals(layout))
 				_crdf = new CassandraRdfHectorHierHash(hosts, keyspace);
