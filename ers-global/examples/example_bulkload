@@ -1,0 +1,1 @@
+curl -v -X POST -i -F filedata=@/home/teodor/rdf_ntriples/repo10k.nt http://diufpc304.unifr.ch:8080/ers/bulkload

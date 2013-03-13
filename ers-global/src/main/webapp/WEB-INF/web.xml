@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8"?>
+<web-app xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://java.sun.com/xml/ns/javaee" xmlns:web="http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd" xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd" version="2.5">
+  <display-name>CumulusRDF Store</display-name>
+<!--
+  <context-param>
+    <param-name>config-file</param-name>
+    <param-value>/etc/cumulus.yaml</param-value>
+  </context-param>
+-->
+  	<context-param> 
+ 		<param-name>cassandra-hosts</param-name>
+  		<param-value>127.0.0.1:9160</param-value>  
+<!--		<param-value>127.0.0.1:9171</param-value>   -->
+ 	</context-param> 
+
+  	<context-param>
+ 		<param-name>storage-layout</param-name> 
+  		<param-value>super</param-value>
+ 	</context-param>
+
+  	<context-param>
+ 		<param-name>proxy-mode</param-name>
+  		<param-value>false</param-value>
+ 	</context-param>
+
+ 	<context-param>
+ 		<param-name>cassandra-keyspace</param-name>
+  		<param-value>ERS</param-value>
+ 	</context-param>
+
+  <listener>
+    <listener-class>edu.kit.aifb.cumulus.webapp.Listener</listener-class>
+    <listener-class>org.apache.commons.fileupload.servlet.FileCleanerCleanup</listener-class>
+  </listener>
+
+  <servlet>
+  	<servlet-name>dispatcher</servlet-name>
+  	<servlet-class>edu.kit.aifb.cumulus.webapp.DispatcherServlet</servlet-class>
+  </servlet>
+
+  <servlet>
+  	<servlet-name>info</servlet-name>
+  	<servlet-class>edu.kit.aifb.cumulus.webapp.InfoServlet</servlet-class>
+  </servlet>
+
+  <servlet>
+  	<servlet-name>error</servlet-name>
+  	<servlet-class>edu.kit.aifb.cumulus.webapp.ErrorServlet</servlet-class>
+  </servlet>
+
+  <!--TM: C R U D operations --> 
+  <servlet>
+  	<servlet-name>create</servlet-name>
+  	<servlet-class>edu.kit.aifb.cumulus.webapp.CreateServlet</servlet-class>
+  </servlet>
+  <servlet>
+  	<servlet-name>read</servlet-name>
+  	<servlet-class>edu.kit.aifb.cumulus.webapp.ReadServlet</servlet-class>
+  </servlet>
+  <servlet>
+  	<servlet-name>update</servlet-name>
+  	<servlet-class>edu.kit.aifb.cumulus.webapp.UpdateServlet</servlet-class>
+  </servlet>
+  <servlet>
+  	<servlet-name>delete</servlet-name>
+  	<servlet-class>edu.kit.aifb.cumulus.webapp.DeleteServlet</servlet-class>
+  </servlet>
+  <servlet>
+	<servlet-name>bulkload</servlet-name>
+	<servlet-class>edu.kit.aifb.cumulus.webapp.BulkLoadServlet</servlet-class>
+  </servlet>
+
+
+  <servlet>
+  	<servlet-name>query</servlet-name>
+  	<servlet-class>edu.kit.aifb.cumulus.webapp.QueryServlet</servlet-class>
+  </servlet>
+
+  <servlet>
+  	<servlet-name>sparql</servlet-name>
+  	<servlet-class>edu.kit.aifb.cumulus.webapp.SPARQLServlet</servlet-class>
+  </servlet>
+
+  <servlet>
+  	<servlet-name>proxy</servlet-name>
+  	<servlet-class>edu.kit.aifb.cumulus.webapp.ProxyServlet</servlet-class>
+  </servlet>
+  
+  <servlet-mapping>
+    <servlet-name>dispatcher</servlet-name>
+    <url-pattern>/*</url-pattern>
+  </servlet-mapping>
+  
+  <error-page>
+    <error-code>400</error-code>
+    <location>/error</location>
+  </error-page>
+  <error-page>
+    <error-code>401</error-code>
+    <location>/error</location>
+  </error-page>
+  <error-page>
+    <error-code>402</error-code>
+    <location>/error</location>
+  </error-page>
+  <error-page>
+    <error-code>403</error-code>
+    <location>/error</location>
+  </error-page>
+  <error-page>
+    <error-code>404</error-code>
+    <location>/error</location>
+  </error-page>
+  <error-page>
+    <error-code>405</error-code>
+    <location>/error</location>
+  </error-page>
+  <error-page>
+    <error-code>406</error-code>
+    <location>/error</location>
+  </error-page>
+  <error-page>
+    <error-code>500</error-code>
+    <location>/error</location>
+  </error-page>
+  
+  <welcome-file-list>
+    <welcome-file>index.html</welcome-file>
+  </welcome-file-list>
+</web-app>
