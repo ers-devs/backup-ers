@@ -11,7 +11,10 @@ class LocalModelBase(object):
     def get_data(self, doc, subject, graph):
         pass
         
-    def refresh_doc(self, couch_doc, cache):
+    def add_data(self, couch_doc, cache):
+        pass
+
+    def delete_property(self, couch_doc, prop):
         pass
 
 
@@ -48,6 +51,9 @@ class ModelS(LocalModelBase):
     def couch_key(self, cache_key, graph):
         return "{0} {1}".format(graph, cache_key)
 
+    def delete_property(self, couch_doc, prop):
+        couch_doc.pop(prop, [])
+
     def get_data(self, doc, subject, graph):
         """
         Return property-value dictionary. Call with subject=None, graph=None to get data from a doc without an _id.
@@ -63,7 +69,7 @@ class ModelS(LocalModelBase):
             return data_dict
         return {}
 
-    def refresh_doc(self, couch_doc, cache):
+    def add_data(self, couch_doc, cache):
         cache_data = cache[self.cache_key(couch_doc['_id'])]
         for p, oo in cache_data.iteritems():
             couch_doc[p] = list(oo.union(couch_doc.get(p, [])))
@@ -105,6 +111,9 @@ class ModelT(LocalModelBase):
     def couch_key(self, cache_key, graph):
         return "{0}#{1}".format(cache_key, graph)
 
+    def delete_property(self, couch_doc, prop):
+        couch_doc['p'], couch_doc['o'] = zip(*[(p, o) for p, o in zip(couch_doc['p'], couch_doc['o']) if p != prop])
+
     def get_data(self, doc, subject, graph):
         data_dict = {}
         if (subject != None) and ((doc['s'] != subject) or (graph != None and (doc['g'] != graph))):
@@ -113,7 +122,7 @@ class ModelT(LocalModelBase):
             data_dict.setdefault(p, []).append(o)
         return data_dict
 
-    def refresh_doc(self, couch_doc, cache):
+    def add_data(self, couch_doc, cache):
         s, g = couch_doc['_id'].rsplit('#', 1)
         couch_doc['g'] = g
         couch_doc['s'] = s
@@ -131,5 +140,5 @@ class ModelH(ModelT):
     def couch_key(self, cache_key, graph):
         pass
 
-    def refresh_doc(self, couch_doc, cache):
+    def add_data(self, couch_doc, cache):
         pass
