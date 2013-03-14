@@ -30,7 +30,7 @@ public class LoadRedirects {
 		Option storageO = new Option("s", "storage layout to use (flat|super) (needs to match webapp configuration)");
 		storageO.setArgs(1);
 
-		Option keyspaceO = new Option("k", "Cassandra keyspace (default KeyspaceCumulus)");
+		Option keyspaceO = new Option("g", "Cassandra keyspace / graph name (mandatory)");
 		keyspaceO.setArgs(1);
 
 		Option helpO = new Option("h", "print help");
@@ -76,32 +76,36 @@ public class LoadRedirects {
 			hosts = cmd.getOptionValue("n");
 		}
 		
-		String keyspace = "KeyspaceCumulus";
-		if (cmd.hasOption("k"))
-			keyspace = cmd.getOptionValue("k");
-		
+		String keyspace = "";
+		if (cmd.hasOption("g"))
+			keyspace = cmd.getOptionValue("g");
+		if ( keyspace.isEmpty() ) { 
+			System.err.println("Please give graph name as -g paramater"); 
+			System.exit(-1);
+		}
 		AbstractCassandraRdfHector crdf = null;
 		
 		if (cmd.hasOption("s")) {
 			String sl = cmd.getOptionValue("s");
 			System.out.println("storage layout: " + sl);
 			if ("super".equals(sl))
-				crdf = new CassandraRdfHectorHierHash(hosts, keyspace);
+				crdf = new CassandraRdfHectorHierHash(hosts);
 			else if ("flat".equals(sl))
-				crdf = new CassandraRdfHectorFlatHash(hosts, keyspace);
+				crdf = new CassandraRdfHectorFlatHash(hosts);
 			else {
 				System.err.println("unknown storage layout");
 				return;
 			}
 		}
 		else
-			crdf = new CassandraRdfHectorFlatHash(hosts, keyspace);
+			crdf = new CassandraRdfHectorFlatHash(hosts);
 
 		crdf.open();
+		crdf.createKeyspace(keyspace); 
 		
 		if (in != null) {
 			try {
-				((CassandraRdfHectorQuads)crdf).loadRedirects(in);
+				((CassandraRdfHectorQuads)crdf).loadRedirects(in, keyspace);
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}

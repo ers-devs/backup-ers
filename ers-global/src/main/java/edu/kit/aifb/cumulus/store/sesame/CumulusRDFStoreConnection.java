@@ -62,14 +62,16 @@ public class CumulusRDFStoreConnection extends NotifyingSailConnectionBase {
 	
 	private CumulusRDFStore _sail;
 	private Store _crdf;
+	private String _keyspace;
 	private CumulusRDFValueFactory _factory;
 	
 	private static final Logger _log = Logger.getLogger(CumulusRDFStoreConnection.class.getName());
 
-	public CumulusRDFStoreConnection(CumulusRDFStore sail) {
+	public CumulusRDFStoreConnection(CumulusRDFStore sail, String keyspace) {
 		super(sail);
 		_sail = sail;
 		_crdf = sail.getStore();
+		_keyspace = keyspace;
 		_factory = sail.getValueFactory();
 	}
 	
@@ -157,7 +159,7 @@ public class CumulusRDFStoreConnection extends NotifyingSailConnectionBase {
 		List<Node[]> list = new ArrayList<Node[]>();
 		list.add(_factory.createNodes(subj, pred, obj));
 		try {
-			_crdf.addData(list.iterator());
+			_crdf.addData(list.iterator(), _keyspace);
 		}
 		catch (StoreException e) {
 			e.printStackTrace();

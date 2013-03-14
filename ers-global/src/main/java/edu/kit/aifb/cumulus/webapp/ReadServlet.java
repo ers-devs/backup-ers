@@ -18,6 +18,7 @@ import org.semanticweb.yars.nx.parser.NxParser;
 import org.semanticweb.yars.nx.parser.ParseException;
 
 import edu.kit.aifb.cumulus.store.Store;
+import edu.kit.aifb.cumulus.store.AbstractCassandraRdfHector;
 import edu.kit.aifb.cumulus.store.StoreException;
 import edu.kit.aifb.cumulus.webapp.formatter.SerializationFormat;
 
@@ -40,10 +41,15 @@ public class ReadServlet extends AbstractHttpServlet {
 
 		resp.setCharacterEncoding("UTF-8");
 		String e = req.getParameter("e");
+		String g = req.getParameter("g");
 		_log.info("req " + req.getPathInfo() + " " + req.getQueryString());
 
 		if (e == null || e.isEmpty()) {
 			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please give a non-empty entity");
+			return;
+		}
+		if (g == null || g.isEmpty()) {
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please give a non-empty graph name as 'g' parameter");
 			return;
 		}
 		if( !e.startsWith("<") ) { 
@@ -60,21 +66,26 @@ public class ReadServlet extends AbstractHttpServlet {
 		int objects = (Integer)ctx.getAttribute(Listener.TRIPLES_OBJECT);
 		Resource resource = new Resource(e);
 		
-		Store crdf = (Store)ctx.getAttribute(Listener.STORE);
 		PrintWriter out = resp.getWriter();
+		AbstractCassandraRdfHector crdf = (AbstractCassandraRdfHector)ctx.getAttribute(Listener.STORE);
 		int triples = 0;
-		try {
-			Iterator<Node[]> it = crdf.describe(resource, false, subjects, objects);
-			if (it.hasNext()) {
-				resp.setContentType(formatter.getContentType());
-				triples = formatter.print(it, out);
+		if( ! crdf.existsKeyspace(g) ) { 
+			out.print("Graph " + g + " does not exists.");
+		}
+		else { 
+			try {
+				Iterator<Node[]> it = crdf.describe(resource, false, subjects, objects, g);
+				if (it.hasNext()) {
+					resp.setContentType(formatter.getContentType());
+					triples = formatter.print(it, out);
+				}
+				else
+					sendError(ctx, req, resp, HttpServletResponse.SC_NOT_FOUND, "resource not found");
+			} 
+			catch (StoreException ex) {
+				_log.severe(ex.getMessage());
+				sendError(ctx, req, resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, ex.getMessage());
 			}
-			else
-				sendError(ctx, req, resp, HttpServletResponse.SC_NOT_FOUND, "resource not found");
-		} 
-		catch (StoreException ex) {
-			_log.severe(ex.getMessage());
-			sendError(ctx, req, resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, ex.getMessage());
 		}
 		_log.info("[dataset] GET " + resource.toN3() + " " + (System.currentTimeMillis() - start) + "ms " + triples + " t");
 	}

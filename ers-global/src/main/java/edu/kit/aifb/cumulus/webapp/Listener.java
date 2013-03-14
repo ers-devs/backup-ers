@@ -88,11 +88,11 @@ public class Listener implements ServletContextListener {
 		ServletContext ctx = event.getServletContext();
 		
 		// sesame init register media type
-		TupleQueryResultFormat.register(SPARQLResultsNxWriterFactory.NX);
-		TupleQueryResultWriterRegistry.getInstance().add(new SPARQLResultsNxWriterFactory());
+//		TupleQueryResultFormat.register(SPARQLResultsNxWriterFactory.NX);
+//		TupleQueryResultWriterRegistry.getInstance().add(new SPARQLResultsNxWriterFactory());
 
+		// parse config file
 		String configFile = ctx.getInitParameter(PARAM_CONFIGFILE);
-		
 		Map<String,String> config = null;
 		if (configFile != null && new File(configFile).exists()) {
 			_log.info("config file: " + configFile);
@@ -113,7 +113,6 @@ public class Listener implements ServletContextListener {
 				_log.severe(e.getMessage());
 				ctx.setAttribute(ERROR, e);
 			}
-			
 			if (config == null) {
 				_log.severe("config file found at '" + configFile + "', but is empty?");
 				ctx.setAttribute(ERROR, "config missing");
@@ -130,7 +129,6 @@ public class Listener implements ServletContextListener {
 				}
 			}
 		}
-
 		_log.info("config: " + config);
 		
 		_mimeTypes = new HashMap<String,String>();
@@ -150,7 +148,6 @@ public class Listener implements ServletContextListener {
 			ctx.setAttribute(ERROR, "params missing");
 			return;
 		}
-		
 		try {
 			String hosts = config.get(PARAM_HOSTS);
 			String keyspace = config.get(PARAM_KEYSPACE);
@@ -161,12 +158,12 @@ public class Listener implements ServletContextListener {
 			_log.info("storage layout: " + layout);
 
 			// start embedded Cassandra
-			//beddedCassandraServerHelper.startEmbeddedCassandra();
+			//EmbeddedCassandraServerHelper.startEmbeddedCassandra();
 			
 			if (LAYOUT_SUPER.equals(layout))
-				_crdf = new CassandraRdfHectorHierHash(hosts, keyspace);
+				_crdf = new CassandraRdfHectorHierHash(hosts);
 			else if (LAYOUT_FLAT.equals(layout))
-				_crdf = new CassandraRdfHectorFlatHash(hosts, keyspace);
+				_crdf = new CassandraRdfHectorFlatHash(hosts);
 			else
 				throw new IllegalArgumentException("unknown storage layout");
 			_crdf.open();
@@ -176,12 +173,6 @@ public class Listener implements ServletContextListener {
 			e.printStackTrace();
 			ctx.setAttribute(ERROR, e);
 		}
-
-//		String resourcePrefix = "/" + (config.containsKey(PARAM_RESOURCE_PREFIX) ? 
-//				config.get(config.get(PARAM_RESOURCE_PREFIX)) : DEFAULT_RESOURCE_PREFIX);
-//		String dataPrefix = "/" + (config.containsKey(PARAM_DATA_PREFIX) ? 
-//				config.get(config.get(PARAM_DATA_PREFIX)) : DEFAULT_DATA_PREFIX);
-				
 		int subjects = config.containsKey(PARAM_TRIPLES_SUBJECT) ?
 				Integer.parseInt(config.get(PARAM_TRIPLES_SUBJECT)) : DEFAULT_TRIPLES_SUBJECT;
 		int objects = config.containsKey(PARAM_TRIPLES_OBJECT) ?
@@ -193,8 +184,6 @@ public class Listener implements ServletContextListener {
 		objects = objects < 0 ? Integer.MAX_VALUE : objects;
 		queryLimit = queryLimit < 0 ? Integer.MAX_VALUE : queryLimit;
 				
-//		_log.info("resource prefix: " + resourcePrefix);
-//		_log.info("data prefix: " + dataPrefix);
 		_log.info("subject triples: " + subjects);
 		_log.info("object triples: " + objects);
 		_log.info("query limit: " + queryLimit);
@@ -208,18 +197,6 @@ public class Listener implements ServletContextListener {
 			if (proxy)
 				ctx.setAttribute(PROXY_MODE, true);
 		}
-//		ctx.setAttribute(DATASET_HANDLER, new DatasetRequestHandler(mimeTypes, formats, subjects, objects, queryLimit));
-//		
-//		if (config.containsKey(PARAM_PROXY_MODE)) {
-//			boolean proxy = Boolean.parseBoolean(config.get(PARAM_PROXY_MODE));
-//			if (proxy)
-//				ctx.setAttribute(PROXY_HANDLER, new ProxyRequestHandler(mimeTypes, formats, subjects, objects, queryLimit));
-//		}
-//		else
-//			ctx.setAttribute(PROXY_HANDLER, new ProxyRequestHandler(mimeTypes, formats, subjects, objects, queryLimit));
-//		
-//		_log.info("dataset handler: " + ctx.getAttribute(DATASET_HANDLER));
-//		_log.info("proxy handler: " + ctx.getAttribute(PROXY_HANDLER));
 	}
 		
 	public void contextDestroyed(ServletContextEvent event) {

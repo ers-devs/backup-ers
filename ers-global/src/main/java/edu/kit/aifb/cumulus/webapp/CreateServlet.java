@@ -49,16 +49,17 @@ public class CreateServlet extends AbstractHttpServlet {
 			resp.sendError(HttpServletResponse.SC_BAD_REQUEST);
 			return;
 		}
-		String e = req.getParameter("e"); 
-		String p = req.getParameter("p");
-		String v = req.getParameter("v");
+		String e = req.getParameter("e"); 	//entity
+		String p = req.getParameter("p");	//property
+		String v = req.getParameter("v");	//value
+		String g = req.getParameter("g");  	//graph_name = keyspace_name 
 		// some checks
-		if( e == null || p == null || v == null ) { 
-			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass data like 'e=_&p=_&v=_'");
+		if( e == null || p == null || v == null || g == null ) { 
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass data like 'e=_&p=_&v=_&g=_'");
 			return;
 		}
-		if( e.isEmpty() || p.isEmpty() || v.isEmpty() ) { 
-			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass non empty data 'e=_&p=_&v=_'");
+		if( e.isEmpty() || p.isEmpty() || v.isEmpty() || g.isEmpty() ) { 
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass non empty data 'e=_&p=_&v=_&g=_'");
 			return;
 		}
 		if( !e.startsWith("<") ) {
@@ -80,15 +81,18 @@ public class CreateServlet extends AbstractHttpServlet {
 			sendError(ctx, req, resp, HttpServletResponse.SC_NOT_ACCEPTABLE, "no known mime type in Accept header");
 			return;
 		}
-		Store crdf = (Store)ctx.getAttribute(Listener.STORE);
-		// do the insert here 
-		crdf.addData(e,p,v);
-
 		PrintWriter out = resp.getWriter();
 		resp.setContentType(formatter.getContentType());
-		String msg = "Triple ("+e+","+p+","+v+") has been added.";
-		msg = msg.replace("<", "&lt;").replace(">","&gt;");
-		out.print(msg);
+		Store crdf = (Store)ctx.getAttribute(Listener.STORE);
+		// do the insert here 
+		if( crdf.addData(e,p,v,g) == -2 ) { 
+			out.print("Graph " + g + " does not exist.");
+		}
+		else {
+			String msg = "Triple ("+e+","+p+","+v+") has been added in graph " + g;
+			msg = msg.replace("<", "&lt;").replace(">","&gt;");
+			out.print(msg);
+		}
 		_log.info("[dataset] POST " + (System.currentTimeMillis() - start) + "ms ");
 	}
 	

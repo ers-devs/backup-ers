@@ -9,107 +9,124 @@
   <body>
     <h1>Entity Registry System (Cassandra and CumulusRDF as backend)</h1>
 
-    <h2>Introduction</h2>
-    <p>
-      CumulusRDF is a Linked Data server built on <a href="http://cassandra.apache.org/">Apache Cassandra</a>.
-      Applications can interface with CumulusRDF using a <a href="http://en.wikipedia.org/wiki/Representational_State_Transfer">REST</a> API, meaning that all operations are carried out over <a href="http://en.wikipedia.org/wiki/Hypertext_Transfer_Protocol">HTTP</a>.
-      More information at <a href="http://code.google.com/p/cumulusrdf/">http://code.google.com/p/cumulusrdf/</a>.
-    </p>
-
-    <h2>Basic Operations</h2>
-    <h3>Create</h3>
-    <p>
-      You can create new entity via HTTP POST.
-    </p>
+<!-- START GRAPH OPERATIONS -->
+    <h3>Create new graph</h3>
     <p>
       <code>
-	curl -v -X POST -H "Content-Type: application/x-www-form-urlencoded" --data "e=&#60;entity&#62;&amp;p=&#60;property&#62;&amp;v=&#60;value&#62;"  "http://diufpc304.unifr.ch:8080/ers/create"
+	curl -v -X POST -H "Content-Type: application/x-www-form-urlencoded" --data "g=&#60;graph_name&#62;"  "http://diufpc304.unifr.ch:8080/ers/graph"
       </code>
     </p>
-    <form action="./create" method="post">
-      Entity: <input name="e" size="30" value=""/>
-      Property: <input name="p" size="30" value=""/>
-      Value: <input name="v" size="30" value=""/>
+    <form action="./graph" method="post">
+      Graph: <input name="g" size="30" value"" id="g1" />
       <input type="submit" value="Create"/>
     </form>
 
-   <h3>BulkLoad</h3>
-    <p>
-      You can bulkload entities via HTTP POST.
-    </p>
+   <h3>Get all existing graphs</h3>
     <p>
       <code>
-	curl -v -X POST -i -F filedata=@./rdf_ntriples/repo10k.nt http://diufpc304.unifr.ch:8080/ers/bulkload
+	curl -v -X GET -H "http://diufpc304.unifr.ch:8080/ers/graph?g=&#60;graph_name&#62;"
+      </code>
+    </p>
+    <form action="./graph" method="get">
+      <input type="submit" value="Show all"/>
+    </form>
+
+    <h3>Delete existing graph</h3>
+    <p>
+      <code>
+	curl -v -X DELETE  "http://diufpc304.unifr.ch:8080/ers/graph?g=&#60;graph_name&#62;" 
+      </code>
+    </p>
+    <form action="./graph" method="get">
+      <input name="delete" type="hidden" size="15" value=""/>
+      Graph: <input name="g" size="30" value="" id="g2" />
+      <input type="submit" value="Delete graph"/>
+    </form>
+<!-- END GRAPH STUFF -->
+
+
+    <h3>Create entity</h3>
+    <p>
+      <code>
+	curl -v -X POST -H "Content-Type: application/x-www-form-urlencoded" --data "e=&#60;entity&#62;&amp;p=&#60;property&#62;&amp;v=&#60;value&#62;g=&#60;graph_name&#62;"  "http://diufpc304.unifr.ch:8080/ers/create"
+      </code>
+    </p>
+    <form action="./create" method="post">
+      Entity: <input name="e" size="30" value="" id="e3"/>
+      Property: <input name="p" size="30" value="" id="p3"/>
+      Value: <input name="v" size="30" value="" id="v3"/>
+      Graph: <input name="g" size="15" value""  id="g3"/>
+      <input type="submit" value="Create"/>
+    </form>
+
+   <h3>BulkLoad multiple entities</h3>
+    <p>
+      <code>
+	curl -v -X POST -i -F filedata=@./rdf_ntriples/repo10k.nt http://diufpc304.unifr.ch:8080/ers/bulkload?g=&#60;graph_name&#62;
       </code>
     </p>
     <form action="./bulkload" enctype="multipart/form-data" method="post">
       Entities file: <input type="file" name="file" size="30" value=""/>
+      Graph: <input name="g" size="15" value="" id="g4"/>
       <input type="submit" value="BulkLoad"/>
     </form>
 
-   <h3>Read (it returns also the back links)</h3>
-    <p>
-      You can access the contents of an object by performing a HTTP GET request.
-    </p>
+   <h3>Get entities (it returns also back links)</h3>
     <p>
       <code>
-	curl -v -X GET http://localhost:8080/ers/read?e=&#60;entity&#62;
+	curl -v -X GET http://localhost:8080/ers/read?e=&#60;entity&#62;&amp;g=&#60;graph_name&#62;
       </code>
     </p>
     <form action="./read" method="get">
-      Entity <input name="e" size="30" value=""/>
+      Entity: <input name="e" size="30" value="" id="e5"/>
+      Graph: <input name="g" size="15" value="" id="g5" />
       <input type="submit" value="Read"/>
     </form>
 
-    <h3>Update</h3>
-    <p>
-      You can update old entity data via HTTP POST. You must pass old value as well. 
-    </p>
+    <h3>Update a given entity</h3>
     <p>
       <code>
-	curl -v -X POST -H "Content-Type: application/x-www-form-urlencoded" --data "e=&#60;entity&#62;&amp;p=&#60;property&#62;&amp;v_old=&#60;value1&#62;&amp;v_new=&#60;value2&#62;"  "http://diufpc304.unifr.ch:8080/ers/update"
+	curl -v -X POST -H "Content-Type: application/x-www-form-urlencoded" --data "e=&#60;entity&#62;&amp;p=&#60;property&#62;&amp;v_old=&#60;value1&#62;&amp;v_new=&#60;value2&#62;&amp;g=&#60;graph_name&#62;"  "http://diufpc304.unifr.ch:8080/ers/update"
       </code>
     </p>
     <form action="./update" method="post">
-      Entity: <input name="e" size="30" value=""/>
-      Property: <input name="p" size="30" value=""/>
-      Value old: <input name="v_old" size="30" value=""/>
-      Value new: <input name="v_new" size="30" value=""/>
+      Entity: <input name="e" size="30" value="" id="e6"/>
+      Property: <input name="p" size="30" value="" id="p6"/>
+      Value old: <input name="v_old" size="30" value="" id="v_old6"/>
+      Value new: <input name="v_new" size="30" value="" id="v_new6"/>
+      Graph: <input name="g" size="15" value="" id="g6"/>
       <input type="submit" value="Update"/>
     </form>
 
-    <h3>Delete</h3>
-    <p>
-      You can delete triples by performing a HTTP DELETE request sending the triples you want to delete.
-    </p>
+    <h3>Delete entity</h3>
     <p>
       <code>
-	curl -v -X DELETE  "http://diufpc304.unifr.ch:8080/ers/delete?e=&#60;entity&#62;&amp;p=&#60;property&#62;&amp;v_=&#60;value&#62;" 
+	curl -v -X DELETE  "http://diufpc304.unifr.ch:8080/ers/delete?e=&#60;entity&#62;&amp;p=&#60;property&#62;&amp;v=&#60;value&#62;g=&#60;graph_name&#62;" 
       </code>
     </p>
-    For the moment, it is required to send all 3 values for a deletion to succeed.
     <form action="./delete" method="post">
-      Entity: <input name="e" size="30" value=""/>
-      Property: <input name="p" size="30" value=""/>
-      Value: <input name="v" size="30" value=""/>
+      Entity: <input name="e" size="30" value="" id="e7"/>
+      Property: <input name="p" size="30" value="" id="p7"/>
+      Value: <input name="v" size="30" value="" id="v7"/>
+      Graph: <input name="g" size="15" value="" id="g7"/>
       <input type="submit" value="Delete"/>
     </form>
 
-    
     <h3>Query</h3>
     <p>
       You can evaluate triple patterns via performing a HTTP GET request supplying <code>e, p  and/or v</code> parameters (in N3 syntax).
     </p>
     <p>
       <code>
-	curl -v -X GET "http://diufpc304.unifr.ch:8080/ers/query?e=&#60;entity&#62;&amp;p=&#60;property&#62;&amp;v_=&#60;value&#62;"
+	curl -v -X GET "http://diufpc304.unifr.ch:8080/ers/query?e=&#60;entity&#62;&amp;p=&#60;property&#62;&amp;v=&#60;value&#62;g=&#60;graph_name&#62;"
       </code>
     </p>
 
     <form action="./query" method="get">
-      Entity: <input name="e" size="30" value=""/>
-      Property: <input name="p" size="30" value=""/>
-      Value: <input name="v" size="30"/>
+      Entity: <input name="e" size="30" value="" id="e8"/>
+      Property: <input name="p" size="30" value="" id="p8"/>
+      Value: <input name="v" size="30" value="" id="v8"/>
+      Graph: <input name="g" size=15" value="" id="g8"/>
       <input type="submit" value="Query"/>
     </form>
 

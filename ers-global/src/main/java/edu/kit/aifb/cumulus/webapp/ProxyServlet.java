@@ -41,16 +41,19 @@ public class ProxyServlet extends AbstractHttpServlet {
 			resp.sendError(HttpServletResponse.SC_NOT_ACCEPTABLE);
 			return;
 		}
-		
 		resp.setCharacterEncoding("UTF-8");
 
 		// we require the host header
 		String host = req.getHeader("host");
+		String g = req.getParameter("g");
 		if (host == null) {
 			sendError(ctx, req, resp, HttpServletResponse.SC_NOT_IMPLEMENTED, req.getRequestURI() + " " + "\nall requests require Host header (mandatory since HTTP version 1.1)!");
 			return;
 		}
-
+		if ( g == null || g.isEmpty() ) {
+			sendError(ctx, req, resp, HttpServletResponse.SC_NOT_IMPLEMENTED, "please pass graph name as 'g' parameter");
+			return;
+		}
 		String requestURI = req.getRequestURI();
 
 		// reconstruct originally requested resource
@@ -62,14 +65,14 @@ public class ProxyServlet extends AbstractHttpServlet {
 		
 		try {
 			String from = resource.toString();
-			String to = crdf.getRedirect(from);
+			String to = crdf.getRedirect(from, g);
 
 			if (!from.equals(to)) {
 				resp.sendRedirect(to);
 				_log.info("[proxy] GET " + resource.toN3() + " REDIRECT " + to + " " + (System.currentTimeMillis() - start) + "ms");
 			}
 			else {
-				Iterator<Node[]> it = crdf.query(new Node[] { new Variable("s"), new Variable("p"), new Variable("o"), resource });
+				Iterator<Node[]> it = crdf.query(new Node[] { new Variable("s"), new Variable("p"), new Variable("o"), resource }, g);
 				if (it.hasNext()) {
 					resp.setContentType(formatter.getContentType());
 					triples = formatter.print(it, out);

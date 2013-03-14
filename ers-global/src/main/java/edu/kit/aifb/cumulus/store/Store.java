@@ -29,15 +29,17 @@ public abstract class Store {
 		private Iterator<Node[]> m_oit;
 		private int m_subjects;
 		private int m_objects;
+		private String m_keyspace; 
 		
-		public DescribeIterator(Resource resource, boolean include2Hop, int subjects, int objects) throws StoreException {
+		public DescribeIterator(Resource resource, boolean include2Hop, int subjects, int objects, String keyspace) throws StoreException {
 			m_resource = resource;
 			m_include2Hop = include2Hop;
 			m_subjects = subjects;
 			m_objects = objects;
+			m_keyspace = keyspace;
 			
-			// start with pattern with resource as subject
-			m_sit = query(pattern(resource, null, null), m_subjects);
+			// start with pattern with resource as subjectk
+			m_sit = query(pattern(resource, null, null), m_subjects, keyspace);
 		}
 		
 		@Override
@@ -66,7 +68,7 @@ public abstract class Store {
 				// pattern has the current object as subject
 				if (m_include2Hop) {
 					try {
-						m_hit = query(pattern(next[2], null, null), m_subjects);
+						m_hit = query(pattern(next[2], null, null), m_subjects, m_keyspace);
 					} catch (StoreException e) {
 						e.printStackTrace();
 						m_hit = null;
@@ -77,7 +79,7 @@ public abstract class Store {
 				// triples in the hop iterator, get the object iterator
 				if (!m_sit.hasNext() && (!m_include2Hop || !m_hit.hasNext())) {
 					try {
-						m_oit = query(pattern(null, null, m_resource), m_objects);
+						m_oit = query(pattern(null, null, m_resource), m_objects, m_keyspace);
 					} catch (StoreException e) {
 						e.printStackTrace();
 						m_oit = null;
@@ -104,33 +106,31 @@ public abstract class Store {
 	
 	public abstract void open() throws StoreException;
 	public abstract void close() throws StoreException;
-	public abstract int addData(Iterator<Node[]> it) throws StoreException;
+	public abstract int addData(Iterator<Node[]> it, String keyspace) throws StoreException;
 
-	// TM
-	// add (e,p,v)
-	public abstract int addData(String e, String p, String v);
-	// update/replace (e,p,v_old) with (e,p,v_new);
-	public abstract int updateData(String e, String p, String v_old, String v_new);
-	// delete (e,p,v)  
-	public abstract int deleteData(String e, String p, String v);
+	// TM; TODO: add keyspace info ... 
+	// add (e,p,v,g)
+	public abstract int addData(String e, String p, String v, String keyspace);
+	// update/replace (e,p,v_old,g) with (e,p,v_new,g);
+	public abstract int updateData(String e, String p, String v_old, String v_new, String keyspace);
+	// delete (e,p,v,g)  
+	public abstract int deleteData(String e, String p, String v, String keyspace);
+	// delete all data 
+	public abstract int dropKeyspace(String keyspace);
 
-	public abstract boolean contains(Node s) throws StoreException;
+	public abstract boolean contains(Node s, String keyspace) throws StoreException;
 	
-	public abstract Iterator<Node[]> query(Node[] query) throws StoreException;
-	public abstract Iterator<Node[]> query(Node[] query, int limit) throws StoreException;
+	public abstract Iterator<Node[]> query(Node[] query, String keyspace) throws StoreException;
+	public abstract Iterator<Node[]> query(Node[] query, int limit, String keyspace) throws StoreException;
 	
 	public abstract String getStatus();
 	
-	public Iterator<Node[]> describe(Resource resource, boolean include2Hop) throws StoreException {
-		return describe(resource, include2Hop, -1, -1);
+	public Iterator<Node[]> describe(Resource resource, boolean include2Hop, String keyspace) throws StoreException {
+		return describe(resource, include2Hop, -1, -1, keyspace);
 	}
 	
-	public Iterator<Node[]> describe(Resource resource, boolean include2Hop, int subjects, int objects) throws StoreException {
-		if (resource.toString().startsWith("http://sws.geonames.org"))
-			resource = new Resource(resource.toString() + "/");
-//		_log.info("describe resource: " + resource + ", 2hop: " + include2Hop);
-		
-		return new DescribeIterator(resource, include2Hop, subjects, objects);
+	public Iterator<Node[]> describe(Resource resource, boolean include2Hop, int subjects, int objects, String keyspace) throws StoreException {
+		return new DescribeIterator(resource, include2Hop, subjects, objects, keyspace);
 	}
 	
 	private Node[] pattern(Node s, Node p, Node o) {

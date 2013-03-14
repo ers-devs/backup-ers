@@ -31,25 +31,20 @@ public class CassandraRdfHectorQuads extends AbstractCassandraRdfHector {
 	transient private final Logger _log = Logger.getLogger(this.getClass().getName()); //CassandraRdfHectorHierHash.class);
 	
 	public CassandraRdfHectorQuads(String hosts) {
-		this(hosts, DEFAULT_KS);
-	}
-	
-	public CassandraRdfHectorQuads(String hosts, String keyspace) {
-		super(hosts, keyspace);
+		super(hosts);
 		_hosts = hosts;
 		_cfs.add(CF_C_SPO);
 	}
-
+	
 	@Override
-	protected List<ColumnFamilyDefinition> createColumnFamiliyDefinitions() {
-		ColumnFamilyDefinition cspo = createCfDefFlat(CF_C_SPO, null, null, ComparatorType.UTF8TYPE);
-		ColumnFamilyDefinition redirects = createCfDefFlat(CF_REDIRECTS, null, null, ComparatorType.UTF8TYPE);
-		
+	protected List<ColumnFamilyDefinition> createColumnFamiliyDefinitions(String keyspace) {
+		ColumnFamilyDefinition cspo = createCfDefFlat(CF_C_SPO, null, null, ComparatorType.UTF8TYPE, keyspace);
+		ColumnFamilyDefinition redirects = createCfDefFlat(CF_REDIRECTS, null, null, ComparatorType.UTF8TYPE, keyspace);
 		return Arrays.asList(cspo, redirects);
 	}
 	
 	// Only supported: ?s ?p ?o :c
-	public Iterator<Node[]> query(Node[] query, int limit) throws StoreException {
+	public Iterator<Node[]> query(Node[] query, int limit, String keyspace) throws StoreException {
 //		_log.info("query: " + Nodes.toN3(query) + " idx: CSPO");
 
 		Iterator<Node[]> it = null;
@@ -58,7 +53,6 @@ public class CassandraRdfHectorQuads extends AbstractCassandraRdfHector {
 			// for now we need to specify a complete map as the
 			// reorder methods cannot deal with partial mappings
 			int[] map = new int[] { 3, 0, 1, 2 };
-			
 			// get complete row
 			String startRange = "", endRange = "";
 			
@@ -66,8 +60,7 @@ public class CassandraRdfHectorQuads extends AbstractCassandraRdfHector {
 			Node[] nxKey = new Node[] { query[3] };
 			String key = query[3].toN3();
 			int colNameTupleLength = 3;
-			
-			SliceQuery<String,String,String> sq = HFactory.createSliceQuery(_keyspace, _ss, _ss, _ss)
+			SliceQuery<String,String,String> sq = HFactory.createSliceQuery(getExistingKeyspace(keyspace), _ss, _ss, _ss)
 				.setColumnFamily(CF_C_SPO)
 				.setKey(key);
 			
@@ -81,25 +74,21 @@ public class CassandraRdfHectorQuads extends AbstractCassandraRdfHector {
 					return Arrays.copyOfRange(nx, 0, 3);
 				}
 			});
-			
 		}
-		
 		return it;
 	}
 	
-	public void loadRedirects(InputStream fis) throws IOException, InterruptedException {
+	public void loadRedirects(InputStream fis, String keyspace) throws IOException, InterruptedException {
 		_log.info("bulk loading " + CF_REDIRECTS);
-
 		Iterator<Node[]> nxp = new NxParser(fis);
 		
 		long start = System.currentTimeMillis();
 		int i = 0;
 		while (nxp.hasNext()) {
 			Node[] nx = nxp.next();
-			
 			if (nx.length >= 2 && nx[0] instanceof Resource && nx[1] instanceof Resource) {
 				i++;
-				Mutator<String> mutator = HFactory.createMutator(_keyspace, _ss);
+				Mutator<String> mutator = HFactory.createMutator(getExistingKeyspace(keyspace), _ss);
 				mutator.insert(nx[0].toString(), CF_REDIRECTS, HFactory.createStringColumn(nx[1].toString(), ""));
 			}
 		}
@@ -108,8 +97,8 @@ public class CassandraRdfHectorQuads extends AbstractCassandraRdfHector {
 		_log.info(i + " redirects inserted into " + CF_REDIRECTS + " in " + time + " ms (" + ((double)i / time * 1000) + " tuples/s)");
 	}
 
-	public String getRedirect(String from) {
-		SliceQuery<String,String,String> msq = HFactory.createSliceQuery(_keyspace, _ss, _ss, _ss);
+	public String getRedirect(String from, String keyspace) {
+		SliceQuery<String,String,String> msq = HFactory.createSliceQuery(getExistingKeyspace(keyspace), _ss, _ss, _ss);
 		msq.setColumnFamily(CF_REDIRECTS);
 		
 		msq.setKey(from.toString());
@@ -176,9 +165,9 @@ public class CassandraRdfHectorQuads extends AbstractCassandraRdfHector {
 //	}
 	
 	@Override
-	protected void batchInsert(String cf, List<Node[]> li) {
+	protected void batchInsert(String cf, List<Node[]> li, String keyspace) {
 		if (cf.equals(CF_C_SPO)) {		
-			Mutator<String> m = HFactory.createMutator(_keyspace, _ss);
+			Mutator<String> m = HFactory.createMutator(getExistingKeyspace(keyspace), _ss);
 			for (Node[] nx : li) {
 				// check for quads
 				if (nx.length >= 4) {
@@ -193,9 +182,9 @@ public class CassandraRdfHectorQuads extends AbstractCassandraRdfHector {
 
 	// TM
 	@Override
-	protected void batchDelete(String cf, List<Node[]> li) {
+	protected void batchDelete(String cf, List<Node[]> li, String keyspace) {
 		if (cf.equals(CF_C_SPO)) {		
-			Mutator<String> m = HFactory.createMutator(_keyspace, _ss);
+			Mutator<String> m = HFactory.createMutator(getExistingKeyspace(keyspace), _ss);
 			for (Node[] nx : li) {
 				// check for quads
 				if (nx.length >= 4) {
@@ -210,9 +199,9 @@ public class CassandraRdfHectorQuads extends AbstractCassandraRdfHector {
 
 	// TM
 	@Override
-	protected void batchDeleteRow(String cf, List<Node[]> li) {
+	protected void batchDeleteRow(String cf, List<Node[]> li, String keyspace) {
 		if (cf.equals(CF_C_SPO)) {		
-			Mutator<String> m = HFactory.createMutator(_keyspace, _ss);
+			Mutator<String> m = HFactory.createMutator(getExistingKeyspace(keyspace), _ss);
 			for (Node[] nx : li) {
 				// check for quads
 				if (nx.length >= 4) {

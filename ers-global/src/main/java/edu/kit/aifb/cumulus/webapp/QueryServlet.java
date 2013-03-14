@@ -17,6 +17,7 @@ import org.semanticweb.yars.nx.parser.NxParser;
 import org.semanticweb.yars.nx.parser.ParseException;
 
 import edu.kit.aifb.cumulus.store.Store;
+import edu.kit.aifb.cumulus.store.AbstractCassandraRdfHector;
 import edu.kit.aifb.cumulus.store.StoreException;
 import edu.kit.aifb.cumulus.webapp.formatter.SerializationFormat;
 
@@ -44,6 +45,7 @@ public class QueryServlet extends AbstractHttpServlet {
 		String e = req.getParameter("e");
 		String p = req.getParameter("p");
 		String v = req.getParameter("v");
+		String g = req.getParameter("g");
 //		_log.info("QUERYServlet: req " + req.getPathInfo() + " " + req.getQueryString() + " " + e + " " + p + " " + v);
 		// some checks
 		if( e != null && !e.isEmpty() && !e.startsWith("<") ) {
@@ -56,6 +58,10 @@ public class QueryServlet extends AbstractHttpServlet {
 		}
 		if( v!=null && !v.isEmpty() && !v.startsWith("<") && !v.startsWith("\"") ) {
 			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass either a resource (e.g. &lt;resource&gt;) or a literal (e.g. \"literal\") as value");
+			return;
+		}
+		if( g == null || g.isEmpty() ) {
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass non empty graph name as 'g' parameter");
 			return;
 		}
 		Node[] query = new Node[3];
@@ -74,21 +80,25 @@ public class QueryServlet extends AbstractHttpServlet {
 			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "query must contain at least one constant");
 			return;
 		}
-
-		Store crdf = (Store)ctx.getAttribute(Listener.STORE);
 		PrintWriter out = resp.getWriter();
+		AbstractCassandraRdfHector crdf = (AbstractCassandraRdfHector)ctx.getAttribute(Listener.STORE);
 		int triples = 0;
-		try {
-			Iterator<Node[]> it = crdf.query(query, queryLimit);
-			if (it.hasNext()) {
-				resp.setContentType(formatter.getContentType());
-				triples = formatter.print(it, out);
+		if( ! crdf.existsKeyspace(g) ) { 
+			out.print("Graph " + g + " does not exists.");
+		}
+		else { 
+			try {
+				Iterator<Node[]> it = crdf.query(query, queryLimit, g);
+				if (it.hasNext()) {
+					resp.setContentType(formatter.getContentType());
+					triples = formatter.print(it, out);
+				}
+				else
+					sendError(ctx, req, resp, HttpServletResponse.SC_NOT_FOUND, "resource not found");
+			} catch (StoreException ex) {
+				_log.severe(ex.getMessage());
+				resp.sendError(500, ex.getMessage());
 			}
-			else
-				sendError(ctx, req, resp, HttpServletResponse.SC_NOT_FOUND, "resource not found");
-		} catch (StoreException ex) {
-			_log.severe(ex.getMessage());
-			resp.sendError(500, ex.getMessage());
 		}
 		_log.info("[dataset] QUERY " + Nodes.toN3(query) + " " + (System.currentTimeMillis() - start) + "ms " + triples + "t");
 	}

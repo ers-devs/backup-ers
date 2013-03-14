@@ -29,11 +29,7 @@ public class CassandraRdfHectorFlatHash extends CassandraRdfHectorQuads {
 	private final Logger _log = Logger.getLogger(this.getClass().getName());
 	
 	public CassandraRdfHectorFlatHash(String hosts) {
-		this(hosts, DEFAULT_KS);
-	}
-
-	public CassandraRdfHectorFlatHash(String hosts, String keyspace) {
-		super(hosts, keyspace);
+		super(hosts);
 		_hosts = hosts;
 		_cfs.add(CF_S_PO);
 		_cfs.add(CF_O_SP);
@@ -44,19 +40,16 @@ public class CassandraRdfHectorFlatHash extends CassandraRdfHectorQuads {
 	}
 		
 	@Override
-	protected List<ColumnFamilyDefinition> createColumnFamiliyDefinitions() {
-		//protected KeyspaceDefinition createKeyspaceDefinition() {
-		ColumnFamilyDefinition spo = createCfDefFlat(CF_S_PO, null, null, ComparatorType.UTF8TYPE);
-		ColumnFamilyDefinition osp = createCfDefFlat(CF_O_SP, null, null, ComparatorType.UTF8TYPE);
-		ColumnFamilyDefinition pos = createCfDefFlat(CF_PO_S, Arrays.asList("!p", "!o"), Arrays.asList("!p"), ComparatorType.BYTESTYPE);
+	protected List<ColumnFamilyDefinition> createColumnFamiliyDefinitions(String keyspace) {
+		ColumnFamilyDefinition spo = createCfDefFlat(CF_S_PO, null, null, ComparatorType.UTF8TYPE, keyspace);
+		ColumnFamilyDefinition osp = createCfDefFlat(CF_O_SP, null, null, ComparatorType.UTF8TYPE, keyspace);
+		ColumnFamilyDefinition pos = createCfDefFlat(CF_PO_S, Arrays.asList("!p", "!o"), Arrays.asList("!p"), ComparatorType.BYTESTYPE, keyspace);
 		
 		ArrayList<ColumnFamilyDefinition> li = new ArrayList<ColumnFamilyDefinition>();
-		li.addAll(super.createColumnFamiliyDefinitions());
+		li.addAll(super.createColumnFamiliyDefinitions(keyspace));
 		li.addAll(Arrays.asList(spo, osp, pos));
 		
 		return li;
-
-		//return HFactory.createKeyspaceDefinition(_keyspaceName, "org.apache.cassandra.locator.SimpleStrategy", 1, Arrays.asList(spo, osp, pos));
 	}
 
 	private ByteBuffer createKey(Node[] nx) {
@@ -68,12 +61,12 @@ public class CassandraRdfHectorFlatHash extends CassandraRdfHectorQuads {
 	}
 
 	@Override
-	protected void batchInsert(String cf, List<Node[]> li) {
+	protected void batchInsert(String cf, List<Node[]> li, String keyspace) {
 		if (cf.equals(CF_C_SPO)) {
-			super.batchInsert(cf, li);
+			super.batchInsert(cf, li, keyspace);
 		}
 		else if (cf.equals(CF_PO_S)) {
-			Mutator<byte[]> m = HFactory.createMutator(_keyspace, _bs);
+			Mutator<byte[]> m = HFactory.createMutator(getExistingKeyspace(keyspace), _bs);
 			for (Node[] nx : li) {
 				// reorder for the key
 				Node[] reordered = Util.reorder(nx, _maps.get(cf));
@@ -87,7 +80,7 @@ public class CassandraRdfHectorFlatHash extends CassandraRdfHectorQuads {
 			m.execute();
 		}
 		else {
-			Mutator<String> m = HFactory.createMutator(_keyspace, _ss);
+			Mutator<String> m = HFactory.createMutator(getExistingKeyspace(keyspace), _ss);
 			for (Node[] nx : li) {
 				// reorder for the key
 				Node[] reordered = Util.reorder(nx, _maps.get(cf));
@@ -101,12 +94,12 @@ public class CassandraRdfHectorFlatHash extends CassandraRdfHectorQuads {
 	
 	// TM
 	@Override
-	protected void batchDelete(String cf, List<Node[]> li) {
+	protected void batchDelete(String cf, List<Node[]> li, String keyspace) {
 		if (cf.equals(CF_C_SPO)) {
-			super.batchDelete(cf, li);
+			super.batchDelete(cf, li, keyspace);
 		}
 		else if (cf.equals(CF_PO_S)) {
-			Mutator<byte[]> m = HFactory.createMutator(_keyspace, _bs);
+			Mutator<byte[]> m = HFactory.createMutator(getExistingKeyspace(keyspace), _bs);
 			for (Node[] nx : li) {
 				// reorder for the key
 				Node[] reordered = Util.reorder(nx, _maps.get(cf));
@@ -119,7 +112,7 @@ public class CassandraRdfHectorFlatHash extends CassandraRdfHectorQuads {
 			m.execute();
 		}
 		else {
-			Mutator<String> m = HFactory.createMutator(_keyspace, _ss);
+			Mutator<String> m = HFactory.createMutator(getExistingKeyspace(keyspace), _ss);
 			for (Node[] nx : li) {
 				// reorder for the key
 				Node[] reordered = Util.reorder(nx, _maps.get(cf));
@@ -133,12 +126,12 @@ public class CassandraRdfHectorFlatHash extends CassandraRdfHectorQuads {
 
 	// TM
 	@Override
-	protected void batchDeleteRow(String cf, List<Node[]> li) {
+	protected void batchDeleteRow(String cf, List<Node[]> li, String keyspace) {
 		if (cf.equals(CF_C_SPO)) {
-			super.batchDeleteRow(cf, li);
+			super.batchDeleteRow(cf, li, keyspace);
 		}
 		else if (cf.equals(CF_PO_S)) {
-			Mutator<byte[]> m = HFactory.createMutator(_keyspace, _bs);
+			Mutator<byte[]> m = HFactory.createMutator(getExistingKeyspace(keyspace), _bs);
 			for (Node[] nx : li) {
 				// reorder for the key
 				Node[] reordered = Util.reorder(nx, _maps.get(cf));
@@ -150,7 +143,7 @@ public class CassandraRdfHectorFlatHash extends CassandraRdfHectorQuads {
 			m.execute();
 		}
 		else {
-			Mutator<String> m = HFactory.createMutator(_keyspace, _ss);
+			Mutator<String> m = HFactory.createMutator(getExistingKeyspace(keyspace), _ss);
 			for (Node[] nx : li) {
 				// reorder for the key
 				Node[] reordered = Util.reorder(nx, _maps.get(cf));
@@ -188,8 +181,8 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 	}
 
 	@Override
-	public Iterator<Node[]> query(Node[] query, int limit) throws StoreException {
-		Iterator<Node[]> it = super.query(query, limit);
+	public Iterator<Node[]> query(Node[] query, int limit, String keyspace) throws StoreException {
+		Iterator<Node[]> it = super.query(query, limit, keyspace);
 		if (it != null) {
 			return it;
 		}
@@ -209,12 +202,12 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 				if (isVariable(q[1])) {
 
 					// we use a secondary index for P only when no other constant is given
-					IndexedSlicesQuery<byte[],String,String> isq = HFactory.createIndexedSlicesQuery(_keyspace, _bs, _ss, _ss)
+					IndexedSlicesQuery<byte[],String,String> isq = HFactory.createIndexedSlicesQuery(getExistingKeyspace(keyspace), _bs, _ss, _ss)
 						.setColumnFamily(columnFamily)
 						.addEqualsExpression("!p", q[0].toN3())
 						.setReturnKeysOnly();
 					
-					it = new HashIndexedSlicesQueryIterator(isq, map, limit, columnFamily, _keyspace);
+					it = new HashIndexedSlicesQueryIterator(isq, map, limit, columnFamily, getExistingKeyspace(keyspace));
 				}
 				else {
 					// here we always have a PO lookup, POS (=SPO) is handled by OSP or SPO
@@ -223,7 +216,7 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 					
 					ByteBuffer key = createKey(new Node[] { q[0], q[1] });
 
-					SliceQuery<byte[],String,String> sq = HFactory.createSliceQuery(_keyspace, _bs, _ss, _ss)
+					SliceQuery<byte[],String,String> sq = HFactory.createSliceQuery(getExistingKeyspace(keyspace), _bs, _ss, _ss)
 						.setColumnFamily(columnFamily)
 						.setKey(key.array())
 						.setRange("!o", "!p", false, 2);
@@ -263,7 +256,7 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 				String key = q[0].toN3();
 				int colNameTupleLength = 2;
 				
-				SliceQuery<String,String,String> sq = HFactory.createSliceQuery(_keyspace, _ss, _ss, _ss)
+				SliceQuery<String,String,String> sq = HFactory.createSliceQuery(getExistingKeyspace(keyspace), _ss, _ss, _ss)
 					.setColumnFamily(columnFamily)
 					.setKey(key);
 				

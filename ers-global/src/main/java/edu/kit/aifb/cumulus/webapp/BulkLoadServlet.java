@@ -56,6 +56,11 @@ public class BulkLoadServlet extends AbstractHttpServlet {
 			sendError(ctx, req, resp, HttpServletResponse.SC_NOT_ACCEPTABLE, "no known mime type in Accept header");
 			return;
 		}
+		String g = req.getParameter("g"); 
+		if( g == null || g.isEmpty() ) { 
+			sendError(ctx, req, resp, HttpServletResponse.SC_NOT_ACCEPTABLE, "please pass also the graph name as 'g' parameter");
+			return;
+		}
 		PrintWriter out_r = resp.getWriter();
 		String resp_msg = "";
 		// check that we have a file upload request
@@ -105,9 +110,9 @@ public class BulkLoadServlet extends AbstractHttpServlet {
 				   out.flush();
 			  	   out.close();
 				   // load here 
-				   crdf.bulkLoad(new File(file), format, threads);
-				   resp_msg += "[dataset] POST bulk load " + fileName + ", size " + sizeInBytes + ", time " + (System.currentTimeMillis() - start) + "ms "; 
-				   _log.info("[dataset] POST bulk load " + fileName + ", size " + sizeInBytes + ", time " + (System.currentTimeMillis() - start) + "ms ");
+				   crdf.bulkLoad(new File(file), format, threads, g);
+				   resp_msg += "[dataset] POST bulk load " + fileName + ",graph name " + g + ", size " + sizeInBytes + ", time " + (System.currentTimeMillis() - start) + "ms "; 
+				   _log.info(resp_msg);
 				   // delete the tmp file 
 				   new File(file).delete();
 			    }
