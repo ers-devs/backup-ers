@@ -476,8 +476,13 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		bulkLoad(file, format, -1, keyspace);
 	}
 	
-	public void bulkLoad(File file, String format, int threads, String keyspace) throws StoreException, IOException {
+	// called by BulkLoad servet 
+	public int bulkLoad(File file, String format, int threads, String keyspace) throws StoreException, IOException {
 		try {
+			// check firstly if keyspace exists, if not, return error 
+			if( !existsKeyspace(keyspace) ) { 
+				return 1;
+			} 
 			for (String cf : _cfs) {
 				FileInputStream fis = new FileInputStream(file);
 				batchBulkLoad(fis, format, cf, threads, keyspace);
@@ -488,6 +493,7 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		} catch (IOException e) {
 			throw new StoreException(e);
 		}
+		return 0;
 	}
 
 	public void bulkLoad(File file, String format, String cf, String keyspace) throws StoreException, IOException {
@@ -499,19 +505,6 @@ public abstract class AbstractCassandraRdfHector extends Store {
 			FileInputStream fis = new FileInputStream(file);
 			batchBulkLoad(fis, format, cf, threads, keyspace);
 			fis.close();
-		} catch (InterruptedException e) {
-			throw new StoreException(e);
-		} catch (IOException e) {
-			throw new StoreException(e);
-		}
-	}
-
-	//TM: added for enabling bulk load from servlet
-	public void bulkLoad(InputStream fis, String format, int threads, String keyspace) throws StoreException, IOException {
-		try {
-			for (String cf : _cfs) {
-				batchBulkLoad(fis, format, cf, threads, keyspace);
-			}			
 		} catch (InterruptedException e) {
 			throw new StoreException(e);
 		} catch (IOException e) {

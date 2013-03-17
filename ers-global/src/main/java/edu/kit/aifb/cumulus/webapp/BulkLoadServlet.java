@@ -56,11 +56,6 @@ public class BulkLoadServlet extends AbstractHttpServlet {
 			sendError(ctx, req, resp, HttpServletResponse.SC_NOT_ACCEPTABLE, "no known mime type in Accept header");
 			return;
 		}
-		String g = req.getParameter("g"); 
-		if( g == null || g.isEmpty() ) { 
-			sendError(ctx, req, resp, HttpServletResponse.SC_NOT_ACCEPTABLE, "please pass also the graph name as 'g' parameter");
-			return;
-		}
 		PrintWriter out_r = resp.getWriter();
 		String resp_msg = "";
 		// check that we have a file upload request
@@ -86,10 +81,19 @@ public class BulkLoadServlet extends AbstractHttpServlet {
 
 			// Process the uploaded items
 			Iterator iter = items.iterator();
+			String g =""; 
+			boolean g_exists = false; 
+			String file = ""; 
+			
 			while (iter.hasNext()) {
 			    FileItem item = (FileItem) iter.next();
 			    if (item.isFormField()) {
-				// skip 
+				String name = item.getFieldName();
+				String value = item.getString();
+				if( name.equals("g") ) { 
+					g_exists = true; 
+					g = new String(value); 
+				}
 			    } else {
 				   String fieldName = item.getFieldName();
 				   String fileName = item.getName();
@@ -99,7 +103,7 @@ public class BulkLoadServlet extends AbstractHttpServlet {
 				   // Process a file upload
 				   InputStream uploadedStream = item.getInputStream();
 				   // write the inputStream to a FileOutputStream
-			           String file = "/tmp/upload_bulkload_"+UUID.randomUUID();
+			           file = "/tmp/upload_bulkload_"+UUID.randomUUID();
   			  	   OutputStream out = new FileOutputStream(new File(file));
 				   int read = 0;
 				   byte[] bytes = new byte[1024];
@@ -109,14 +113,24 @@ public class BulkLoadServlet extends AbstractHttpServlet {
 				   uploadedStream.close();
 				   out.flush();
 			  	   out.close();
-				   // load here 
-				   crdf.bulkLoad(new File(file), format, threads, g);
-				   resp_msg += "[dataset] POST bulk load " + fileName + ",graph name " + g + ", size " + sizeInBytes + ", time " + (System.currentTimeMillis() - start) + "ms "; 
-				   _log.info(resp_msg);
-				   // delete the tmp file 
-				   new File(file).delete();
-			    }
+				   resp_msg += "[dataset] POST bulk load " + fileName + ",graph name " + g + ", size " + sizeInBytes;
+				}
 			}
+			if( ! g_exists || g == null || g.isEmpty() ) { 
+				sendError(ctx, req, resp, HttpServletResponse.SC_NOT_ACCEPTABLE, "please pass also the graph name as 'g' parameter");
+			}
+			else { 
+	   		        // load here 
+				if( crdf.bulkLoad(new File(file), format, threads, g) == 1 ) 
+					resp_msg = "Graph " + g + " does not exist yet. Please create if before bulk loading."; 
+				else
+					resp_msg += ", time " + (System.currentTimeMillis() - start) + "ms "; 
+				_log.info(resp_msg);
+			}
+			// delete the tmp file 
+			new File(file).delete();
+			out_r.println(resp_msg);
+			out_r.close();
 		} catch(FileUploadException ex) { 
 			ex.printStackTrace(); 
 			return;
@@ -124,8 +138,6 @@ public class BulkLoadServlet extends AbstractHttpServlet {
 			ex.printStackTrace(); 
 			return;
 		}
-		out_r.println(resp_msg);
-		out_r.close();
 		return;
 	}
 	

@@ -142,8 +142,8 @@ public class Listener implements ServletContextListener {
 		_formats.put("ntriples", new NTriplesFormat());
 		_formats.put("html", new HTMLFormat());
 		
-		if (!config.containsKey(PARAM_HOSTS) || !config.containsKey(PARAM_KEYSPACE) ||
-				!config.containsKey(PARAM_LAYOUT)) {
+//		if (!config.containsKey(PARAM_HOSTS) || !config.containsKey(PARAM_KEYSPACE) ||
+		if (!config.containsKey(PARAM_HOSTS) || !config.containsKey(PARAM_LAYOUT)) {
 			_log.severe("config must contain at least these parameters: " + (Arrays.asList(PARAM_HOSTS, PARAM_KEYSPACE, PARAM_LAYOUT)));
 			ctx.setAttribute(ERROR, "params missing");
 			return;
