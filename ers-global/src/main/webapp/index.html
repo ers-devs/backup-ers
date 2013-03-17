@@ -62,7 +62,7 @@
    <h3>BulkLoad multiple entities</h3>
     <p>
       <code>
-	curl -v -X POST -i -F filedata=@./rdf_ntriples/repo10k.nt http://diufpc304.unifr.ch:8080/ers/bulkload?g=&#60;graph_name&#62;
+	curl -v -X POST -i -F filedata=@./rdf_ntriples/repo10k.nt -F g=graph_name http://diufpc304.unifr.ch:8080/ers/bulkload
       </code>
     </p>
     <form action="./bulkload" enctype="multipart/form-data" method="post" name="bulkload">
