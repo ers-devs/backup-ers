@@ -495,6 +495,18 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		}
 		return 0;
 	}
+	
+	public void bulkLoad(InputStream fis, String format, int threads, String keyspace) throws StoreException, IOException {
+		try {
+			for (String cf : _cfs) {
+				batchBulkLoad(fis, format, cf, threads, keyspace);
+			}			
+		} catch (InterruptedException e) {
+			throw new StoreException(e);
+		} catch (IOException e) {
+			throw new StoreException(e);
+		}
+	}
 
 	public void bulkLoad(File file, String format, String cf, String keyspace) throws StoreException, IOException {
 		bulkLoad(file, format, cf, -1, keyspace);
