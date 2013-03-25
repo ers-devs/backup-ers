@@ -4,7 +4,6 @@ import org.apache.catalina.startup.Tomcat;
 
 public class Main {
 
-	// THIS IS USED TO LAUNCH THE EMBEDDED TOMCAT ... 
     public static void main(String[] args) throws Exception {
 
         String webappDirLocation = "src/main/webapp/";
