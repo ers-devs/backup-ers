@@ -62,11 +62,11 @@ public class DeleteServlet extends AbstractHttpServlet {
 		String v = req.getParameter("v");
 		String g = req.getParameter("g"); 
 		if( e == null || p == null || v == null || g == null ) { 
-			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass data like 'e=_&p=_&v=_&g=_'");
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass data like 'e=_&p=_&v=_&a=_'");
 			return;
 		}
 		if( e.isEmpty() || p.isEmpty() || v.isEmpty() || g.isEmpty() ) { 
-			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass non empty data 'e=_&p=_&v=_&g=_'");
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass non empty data 'e=_&p=_&v=_&a=_'");
 			return;
 		}
 		// add brackets if there were not already

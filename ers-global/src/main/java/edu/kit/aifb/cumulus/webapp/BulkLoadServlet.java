@@ -81,8 +81,8 @@ public class BulkLoadServlet extends AbstractHttpServlet {
 
 			// Process the uploaded items
 			Iterator iter = items.iterator();
-			String g =""; 
-			boolean g_exists = false; 
+			String a =""; 
+			boolean a_exists = false; 
 			String file = ""; 
 			
 			while (iter.hasNext()) {
@@ -90,9 +90,9 @@ public class BulkLoadServlet extends AbstractHttpServlet {
 			    if (item.isFormField()) {
 				String name = item.getFieldName();
 				String value = item.getString();
-				if( name.equals("g") ) { 
-					g_exists = true; 
-					g = new String(value); 
+				if( name.equals("a") ) { 
+					a_exists = true; 
+					a = new String(value); 
 				}
 			    } else {
 				   String fieldName = item.getFieldName();
@@ -113,16 +113,16 @@ public class BulkLoadServlet extends AbstractHttpServlet {
 				   uploadedStream.close();
 				   out.flush();
 			  	   out.close();
-				   resp_msg += "[dataset] POST bulk load " + fileName + ",graph name " + g + ", size " + sizeInBytes;
+				   resp_msg += "[dataset] POST bulk load " + fileName + " for author " + a + ", size " + sizeInBytes;
 				}
 			}
-			if( ! g_exists || g == null || g.isEmpty() ) { 
-				sendError(ctx, req, resp, HttpServletResponse.SC_NOT_ACCEPTABLE, "please pass also the graph name as 'g' parameter");
+			if( ! a_exists || a == null || a.isEmpty() ) { 
+				sendError(ctx, req, resp, HttpServletResponse.SC_NOT_ACCEPTABLE, "please pass also the author name as 'a' parameter");
 			}
 			else { 
 	   		        // load here 
-				if( crdf.bulkLoad(new File(file), format, threads, g) == 1 ) 
-					resp_msg = "Graph " + g + " does not exist yet. Please create if before bulk loading."; 
+				if( crdf.bulkLoad(new File(file), format, threads, a.replace("<","").replace(">","")) == 1 ) 
+					resp_msg = "Author " + a + " does not exist yet. Please create if before bulk loading."; 
 				else
 					resp_msg += ", time " + (System.currentTimeMillis() - start) + "ms "; 
 				_log.info(resp_msg);

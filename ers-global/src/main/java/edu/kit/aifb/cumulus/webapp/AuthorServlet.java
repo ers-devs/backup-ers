@@ -28,7 +28,7 @@ import edu.kit.aifb.cumulus.webapp.formatter.SerializationFormat;
  * @author tmacicas
  */
 @SuppressWarnings("serial")
-public class GraphServlet extends AbstractHttpServlet {
+public class AuthorServlet extends AbstractHttpServlet {
 	private final Logger _log = Logger.getLogger(this.getClass().getName());
 
 	@Override
@@ -57,7 +57,7 @@ public class GraphServlet extends AbstractHttpServlet {
 			return;
 		}
 		Store crdf = (Store)ctx.getAttribute(Listener.STORE);
-		// get all existing keyspaces here 
+		// get all existing authors here 
 		List<String> keyspaces = ((AbstractCassandraRdfHector)crdf).getAllKeyspaces();
 		PrintWriter out = resp.getWriter();
 		resp.setContentType(formatter.getContentType());
@@ -86,12 +86,30 @@ public class GraphServlet extends AbstractHttpServlet {
 			resp.sendError(HttpServletResponse.SC_BAD_REQUEST);
 			return;
 		}
-		String g = req.getParameter("g");  	//graph_name = keyspace_name 
+		String a_id = req.getParameter("a_id"); //author id as entity
+		String a_p = req.getParameter("a_p");	//property
+		String a_v = req.getParameter("a_v");	//value
 		// some checks
-		if( g == null || g.isEmpty() ) { 
-			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass the graph name as 'g' parameter'");
+		if( a_id == null || a_p == null || a_v == null ) { 
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass data like 'a_id=_&a_p=_&a_v=_'");
 			return;
 		}
+		if( a_id.isEmpty() || a_p.isEmpty() || a_v.isEmpty() ) { 
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass non empty data 'a_id=_&a_p=_&a_v=_'");
+			return;
+		}
+		if( !a_id.startsWith("<") ) {
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass a resource (e.g. &lt;resource&gt;) as entity / author id");
+			return;
+		}	
+		if( !a_p.startsWith("<") && !a_p.startsWith("\"") ) {
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass either a resource (e.g. &lt;resource&gt;) or a literal (e.g. \"literal\") as property");
+			return;
+		}
+		if( !a_v.startsWith("<") && !a_v.startsWith("\"") ) {
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass either a resource (e.g. &lt;resource&gt;) or a literal (e.g. \"literal\") as value");
+			return;
+		}	
 		String accept = req.getHeader("Accept");
 		SerializationFormat formatter = Listener.getSerializationFormat(accept);
 		if (formatter == null) {
@@ -99,19 +117,28 @@ public class GraphServlet extends AbstractHttpServlet {
 			return;
 		}
 		Store crdf = (Store)ctx.getAttribute(Listener.STORE);
-		// do the insert here 
-		int r = ((AbstractCassandraRdfHector)crdf).createKeyspace(g);
+		// create the associated keyspace with this author, if it does not exist  
+		int r = crdf.createKeyspace(a_id.replace("<","").replace(">",""));
+		String msg = "";
+		if( r == 2 ) 
+			msg = "Author " + a_id + " cannot be created. Do not use 'system' as prefix.";
+		else {
+			// now insert the triple into Authors keyspace 
+			int r2 = crdf.addData(a_id, a_p, a_v, Listener.AUTHOR_KEYSPACE);
+			if( r2 != -1 ) { 
+				if (r == 1) 
+					msg = "Author " + a_id + " already exists. New data has been added.";
+				else if (r == 0) 
+					msg = "Author " + a_id + " has been created. Data added.";
+			}
+			else 
+				msg = "Error on adding the triple !";
+		}
+		_log.info("BLALALSLDAJSNDUSAIUDSANDS 2");
 		PrintWriter out = resp.getWriter();
 		resp.setContentType(formatter.getContentType());
-		String msg = "";
-		if( r == 0 ) 
-			msg = "Graph " + g + " has been created.";
-		else if (r == 1)
-			msg = "Graph " + g + " already exists.";
-		else if (r == 2) 
-			msg = "Graph " + g + " cannot be created. Do not use 'system' as prefix.";
 		out.print(msg);
-		_log.info("[dataset] POST create graph (keyspace) " + g + " " + (System.currentTimeMillis() - start) + "ms ");
+		_log.info("[dataset] POST create/edit author  " + a_id + " " + (System.currentTimeMillis() - start) + "ms ");
 	}
 	
 	public void doDelete(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
@@ -126,9 +153,13 @@ public class GraphServlet extends AbstractHttpServlet {
 			resp.sendError(HttpServletResponse.SC_BAD_REQUEST);
 			return;
 		}
-		String g = req.getParameter("g");
-		if( g == null || g.isEmpty() ) { 
-			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass the graph name as 'g' parameter");
+		String a_id = req.getParameter("a_id");
+		if( a_id == null || a_id.isEmpty() ) { 
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass the author id as 'a_id' parameter");
+			return;
+		}
+		if( !a_id.startsWith("<") ) {
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass either a resource (e.g. &lt;resource&gt;) as property");
 			return;
 		}
 		String accept = req.getHeader("Accept");
@@ -138,17 +169,14 @@ public class GraphServlet extends AbstractHttpServlet {
 			return;
 		}
 		Store crdf = (Store)ctx.getAttribute(Listener.STORE);
-		// do the deletion here 
-		int r = crdf.dropKeyspace(g);
+		// do the deletion of entities associated with this author  
+		crdf.dropKeyspace(a_id.replace("<","").replace(">",""));
+		// delete also the record from AUTHORS keyspace ?! for the moment, NO
 
 		PrintWriter out = resp.getWriter();
 		resp.setContentType(formatter.getContentType());
-		if( r == 0 ) 
-			out.print("All data deleted");	
-		else if ( r == 1 ) 
-			out.print("Graph not found. Nothing was deleted.");
-		else if ( r == 3 ) 
-			out.print("Cannot delete a graph name whose name starts with 'system'.");
+		out.println("Entities of author " + a_id + " have been deleted.");
+
 		_log.info("[dataset] DELETE keyspace(graph) " + (System.currentTimeMillis() - start) + "ms ");
 	}
 

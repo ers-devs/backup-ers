@@ -52,14 +52,14 @@ public class CreateServlet extends AbstractHttpServlet {
 		String e = req.getParameter("e"); 	//entity
 		String p = req.getParameter("p");	//property
 		String v = req.getParameter("v");	//value
-		String g = req.getParameter("g");  	//graph_name = keyspace_name 
+		String a = req.getParameter("a");  	//author = keyspace_name 
 		// some checks
-		if( e == null || p == null || v == null || g == null ) { 
-			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass data like 'e=_&p=_&v=_&g=_'");
+		if( e == null || p == null || v == null || a == null ) { 
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass data like 'e=_&p=_&v=_&a=_'");
 			return;
 		}
-		if( e.isEmpty() || p.isEmpty() || v.isEmpty() || g.isEmpty() ) { 
-			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass non empty data 'e=_&p=_&v=_&g=_'");
+		if( e.isEmpty() || p.isEmpty() || v.isEmpty() || a.isEmpty() ) { 
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass non empty data 'e=_&p=_&v=_&a=_'");
 			return;
 		}
 		if( !e.startsWith("<") ) {
@@ -74,7 +74,6 @@ public class CreateServlet extends AbstractHttpServlet {
 			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass either a resource (e.g. &lt;resource&gt;) or a literal (e.g. \"literal\") as value");
 			return;
 		}	
-
 		String accept = req.getHeader("Accept");
 		SerializationFormat formatter = Listener.getSerializationFormat(accept);
 		if (formatter == null) {
@@ -85,11 +84,11 @@ public class CreateServlet extends AbstractHttpServlet {
 		resp.setContentType(formatter.getContentType());
 		Store crdf = (Store)ctx.getAttribute(Listener.STORE);
 		// do the insert here 
-		if( crdf.addData(e,p,v,g) == -2 ) { 
-			out.print("Graph " + g + " does not exist.");
+		if( crdf.addData(e,p,v,a.replace("<","").replace(">","")) == -2 ) { 
+			out.print("Author " + a + " does not exist.");
 		}
 		else {
-			String msg = "Triple ("+e+","+p+","+v+") has been added in graph " + g;
+			String msg = "Triple ("+e+","+p+","+v+") has been added by author " + a;
 			msg = msg.replace("<", "&lt;").replace(">","&gt;");
 			out.print(msg);
 		}

@@ -108,7 +108,6 @@ public abstract class Store {
 	public abstract void close() throws StoreException;
 	public abstract int addData(Iterator<Node[]> it, String keyspace) throws StoreException;
 
-	// TM; TODO: add keyspace info ... 
 	// add (e,p,v,g)
 	public abstract int addData(String e, String p, String v, String keyspace);
 	// update/replace (e,p,v_old,g) with (e,p,v_new,g);
@@ -117,6 +116,7 @@ public abstract class Store {
 	public abstract int deleteData(String e, String p, String v, String keyspace);
 	// delete all data 
 	public abstract int dropKeyspace(String keyspace);
+	public abstract int createKeyspace(String keyspace);
 
 	public abstract boolean contains(Node s, String keyspace) throws StoreException;
 	

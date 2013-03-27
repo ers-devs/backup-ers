@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Iterator;
 import java.util.logging.Logger;
+import java.util.List; 
+import java.util.ArrayList;
 
 import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
@@ -45,7 +47,7 @@ public class QueryServlet extends AbstractHttpServlet {
 		String e = req.getParameter("e");
 		String p = req.getParameter("p");
 		String v = req.getParameter("v");
-		String g = req.getParameter("g");
+		String a = req.getParameter("a");
 //		_log.info("QUERYServlet: req " + req.getPathInfo() + " " + req.getQueryString() + " " + e + " " + p + " " + v);
 		// some checks
 		if( e != null && !e.isEmpty() && !e.startsWith("<") ) {
@@ -58,10 +60,6 @@ public class QueryServlet extends AbstractHttpServlet {
 		}
 		if( v!=null && !v.isEmpty() && !v.startsWith("<") && !v.startsWith("\"") ) {
 			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass either a resource (e.g. &lt;resource&gt;) or a literal (e.g. \"literal\") as value");
-			return;
-		}
-		if( g == null || g.isEmpty() ) {
-			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass non empty graph name as 'g' parameter");
 			return;
 		}
 		Node[] query = new Node[3];
@@ -83,23 +81,29 @@ public class QueryServlet extends AbstractHttpServlet {
 		PrintWriter out = resp.getWriter();
 		AbstractCassandraRdfHector crdf = (AbstractCassandraRdfHector)ctx.getAttribute(Listener.STORE);
 		int triples = 0;
-		if( ! crdf.existsKeyspace(g) ) { 
-			out.print("Graph " + g + " does not exists.");
-		}
-		else { 
+		List<String> keyspaces = new ArrayList<String>(); 
+		if( a != null && ! a.isEmpty() ) 
+			keyspaces.add(a.replace("<","").replace(">","")); 
+		else 
+			keyspaces = crdf.getAllKeyspaces(); 
+
+		boolean found = false;
+		for(Iterator it_k = keyspaces.iterator(); it_k.hasNext(); ) { 
+			String k = (String)it_k.next();
 			try {
-				Iterator<Node[]> it = crdf.query(query, queryLimit, g);
+				Iterator<Node[]> it = crdf.query(query, queryLimit, k);
 				if (it.hasNext()) {
 					resp.setContentType(formatter.getContentType());
-					triples = formatter.print(it, out);
+					triples = formatter.print(it, out, k);
+					found = true;
 				}
-				else
-					sendError(ctx, req, resp, HttpServletResponse.SC_NOT_FOUND, "resource not found");
 			} catch (StoreException ex) {
 				_log.severe(ex.getMessage());
 				resp.sendError(500, ex.getMessage());
 			}
 		}
+		if( !found ) 
+			sendError(ctx, req, resp, HttpServletResponse.SC_NOT_FOUND, "resource not found");
 		_log.info("[dataset] QUERY " + Nodes.toN3(query) + " " + (System.currentTimeMillis() - start) + "ms " + triples + "t");
 	}
 

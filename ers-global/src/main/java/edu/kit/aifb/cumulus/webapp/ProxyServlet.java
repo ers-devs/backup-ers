@@ -75,7 +75,7 @@ public class ProxyServlet extends AbstractHttpServlet {
 				Iterator<Node[]> it = crdf.query(new Node[] { new Variable("s"), new Variable("p"), new Variable("o"), resource }, g);
 				if (it.hasNext()) {
 					resp.setContentType(formatter.getContentType());
-					triples = formatter.print(it, out);
+					triples = formatter.print(it, out, g);
 				}
 				else
 					sendError(ctx, req, resp, HttpServletResponse.SC_NOT_FOUND, "resource not found");

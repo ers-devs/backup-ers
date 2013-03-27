@@ -63,6 +63,7 @@ public class Listener implements ServletContextListener {
 	
 	private static final String LAYOUT_SUPER = "super";
 	private static final String LAYOUT_FLAT = "flat";
+	public static final String AUTHOR_KEYSPACE = "ERS_authors";
 
 	public static final String TRIPLES_SUBJECT = "tsubj";
 	public static final String TRIPLES_OBJECT = "tobj";
@@ -166,7 +167,10 @@ public class Listener implements ServletContextListener {
 				_crdf = new CassandraRdfHectorFlatHash(hosts);
 			else
 				throw new IllegalArgumentException("unknown storage layout");
+			// set some cluster wide parameters 
 			_crdf.open();
+   			// create the Authors keyspace
+			_crdf.createKeyspace(AUTHOR_KEYSPACE);
 			ctx.setAttribute(STORE, _crdf);
 		} catch (Exception e) {
 			_log.severe(e.getMessage());

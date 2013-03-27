@@ -51,17 +51,17 @@ public class UpdateServlet extends AbstractHttpServlet {
 		}
 		String e = req.getParameter("e"); 
 		String p = req.getParameter("p");
-		String g = req.getParameter("g");
+		String a = req.getParameter("a");
 		// NOTE: we require both v_old and v_new as we allow multiple values for same p => by sending the v_old we can identify with record is asked to be updated
 		String v_old = req.getParameter("v_old");
 		String v_new = req.getParameter("v_new");
 		// some checks
-		if( e == null || p == null || v_old == null || v_new == null || g == null ) { 
-			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass data like 'e=_&p=_&v_old=_&v_new=_&g=_'");
+		if( e == null || p == null || v_old == null || v_new == null || a == null ) { 
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass data like 'e=_&p=_&v_old=_&v_new=_&a=_'");
 			return;
 		}
-		if( e.isEmpty() || p.isEmpty() || v_old.isEmpty() || v_new.isEmpty() || g.isEmpty()  ) { 
-			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass non empty data 'e=_&p=_&v_old=_&v_new=_&g=_'");
+		if( e.isEmpty() || p.isEmpty() || v_old.isEmpty() || v_new.isEmpty() || a.isEmpty()  ) { 
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass non empty data 'e=_&p=_&v_old=_&v_new=_&a=_'");
 			return;
 		}
 		if( !e.startsWith("<") ) {
@@ -80,6 +80,10 @@ public class UpdateServlet extends AbstractHttpServlet {
 			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please either resources (e.g. &lt;resource&gt;) or literal (e.g. \"literal\") as new value");
 			return;
 		}
+		if( !a.startsWith("<") ) {
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please either resources (e.g. &lt;resource&gt;) as author");
+			return;
+		}
 	
 		String accept = req.getHeader("Accept");
 		SerializationFormat formatter = Listener.getSerializationFormat(accept);
@@ -91,8 +95,8 @@ public class UpdateServlet extends AbstractHttpServlet {
 		PrintWriter out = resp.getWriter();
 		resp.setContentType(formatter.getContentType());
 		// do an update here 
-		if( crdf.updateData(e,p,v_old,v_new,g) == -2 ) { 
-			out.print("Graph " + g + " does not exists.");
+		if( crdf.updateData(e,p,v_old,v_new,a.replace("<","").replace(">","")) == -2 ) { 
+			out.print("Author " + a + " does not exists.");
 		}
 		else {
 			String msg = "Triple ("+e+","+p+","+v_old+") has been removed.";
