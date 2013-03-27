@@ -1,1 +1,0 @@
-curl -v -X POST -H "Content-Type: application/x-www-form-urlencoded" --data "e=<bla>&p=<cla>&v=\"h\""  "http://diufpc304.unifr.ch:8080/ers/create"

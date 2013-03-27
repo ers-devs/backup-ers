@@ -134,7 +134,6 @@ public class AuthorServlet extends AbstractHttpServlet {
 			else 
 				msg = "Error on adding the triple !";
 		}
-		_log.info("BLALALSLDAJSNDUSAIUDSANDS 2");
 		PrintWriter out = resp.getWriter();
 		resp.setContentType(formatter.getContentType());
 		out.print(msg);

@@ -60,12 +60,12 @@ public class DeleteServlet extends AbstractHttpServlet {
 		String e = req.getParameter("e"); 
 		String p = req.getParameter("p");
 		String v = req.getParameter("v");
-		String g = req.getParameter("g"); 
-		if( e == null || p == null || v == null || g == null ) { 
+		String a = req.getParameter("a"); 
+		if( e == null || p == null || v == null || a == null ) { 
 			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass data like 'e=_&p=_&v=_&a=_'");
 			return;
 		}
-		if( e.isEmpty() || p.isEmpty() || v.isEmpty() || g.isEmpty() ) { 
+		if( e.isEmpty() || p.isEmpty() || v.isEmpty() || a.isEmpty() ) { 
 			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass non empty data 'e=_&p=_&v=_&a=_'");
 			return;
 		}
@@ -94,11 +94,11 @@ public class DeleteServlet extends AbstractHttpServlet {
 		PrintWriter out = resp.getWriter();
 		resp.setContentType(formatter.getContentType());
 		// do the deletion here 
-		if( crdf.deleteData(e,p,v,g) == -2 ) { 
-			out.println("Graph " + g + " does not exist.");
+		if( crdf.deleteData(e,p,v,a.replace("<","").replace(">","")) == -2 ) { 
+			out.println("Author " + a + " does not exist.");
 		}
 		else { 
-			String msg = "Triple ("+e+","+p+","+v+") has been added on keyspace " + g + ".";
+			String msg = "Triple ("+e+","+p+","+v+") has been added for author " + a + ".";
 			msg = msg.replace("<", "&lt;").replace(">","&gt;");
 			out.print(msg);
 		}

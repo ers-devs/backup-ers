@@ -146,6 +146,9 @@ public class DispatcherServlet extends AbstractHttpServlet {
 				if (path.startsWith(DELETE)) {
 					ctx.getNamedDispatcher("delete").forward(req, resp);
 				}
+				else if (path.startsWith(AUTHOR)) { 
+					ctx.getNamedDispatcher("author").forward(req, resp);
+				}
 			}
 			catch (ServletException e) {
 				e.printStackTrace();

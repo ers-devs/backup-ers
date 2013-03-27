@@ -1,1 +1,0 @@
-curl -v -X GET -H "Content-Type: text/plain"  "http://diufpc304.unifr.ch:8080/ers/read?e=<bla>"
