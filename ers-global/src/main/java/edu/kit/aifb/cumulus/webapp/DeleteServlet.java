@@ -60,7 +60,7 @@ public class DeleteServlet extends AbstractHttpServlet {
 		String e = req.getParameter("e"); 
 		String p = req.getParameter("p");
 		String v = req.getParameter("v");
-		String a = req.getParameter("a"); 
+		String a = req.getParameter("g"); 
 		if( e == null || p == null || v == null || a == null ) { 
 			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass data like 'e=_&p=_&v=_&a=_'");
 			return;

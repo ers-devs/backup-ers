@@ -43,7 +43,7 @@ public class ReadServlet extends AbstractHttpServlet {
 
 		resp.setCharacterEncoding("UTF-8");
 		String e = req.getParameter("e");
-		String a = req.getParameter("a");
+		String a = req.getParameter("g");
 		_log.info("req " + req.getPathInfo() + " " + req.getQueryString());
 
 		if (e == null || e.isEmpty()) {

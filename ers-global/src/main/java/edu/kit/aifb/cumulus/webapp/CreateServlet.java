@@ -52,7 +52,7 @@ public class CreateServlet extends AbstractHttpServlet {
 		String e = req.getParameter("e"); 	//entity
 		String p = req.getParameter("p");	//property
 		String v = req.getParameter("v");	//value
-		String a = req.getParameter("a");  	//author = keyspace_name 
+		String a = req.getParameter("g");  	//author = keyspace_name 
 		// some checks
 		if( e == null || p == null || v == null || a == null ) { 
 			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass data like 'e=_&p=_&v=_&a=_'");
@@ -88,7 +88,7 @@ public class CreateServlet extends AbstractHttpServlet {
 			out.print("Author " + a + " does not exist.");
 		}
 		else {
-			String msg = "Triple ("+e+","+p+","+v+") has been added by author " + a;
+			String msg = "Triple ("+e+","+p+","+v+") has been added by graph " + a;
 			msg = msg.replace("<", "&lt;").replace(">","&gt;");
 			out.print(msg);
 		}

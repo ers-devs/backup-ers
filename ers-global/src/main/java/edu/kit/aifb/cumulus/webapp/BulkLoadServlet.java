@@ -90,7 +90,7 @@ public class BulkLoadServlet extends AbstractHttpServlet {
 			    if (item.isFormField()) {
 				String name = item.getFieldName();
 				String value = item.getString();
-				if( name.equals("a") ) { 
+				if( name.equals("g") ) { 
 					a_exists = true; 
 					a = new String(value); 
 				}

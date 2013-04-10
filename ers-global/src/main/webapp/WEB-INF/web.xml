@@ -55,8 +55,8 @@
   	<servlet-class>edu.kit.aifb.cumulus.webapp.CreateServlet</servlet-class>
   </servlet>
   <servlet> 
-	<servlet-name>author</servlet-name>
-	<servlet-class>edu.kit.aifb.cumulus.webapp.AuthorServlet</servlet-class>
+	<servlet-name>graph</servlet-name>
+	<servlet-class>edu.kit.aifb.cumulus.webapp.GraphServlet</servlet-class>
   </servlet>
   <servlet>
   	<servlet-name>read</servlet-name>
