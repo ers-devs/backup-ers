@@ -25,8 +25,10 @@ public class DispatcherServlet extends AbstractHttpServlet {
 	private static final String READ = "/read";
 	private static final String UPDATE = "/update"; 
 	private static final String DELETE = "/delete"; 
+
 	private static final String BULKLOAD = "/bulkload";
 	private static final String GRAPH = "/graph";
+	private static final String TRANS = "/transaction";
 
 	public void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
 		ServletContext ctx = getServletContext();
@@ -105,8 +107,7 @@ public class DispatcherServlet extends AbstractHttpServlet {
 			try {
 				if (path.startsWith(GRAPH) ) { 
 					ctx.getNamedDispatcher("graph").forward(req,resp);
-				}
-				else if (path.startsWith(CREATE)) {
+				} else if (path.startsWith(CREATE)) {
 					ctx.getNamedDispatcher("create").forward(req, resp);
 				} else if (path.startsWith(UPDATE)) {
 					ctx.getNamedDispatcher("update").forward(req, resp);
@@ -114,6 +115,10 @@ public class DispatcherServlet extends AbstractHttpServlet {
 					ctx.getNamedDispatcher("delete").forward(req, resp);
 				} else if (path.startsWith(BULKLOAD)) { 
 					ctx.getNamedDispatcher("bulkload").forward(req, resp);
+				} else if (path.startsWith(TRANS)) { 
+					ctx.getNamedDispatcher("transaction").forward(req, resp);
+				} else if (path.startsWith(ERROR)) { 
+					ctx.getNamedDispatcher("error").forward(req, resp);
 				}
 			}
 			catch (ServletException e) {

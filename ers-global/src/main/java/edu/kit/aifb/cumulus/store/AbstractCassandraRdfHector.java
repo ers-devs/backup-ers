@@ -8,6 +8,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Hashtable;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -15,6 +16,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 
 import me.prettyprint.cassandra.connection.LeastActiveBalancingPolicy;
@@ -44,6 +47,8 @@ import org.semanticweb.yars.nx.Variable;
 import org.semanticweb.yars.nx.parser.NxParser;
 import org.semanticweb.yars.nx.parser.ParseException;
 import org.semanticweb.yars2.rdfxml.RDFXMLParser;
+
+import edu.kit.aifb.cumulus.webapp.Listener;
 
 public abstract class AbstractCassandraRdfHector extends Store {
 
@@ -119,6 +124,9 @@ public abstract class AbstractCassandraRdfHector extends Store {
 	protected StringSerializer _ss = StringSerializer.get();
 	protected BytesArraySerializer _bs = BytesArraySerializer.get();
 
+	// data structure to keep track of what kind of locks are held by different entities (transactional context)
+	protected static ConcurrentHashMap<String, LockEnt> lock_map = new ConcurrentHashMap<String, LockEnt>();
+
 	protected AbstractCassandraRdfHector(String hosts) {
 		_hosts = hosts;
 		_maps = new HashMap<String,int[]>();
@@ -170,9 +178,13 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		else 
 			return 1;
 		
-		HFactory.createKeyspace(keyspaceName, _cluster, new ConsistencyLevelPolicy() {
+		HFactory.createKeyspace(keyspaceName, _cluster, Listener.DEFAULT_CONSISTENCY_POLICY);
+/*		HFactory.createKeyspace(keyspaceName, _cluster, new ConsistencyLevelPolicy() {
 			@Override
-			public HConsistencyLevel get(OperationType arg0, String arg1) {
+			public HConsistencyLevel get(OperationType arg0, String cf) {
+				/*NOTE: based on operation type and/or column family, the 
+				   consistency level is tunable
+				   However, we just use for the moment the given parameter 
 				return HConsistencyLevel.ONE;
 			}
 			
@@ -180,8 +192,237 @@ public abstract class AbstractCassandraRdfHector extends Store {
 			public HConsistencyLevel get(OperationType arg0) {
 				return HConsistencyLevel.ONE;
 			}
-		});
+		}; */
 		return 0;
+	}
+
+	public int runTransaction(Transaction t) { 
+		if( t == null ) 
+			return -1;
+		t.printTransaction();
+		
+		Hashtable<String, LockEnt> locks_hold = new Hashtable<String, LockEnt>();
+		try { 	
+			// first of all lock all entities involved in this transaction; then execute
+			for(Iterator it = t.getOps().iterator(); it.hasNext(); ) { 
+				Operation op = (Operation) it.next(); 
+				String key = op.getParam(0);
+				
+				// maybe a previous operation has already acquired the needed lock, check this 
+				LockEnt prev_lock = locks_hold.get(key);
+				if( prev_lock != null && prev_lock.type == LockEnt.LockType.WRITE_LOCK ) 
+					// don't need anything else as a previous operation has acquired the exclusive lock
+					continue;
+
+				_log.info("Acquire lock for key: " + key);
+				// add this to the lock map, if absent 
+				LockEnt prev_val = AbstractCassandraRdfHector.lock_map.get(key);
+				if( prev_val != null && prev_val.type == LockEnt.LockType.WRITE_LOCK ) {
+					// conflict 
+					_log.info("CONFLICT: transaction " + t.ID + " @ operation with key " + key + " (write lock already acquired by another T)");
+					return 1;
+				}
+
+				// try to get needed lock 
+				if( op.getType() == Operation.Type.GET ) { 
+					if( prev_lock != null && ( prev_lock.type == LockEnt.LockType.READ_LOCK || 
+								   prev_lock.type == LockEnt.LockType.WRITE_LOCK ) ) 
+						// lock has been acquired already for this entity, go to next transaction 
+						continue;
+
+					// only read lock is needed here 
+					if( prev_val != null ) {
+						// increment the previous read lock counter 
+						LockEnt new_lock = new LockEnt(LockEnt.LockType.READ_LOCK, prev_val.counter.get()+1);
+						if( AbstractCassandraRdfHector.lock_map.replace(key, prev_val, new_lock) == false ) 
+							return 2;
+						else 	
+							// keep local track about locks acquired
+							locks_hold.put(key, new_lock);
+					}
+					else {
+						// just add the lock object (no one existed before)
+						if( AbstractCassandraRdfHector.lock_map.putIfAbsent(key, new LockEnt(LockEnt.LockType.READ_LOCK, 1)) != null )
+							return 3;
+						else 
+							// keep local track about locks acquired
+							locks_hold.put(key, new LockEnt(LockEnt.LockType.READ_LOCK, 1));
+					}
+				}
+				else { 
+					// operation != GET
+					if( prev_lock != null ) { 
+						if ( prev_lock.type == LockEnt.LockType.WRITE_LOCK )
+							// lock has been acquired already for this entity, go to next transaction 
+							continue;
+						else if ( prev_lock.type == LockEnt.LockType.READ_LOCK ) {
+							// upgrade to write lock if we are the only reader 
+							if( AbstractCassandraRdfHector.lock_map.replace(key, new LockEnt(LockEnt.LockType.READ_LOCK, 1), new LockEnt(LockEnt.LockType.WRITE_LOCK)) == false ) { 
+								// it failed (there is another reader besides me) 
+								_log.info("CONFLICT: transaction " + t.ID + " @ operation with key " + key + " (cannot upgrade to write lock as another reader is present)");
+								return 4;
+							}
+							else { 
+								// keep local track of this updated lock (the old value is replaced)
+								locks_hold.put(key, new LockEnt(LockEnt.LockType.WRITE_LOCK));
+								// don't bother anymore as we have now the right lock 
+								continue; 
+							}
+						}
+					}
+
+					if( prev_val != null && prev_val.type == LockEnt.LockType.READ_LOCK ) {
+						//conflict, write lock is excusive 
+						return 5; 
+					}
+
+					if( prev_val != null ) {
+						// write lock is needed here, no existing read locks are allowed
+						if( AbstractCassandraRdfHector.lock_map.replace(key, prev_val, new LockEnt(LockEnt.LockType.WRITE_LOCK)) == false ) {
+							_log.info("CONFLICT: transaction " + t.ID + " @ operation with key " + key + " (cannot get write lock as another one did it already)");
+							// somebody messed it up in the meanwhile, thus conflict 
+							return 6;
+						}
+						else {
+							// keep local track about locks acquired
+							locks_hold.put(key, new LockEnt(LockEnt.LockType.WRITE_LOCK));
+						}
+					}
+					else {
+						if ( AbstractCassandraRdfHector.lock_map.putIfAbsent(key, new LockEnt(LockEnt.LockType.WRITE_LOCK)) != null ) 
+							return 7;
+						else 
+							// keep locl track about locks acquired 
+							locks_hold.put(key, new LockEnt(LockEnt.LockType.WRITE_LOCK));
+					}
+						
+				}
+			}
+			// here, all locks are held 
+
+			// print what locks this transaction holds
+			_log.info("Following locks are held by transaction " + t.ID); 
+			for( Iterator it = locks_hold.keySet().iterator(); it.hasNext(); ) { 
+				 String k = (String) it.next(); 
+				_log.info("KEY: " + k + " " + locks_hold.get(k).toString());
+			}
+
+			try { 
+				_log.info("SLEEEEEEEEEEEEEEEEEEEPPPPPPPP...........");
+				Thread.sleep(15000);	
+			} catch (Exception e ) { 
+			}
+			_log.info("WAKE UP !!"); 
+
+			// run the ops 
+			int r=0;
+			for( int j=0; j < t.ops.size(); ++j) { 
+				Operation c_op = t.ops.get(j);
+				switch(c_op.getType()) { 	
+					case GET: 
+						// perform just a read (well, perpahs not so common used as there are no if-else structures into the transaction flow 
+						break;
+					case INSERT:
+						r = this.addData(c_op.params[0], c_op.params[1],
+							c_op.params[2], 
+							c_op.params[3].replace("<","").replace(">",""));
+						if ( r != 0 ) 
+							_log.info("COMMIT INSERT " + c_op.params[0] + " failed with exit code " + r);
+						break;
+					case UPDATE:
+						r = this.updateData(c_op.params[0], c_op.params[1],
+						   c_op.params[4], c_op.params[2], 
+						   c_op.params[3].replace("<","").replace(">",""));
+						if ( r != 0 ) 
+							_log.info("COMMIT UPDATE " + c_op.params[0] + " failed with exit code " + r);
+						break;
+					case DELETE:
+						r = this.deleteData(c_op.params[0], c_op.params[1],
+							c_op.params[2], 
+							c_op.params[3].replace("<","").replace(">",""));
+						if ( r != 0 ) 
+							_log.info("COMMIT DELETE " + c_op.params[0] + " failed with exit code " + r);
+						break;
+					default:
+						break;	
+				}
+				if( r != 0 ) {		
+					// ROLLBACK !!! 
+					// operation failed, rollback all the previous ones
+					for( int k=j-1; k>=0; --k ) { 
+						Operation p_op = t.getReverseOp(k); 
+						switch(p_op.getType()) { 	
+							case GET: 	
+								// no reverse op for t
+								break;
+							case INSERT:
+								r = this.addData(p_op.params[0], p_op.params[1],
+									p_op.params[2], 
+									p_op.params[3].replace("<","").replace(">",""));
+								if ( r != 0 ) 
+									_log.info("ROLLBACK INSERT " + p_op.params[0] + " failed with exit code " + r);
+								break;
+							case UPDATE:
+								r = this.updateData(p_op.params[0], p_op.params[1],
+								   p_op.params[4], p_op.params[2], 
+								   p_op.params[3].replace("<","").replace(">",""));
+								if ( r != 0 ) 
+									_log.info("ROLLBACK UPDATE " + p_op.params[0] + " failed with exit code " + r);
+								break;
+							case DELETE:
+								r = this.deleteData(p_op.params[0], p_op.params[1],
+									p_op.params[2], 
+									p_op.params[3].replace("<","").replace(">",""));
+								if ( r != 0 ) 
+									_log.info("ROLLBACK DELETE " + p_op.params[0] + " failed with exit code " + r);
+								break;
+							default:
+								break;	
+
+						}
+					}	
+					if( r != 0 )
+						// problems while rollback-ing 
+						return 100;
+					//rollback has occured successfully 
+					return 10;
+				}
+			}
+			// COMMIT !!!
+			return 0;
+		}
+		finally { 
+			// release the locks the reverse way they were acquired
+			for( int i = t.getOps().size()-1; i>=0; --i) { 
+				Operation op_r = t.getOps().get(i);
+				String key = op_r.getParam(0); 
+				
+				LockEnt used_lock = locks_hold.get(key); 
+				if( used_lock != null ) {
+					if( used_lock.type == LockEnt.LockType.WRITE_LOCK ) { 
+						// it was an exclusive lock, just delete it 
+						AbstractCassandraRdfHector.lock_map.remove(key); 
+						_log.info("WRITE LOCK FOR KEY " + key + " HAS BEEN RELEASED ");
+						locks_hold.remove(key);
+					}	
+					else { 
+						// decrement the counter of a read lock and delete it if counter == 0 
+						while( true ) { 
+							// get current value 
+							LockEnt curr_v = AbstractCassandraRdfHector.lock_map.get(key); 
+							// try to replace 
+							if( AbstractCassandraRdfHector.lock_map.replace(key, curr_v, new LockEnt(LockEnt.LockType.READ_LOCK, curr_v.counter.get()-1)) == true ) {
+								// remove if the counter is 0 
+								AbstractCassandraRdfHector.lock_map.remove(key, new LockEnt(LockEnt.LockType.READ_LOCK, 0));
+								_log.info("READ LOCK FOR KEY " + key + " HAS BEEN RELEASED ");
+								locks_hold.remove(key);
+								break;
+							}
+						}
+					}
+				}
+			}
+		}
 	}
 
 	// get all keyspaces' names
@@ -235,7 +476,8 @@ public abstract class AbstractCassandraRdfHector extends Store {
 	
 	//TODO: accept as parameter consistency level and/or strategy !
 	protected KeyspaceDefinition createKeyspaceDefinition(String keyspaceName) {
-		return HFactory.createKeyspaceDefinition(keyspaceName, "org.apache.cassandra.locator.SimpleStrategy", 1, createColumnFamiliyDefinitions(keyspaceName));
+		return HFactory.createKeyspaceDefinition(keyspaceName, "org.apache.cassandra.locator.SimpleStrategy", 
+			Listener.DEFAULT_REPLICATION_FACTOR, createColumnFamiliyDefinitions(keyspaceName));
 	}
 
 	protected abstract List<ColumnFamilyDefinition> createColumnFamiliyDefinitions(String keyspaceName);

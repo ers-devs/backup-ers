@@ -22,6 +22,11 @@ import edu.kit.aifb.cumulus.store.CassandraRdfHectorQuads;
 import edu.kit.aifb.cumulus.store.Store;
 import edu.kit.aifb.cumulus.store.StoreException;
 
+import me.prettyprint.hector.api.ConsistencyLevelPolicy;
+import me.prettyprint.hector.api.ConsistencyLevelPolicy;
+import me.prettyprint.hector.api.HConsistencyLevel;
+import me.prettyprint.cassandra.service.OperationType;
+
 import edu.kit.aifb.cumulus.store.sesame.SPARQLResultsNxWriterFactory;
 import edu.kit.aifb.cumulus.webapp.formatter.HTMLFormat;
 import edu.kit.aifb.cumulus.webapp.formatter.NTriplesFormat;
@@ -64,6 +69,32 @@ public class Listener implements ServletContextListener {
 	private static final String LAYOUT_SUPER = "super";
 	private static final String LAYOUT_FLAT = "flat";
 	public static final String AUTHOR_KEYSPACE = "ERS_authors";
+
+	// NOTE: consistency level is tunable per keyspace, per CF, per operation type 
+        // for the moment all keyspaces use this default policy 
+	public static final ConsistencyLevelPolicy DEFAULT_CONSISTENCY_POLICY = new ConsistencyLevelPolicy() { 
+			@Override
+                        public HConsistencyLevel get(OperationType op_type, String cf) {
+                                /*NOTE: based on operation type and/or column family, the 
+                                   consistency level is tunable
+                                   However, we just use for the moment the given parameter 
+                                */
+				if( op_type == OperationType.WRITE ) 
+	                                return HConsistencyLevel.ALL;
+				else 
+					return HConsistencyLevel.ONE;
+                        }   
+                                                                                                       
+                        @Override
+                        public HConsistencyLevel get(OperationType op_type) {
+				if( op_type == OperationType.WRITE ) 
+	                                return HConsistencyLevel.ALL;
+				else
+					return HConsistencyLevel.ONE;
+                        }   
+	};
+	// NOTE: this can be adjusted per keyspace, the default one is used for now by all of the keyspaces
+	public static final Integer DEFAULT_REPLICATION_FACTOR = 3; 
 
 	public static final String TRIPLES_SUBJECT = "tsubj";
 	public static final String TRIPLES_OBJECT = "tobj";

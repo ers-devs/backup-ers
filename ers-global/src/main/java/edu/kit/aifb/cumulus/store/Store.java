@@ -117,6 +117,9 @@ public abstract class Store {
 	// delete all data 
 	public abstract int dropKeyspace(String keyspace);
 	public abstract int createKeyspace(String keyspace);
+	
+	// run transactions 
+	public abstract int runTransaction(Transaction t);
 
 	public abstract boolean contains(Node s, String keyspace) throws StoreException;
 	

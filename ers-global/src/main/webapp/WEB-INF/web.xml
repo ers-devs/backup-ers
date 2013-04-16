@@ -9,7 +9,7 @@
 -->
   	<context-param> 
  		<param-name>cassandra-hosts</param-name>
-  		<param-value>127.0.0.1:9160</param-value>  
+		<param-value>127.0.0.1:9160</param-value>
 <!--		<param-value>127.0.0.1:9171</param-value>   -->
  	</context-param> 
 
@@ -74,6 +74,12 @@
 	<servlet-name>bulkload</servlet-name>
 	<servlet-class>edu.kit.aifb.cumulus.webapp.BulkLoadServlet</servlet-class>
   </servlet>
+  <servlet>
+	<servlet-name>transaction</servlet-name>
+	<servlet-class>edu.kit.aifb.cumulus.webapp.TransactionServlet</servlet-class>
+  </servlet>
+
+
 
 
   <servlet>
