@@ -167,7 +167,7 @@ class ERSLocal(ERSReadWrite):
             else:
                 continue
 
-            dbname = peer_info['dbname'] if 'dbname' in peer_info else None
+            dbname = peer_info['dbname'] if 'dbname' in peer_info else self.dbname
 
             peer_ers = ERSReadOnly(server_url, dbname)
             result.append(peer_ers)

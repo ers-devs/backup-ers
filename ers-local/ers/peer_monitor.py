@@ -11,7 +11,6 @@ ERS_AVAHI_SERVICE_TYPE = '_ers._tcp'
 
 
 _peers = None
-_my_hostname = socket.gethostname()
 _lock = None
 _thread = None
 
@@ -31,6 +30,10 @@ def command_exists(command):
         return True
     except subprocess.CalledProcessError:
         return False
+
+
+def is_my_host(hostname):
+    return socket.gethostname().partition('.')[0] == hostname.partition('.')[0]
 
 
 def _main_thread():
@@ -60,14 +63,22 @@ def _main_thread():
     _report_error("{0} failed with code {1}\n".format(process_args[0], proc.returncode))
 
 
-def _on_peer_join(peer_name, host, port):
+def _on_peer_join(peer_name, host, port, dbname):
     with _lock:
-        _peers[peer_name] = { 'name': peer_name, 'host': host, 'port': port }
+        _peers[peer_name] = { 'name': peer_name, 'host': host, 'port': port, 'dbname': dbname }
 
 
 def _on_peer_leave(peer_name):
     with _lock:
         del _peers[peer_name]
+
+
+def _extract_dbname(service_name):
+    match = re.search(r'[(]dbname=([^)]*)[)]', service_name, re.I)
+    if match is None:
+        return 'ers'
+    else:
+        return match.group(1)
 
 
 def _handle_line_avahi(line):
@@ -81,7 +92,9 @@ def _handle_line_avahi(line):
     if operation == '=' and len(parts) >= 9:
         host = parts[6]
         port = int(parts[8])
-        _on_peer_join(service_name, host, port)
+        dbname = _extract_dbname(service_name)
+        if not is_my_host(host):
+            _on_peer_join(service_name, host, port, dbname)
     elif operation == '-':
         _on_peer_leave(service_name)
 
@@ -95,9 +108,9 @@ def _handle_line_dns_sd(line):
     service_name = parts[6]
 
     if operation == 'Add':
-        host, port = _lookup_dns_sd(service_name)
-        if host is not None:
-            _on_peer_join(service_name, host, port)
+        host, port, dbname = _lookup_dns_sd(service_name)
+        if host is not None and not is_my_host(host):
+            _on_peer_join(service_name, host, port, dbname)
     elif operation == 'Rmv':
         _on_peer_leave(service_name)
 
@@ -128,9 +141,11 @@ def _lookup_dns_sd(service_name):
         thread.join()
 
     if len(result) == 0:
-        return None, None
+        return None, None, None
     else:
-        return result[0]
+        dbname = _extract_dbname(service_name)
+
+        return result[0][0], result[0][1], dbname
 
 
 def _report_error(error):
