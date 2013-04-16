@@ -47,7 +47,7 @@ public class QueryServlet extends AbstractHttpServlet {
 		String e = req.getParameter("e");
 		String p = req.getParameter("p");
 		String v = req.getParameter("v");
-		String a = req.getParameter("a");
+		String a = req.getParameter("g");
 //		_log.info("QUERYServlet: req " + req.getPathInfo() + " " + req.getQueryString() + " " + e + " " + p + " " + v);
 		// some checks
 		if( e != null && !e.isEmpty() && !e.startsWith("<") ) {

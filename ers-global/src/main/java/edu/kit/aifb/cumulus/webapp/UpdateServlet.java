@@ -51,7 +51,7 @@ public class UpdateServlet extends AbstractHttpServlet {
 		}
 		String e = req.getParameter("e"); 
 		String p = req.getParameter("p");
-		String a = req.getParameter("a");
+		String a = req.getParameter("g");
 		// NOTE: we require both v_old and v_new as we allow multiple values for same p => by sending the v_old we can identify with record is asked to be updated
 		String v_old = req.getParameter("v_old");
 		String v_new = req.getParameter("v_new");
@@ -81,7 +81,7 @@ public class UpdateServlet extends AbstractHttpServlet {
 			return;
 		}
 		if( !a.startsWith("<") ) {
-			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please either resources (e.g. &lt;resource&gt;) as author");
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please either resources (e.g. &lt;resource&gt;) as graph");
 			return;
 		}
 	

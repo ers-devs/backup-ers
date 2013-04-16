@@ -28,7 +28,7 @@ import edu.kit.aifb.cumulus.webapp.formatter.SerializationFormat;
  * @author tmacicas
  */
 @SuppressWarnings("serial")
-public class AuthorServlet extends AbstractHttpServlet {
+public class GraphServlet extends AbstractHttpServlet {
 	private final Logger _log = Logger.getLogger(this.getClass().getName());
 
 	@Override
@@ -44,7 +44,6 @@ public class AuthorServlet extends AbstractHttpServlet {
 			doDelete(req,resp);
 			return;
 		}
-
 		String uri = req.getRequestURI();
 		if (uri == null) {
 			resp.sendError(HttpServletResponse.SC_BAD_REQUEST);
@@ -57,7 +56,7 @@ public class AuthorServlet extends AbstractHttpServlet {
 			return;
 		}
 		Store crdf = (Store)ctx.getAttribute(Listener.STORE);
-		// get all existing authors here 
+		// get all existing graphs here 
 		List<String> keyspaces = ((AbstractCassandraRdfHector)crdf).getAllKeyspaces();
 		PrintWriter out = resp.getWriter();
 		resp.setContentType(formatter.getContentType());
@@ -86,9 +85,9 @@ public class AuthorServlet extends AbstractHttpServlet {
 			resp.sendError(HttpServletResponse.SC_BAD_REQUEST);
 			return;
 		}
-		String a_id = req.getParameter("a_id"); //author id as entity
-		String a_p = req.getParameter("a_p");	//property
-		String a_v = req.getParameter("a_v");	//value
+		String a_id = req.getParameter("g_id"); //graph id as entity
+		String a_p = req.getParameter("g_p");	//property
+		String a_v = req.getParameter("g_v");	//value
 		// some checks
 		if( a_id == null || a_p == null || a_v == null ) { 
 			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass data like 'a_id=_&a_p=_&a_v=_'");
@@ -99,7 +98,7 @@ public class AuthorServlet extends AbstractHttpServlet {
 			return;
 		}
 		if( !a_id.startsWith("<") ) {
-			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass a resource (e.g. &lt;resource&gt;) as entity / author id");
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass a resource (e.g. &lt;resource&gt;) as entity / graph id");
 			return;
 		}	
 		if( !a_p.startsWith("<") && !a_p.startsWith("\"") ) {
@@ -117,7 +116,7 @@ public class AuthorServlet extends AbstractHttpServlet {
 			return;
 		}
 		Store crdf = (Store)ctx.getAttribute(Listener.STORE);
-		// create the associated keyspace with this author, if it does not exist  
+		// create the associated keyspace with this graph, if it does not exist  
 		int r = crdf.createKeyspace(a_id.replace("<","").replace(">",""));
 		String msg = "";
 		if( r == 2 ) 
@@ -137,7 +136,7 @@ public class AuthorServlet extends AbstractHttpServlet {
 		PrintWriter out = resp.getWriter();
 		resp.setContentType(formatter.getContentType());
 		out.print(msg);
-		_log.info("[dataset] POST create/edit author  " + a_id + " " + (System.currentTimeMillis() - start) + "ms ");
+		_log.info("[dataset] POST create/edit graph  " + a_id + " " + (System.currentTimeMillis() - start) + "ms ");
 	}
 	
 	public void doDelete(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
@@ -152,9 +151,9 @@ public class AuthorServlet extends AbstractHttpServlet {
 			resp.sendError(HttpServletResponse.SC_BAD_REQUEST);
 			return;
 		}
-		String a_id = req.getParameter("a_id");
+		String a_id = req.getParameter("g_id");
 		if( a_id == null || a_id.isEmpty() ) { 
-			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass the author id as 'a_id' parameter");
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass the graph id as 'a_id' parameter");
 			return;
 		}
 		if( !a_id.startsWith("<") ) {
@@ -168,13 +167,13 @@ public class AuthorServlet extends AbstractHttpServlet {
 			return;
 		}
 		Store crdf = (Store)ctx.getAttribute(Listener.STORE);
-		// do the deletion of entities associated with this author  
+		// do the deletion of entities associated with this graph  
 		crdf.dropKeyspace(a_id.replace("<","").replace(">",""));
 		// delete also the record from AUTHORS keyspace ?! for the moment, NO
 
 		PrintWriter out = resp.getWriter();
 		resp.setContentType(formatter.getContentType());
-		out.println("Entities of author " + a_id + " have been deleted.");
+		out.println("Entities of graph " + a_id + " have been deleted.");
 
 		_log.info("[dataset] DELETE keyspace(graph) " + (System.currentTimeMillis() - start) + "ms ");
 	}
