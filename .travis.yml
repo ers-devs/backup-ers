@@ -1,0 +1,18 @@
+language: python
+
+services:
+    - couchdb
+
+python:
+    - 2.7
+#    - 2.6
+
+branches:
+  only:
+    - develop
+
+install: 
+    - pip install -r requirements.txt --use-mirrors
+    - python setup.py install
+
+script: curl http://localhost:5984
