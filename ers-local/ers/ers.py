@@ -144,7 +144,7 @@ class ERSLocal(ERSReadWrite):
     def __init__(self, server_url=r'http://admin:admin@127.0.0.1:5984/', dbname='ers', model=DEFAULT_MODEL,
                 fixed_peers=()):
         super(ERSLocal, self).__init__(server_url, dbname, model)
-        self.fixed_peers = fixed_peers
+        self.fixed_peers = list(fixed_peers)
 
     def get_annotation(self, entity):
         result = self.get_data(entity)
@@ -159,7 +159,7 @@ class ERSLocal(ERSReadWrite):
     def get_peer_ers_interfaces(self):
         result = []
 
-        for peer_info in self.fixed_peers + peer_monitor.get_peers():
+        for peer_info in self.fixed_peers: # + peer_monitor.get_peers():
             if 'url' in peer_info:
                 server_url = peer_info['url']
             elif 'host' in peer_info and 'port' in peer_info:
@@ -167,7 +167,7 @@ class ERSLocal(ERSReadWrite):
             else:
                 continue
 
-            dbname = peer_info['dbname'] if 'dbname' in peer_info else None
+            dbname = peer_info['dbname'] if 'dbname' in peer_info else self.dbname
 
             peer_ers = ERSReadOnly(server_url, dbname)
             result.append(peer_ers)
