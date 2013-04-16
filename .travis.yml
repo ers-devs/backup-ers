@@ -15,4 +15,4 @@ install:
     - pip install -r requirements.txt --use-mirrors
     - python setup.py install
 
-script: curl http://localhost:5984
+script: python tests/ers_test.py
