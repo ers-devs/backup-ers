@@ -28,7 +28,7 @@ import edu.kit.aifb.cumulus.webapp.formatter.SerializationFormat;
  * @author aharth
  */
 @SuppressWarnings("serial")
-public class QueryServlet extends AbstractHttpServlet {
+public class CleverDeleteServlet extends AbstractHttpServlet {
 	private final Logger _log = Logger.getLogger(this.getClass().getName());
 
 	public void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
@@ -81,6 +81,19 @@ public class QueryServlet extends AbstractHttpServlet {
 		PrintWriter out = resp.getWriter();
 		AbstractCassandraRdfHector crdf = (AbstractCassandraRdfHector)ctx.getAttribute(Listener.STORE);
 		int triples = 0;
+	
+		if( e != null && p != null & v != null && a != null ) { 
+			// run "clasical" delete as we have all information 
+			if( crdf.deleteData(e,p,v,a.replace("<","").replace(">","")) == -2 ) { 
+				out.println("Graph " + a + " does not exist.");
+			}	
+			else { 
+				String msg = "Triple ("+e+","+p+","+v+") has been added for author " + a + ".";
+				msg = msg.replace("<", "&lt;").replace(">","&gt;");
+				out.print(msg);
+			}
+			return;
+		}
 
 		// search within given keyspace or all if none is given
 		List<String> keyspaces = new ArrayList<String>(); 
@@ -89,7 +102,7 @@ public class QueryServlet extends AbstractHttpServlet {
 		else 
 			keyspaces = crdf.getAllKeyspaces(); 
 
-		boolean found = false;
+		int total_deletion = 0;
 		for(Iterator it_k = keyspaces.iterator(); it_k.hasNext(); ) { 
 			String k = (String)it_k.next();
 			// skip system and authors keyspaces
@@ -97,19 +110,19 @@ public class QueryServlet extends AbstractHttpServlet {
 				continue;
 			try {
 				Iterator<Node[]> it = crdf.query(query, queryLimit, k);
+				// if data, delete :) 
 				if (it.hasNext()) {
-					resp.setContentType(formatter.getContentType());
-					triples = formatter.print(it, out, k);
-					found = true;
+					Node[] n = (Node[]) it.next(); 
+					total_deletion += n.length; 
+					crdf.deleteData(n, k);
 				}
 			} catch (StoreException ex) {
 				_log.severe(ex.getMessage());
 				resp.sendError(500, ex.getMessage());
 			}
 		}
-		if( !found ) 
-			sendError(ctx, req, resp, HttpServletResponse.SC_NOT_FOUND, "resource not found");
-		_log.info("[dataset] QUERY " + Nodes.toN3(query) + " " + (System.currentTimeMillis() - start) + "ms " + triples + "t");
+		out.print("Total " + total_deletion + " quads have been deleted.");
+		_log.info("[dataset] DELETE " + (System.currentTimeMillis() - start) + "ms " + total_deletion + " quads");
 	}
 
 	private Node getNode(String value, String varName) throws ParseException {

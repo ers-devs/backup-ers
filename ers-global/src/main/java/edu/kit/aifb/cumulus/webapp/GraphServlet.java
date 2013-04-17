@@ -151,9 +151,10 @@ public class GraphServlet extends AbstractHttpServlet {
 			resp.sendError(HttpServletResponse.SC_BAD_REQUEST);
 			return;
 		}
-		String a_id = req.getParameter("g_id");
+		String a_id = req.getParameter("g");
+		String f = req.getParameter("f");
 		if( a_id == null || a_id.isEmpty() ) { 
-			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass the graph id as 'a_id' parameter");
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass the graph id as 'g' parameter");
 			return;
 		}
 		if( !a_id.startsWith("<") ) {
@@ -166,15 +167,33 @@ public class GraphServlet extends AbstractHttpServlet {
 			sendError(ctx, req, resp, HttpServletResponse.SC_NOT_ACCEPTABLE, "no known mime type in Accept header");
 			return;
 		}
-		Store crdf = (Store)ctx.getAttribute(Listener.STORE);
-		// do the deletion of entities associated with this graph  
-		crdf.dropKeyspace(a_id.replace("<","").replace(">",""));
-		// delete also the record from AUTHORS keyspace ?! for the moment, NO
-
+		boolean force = (f != null && f.equals("y")) ? true : false;
 		PrintWriter out = resp.getWriter();
 		resp.setContentType(formatter.getContentType());
-		out.println("Entities of graph " + a_id + " have been deleted.");
-
+		Store crdf = (Store)ctx.getAttribute(Listener.STORE);
+		// do the deletion of entities associated with this graph  
+		// delete also the record from AUTHORS keyspace ?! for the moment, NO
+		int r = crdf.dropKeyspace(a_id.replace("<","").replace(">",""), force);
+		switch(r) { 
+			case 0: 
+				out.println("Entities of graph " + a_id + " have been deleted.");
+				break;
+			case 1: 	
+				out.println("The graph " + a_id + " does not exist. Nothing to delete.");
+				break;
+			case 2: 
+				out.println("Deleting the graph has raised exceptions. Check tomcat log.");
+				break;
+			case 3:	
+				out.println("Cannot delete any graph (keyspace) whose name has the prefix 'system'.");
+				break;
+			case 4:
+				out.println("Cannot delete a not-empty graph.");
+				break;
+			default:	
+				out.println("UNKNOWN exit code of deleting the graph method.");
+				break;
+		}	
 		_log.info("[dataset] DELETE keyspace(graph) " + (System.currentTimeMillis() - start) + "ms ");
 	}
 

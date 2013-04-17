@@ -1,11 +1,14 @@
 package edu.kit.aifb.cumulus.store;
 
 import java.nio.ByteBuffer;
+import java.io.PrintWriter;
+import java.lang.StringBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.logging.Logger;
+import java.util.UUID;
 
 import me.prettyprint.cassandra.model.IndexedSlicesQuery;
 import me.prettyprint.hector.api.beans.ColumnSlice;
@@ -15,11 +18,21 @@ import me.prettyprint.hector.api.factory.HFactory;
 import me.prettyprint.hector.api.mutation.Mutator;
 import me.prettyprint.hector.api.query.QueryResult;
 import me.prettyprint.hector.api.query.SliceQuery;
+import me.prettyprint.hector.api.query.RangeSlicesQuery;
+import me.prettyprint.cassandra.serializers.UUIDSerializer; 
+import me.prettyprint.cassandra.serializers.StringSerializer;
+import me.prettyprint.hector.api.beans.OrderedRows;
+import me.prettyprint.hector.api.beans.Row;
+import me.prettyprint.hector.api.Keyspace;
+import me.prettyprint.hector.api.beans.HColumn;
+import me.prettyprint.hector.api.ddl.KeyspaceDefinition;
 
 import org.semanticweb.yars.nx.Node;
 import org.semanticweb.yars.nx.Nodes;
 import org.semanticweb.yars.nx.parser.NxParser;
 import org.semanticweb.yars.nx.parser.ParseException;
+
+import edu.kit.aifb.cumulus.webapp.Listener;
 
 public class CassandraRdfHectorFlatHash extends CassandraRdfHectorQuads {
 	private static final String CF_S_PO = "SPO";
@@ -264,5 +277,76 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 			}
 		}
 		return it;
+	}
+
+	//TM: added for supporting (?,?,?,g) queries
+	public int queryEntireKeyspace(String keyspace, PrintWriter out, int limit) { 
+		int row_count = ( limit > 100) ? 100 : limit;
+		int total_row_count=0;
+
+		// String(row), String(column_name), String(column_value)
+		Keyspace k = getExistingKeyspace(keyspace); 
+        	RangeSlicesQuery<String, String, String> rangeSlicesQuery = HFactory
+	            .createRangeSlicesQuery(k, StringSerializer.get(), StringSerializer.get(), StringSerializer.get())
+        	    .setColumnFamily("SPO")
+		    .setRange(null, null, false, 10)
+	            .setRowCount(row_count);
+         	String last_key = null;
+
+	        while (true) {
+        	    rangeSlicesQuery.setKeys(last_key, null);
+	            //System.out.println(" > " + last_key);
+
+	  	    try {
+        	    	    QueryResult<OrderedRows<String, String, String>> result = rangeSlicesQuery.execute();
+		            OrderedRows<String, String, String> rows = result.get();
+		            Iterator<Row<String, String, String>> rowsIterator = rows.iterator();
+
+	        	    // we'll skip this first one, since it is the same as the last one from previous time we executed
+		            if (last_key != null && rowsIterator != null) 
+				    rowsIterator.next();   
+
+			    while (rowsIterator.hasNext()) {
+				    Row<String, String, String> row = rowsIterator.next();
+				    last_key = row.getKey();
+				    if (row.getColumnSlice().getColumns().isEmpty()) 
+			    		continue;
+				    StringBuffer buf = new StringBuffer(); 
+				    buf.append("<"+keyspace+"> ");
+				    buf.append(row.getKey()); 
+				    buf.append(" "); 
+				    for(Iterator it = row.getColumnSlice().getColumns().iterator(); it.hasNext(); ) { 		
+				        HColumn c = (HColumn)it.next(); 
+					buf.append(c.getName()); 
+				        buf.append(" "); 
+					buf.append(c.getValue());
+				    }
+  				    out.println(buf.toString());
+				    ++total_row_count; 
+				    if( total_row_count >= limit ) 
+					return total_row_count;
+	           	    }
+	            	    if (rows.getCount() < row_count)
+        	        	break;
+			} catch(Exception e){ 
+				e.printStackTrace(); 
+				out.println(e.getMessage());
+				return -1;
+			}
+        	}
+		return total_row_count;
+	}
+	
+	// iterate the keyspaces and query each one of them 
+	public int queryAllKeyspaces(int limit, PrintWriter out) { 
+		int total_rows = 0;
+		for (KeyspaceDefinition ksDef : _cluster.describeKeyspaces()) {
+			String keyspace = ksDef.getName(); 
+			if( keyspace.startsWith("system") || keyspace.equals(Listener.AUTHOR_KEYSPACE) ) 
+				continue;
+			// query this keyspace
+			total_rows += queryEntireKeyspace(keyspace, out, limit);
+		}
+		return total_rows;
 	}
 }

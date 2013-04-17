@@ -95,7 +95,7 @@ public class DeleteServlet extends AbstractHttpServlet {
 		resp.setContentType(formatter.getContentType());
 		// do the deletion here 
 		if( crdf.deleteData(e,p,v,a.replace("<","").replace(">","")) == -2 ) { 
-			out.println("Author " + a + " does not exist.");
+			out.println("Graph " + a + " does not exist.");
 		}
 		else { 
 			String msg = "Triple ("+e+","+p+","+v+") has been added for author " + a + ".";

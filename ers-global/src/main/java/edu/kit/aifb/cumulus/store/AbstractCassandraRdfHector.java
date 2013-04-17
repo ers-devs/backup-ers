@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.util.ArrayList;
@@ -19,6 +20,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
+import java.io.FileNotFoundException;
 
 import me.prettyprint.cassandra.connection.LeastActiveBalancingPolicy;
 import me.prettyprint.cassandra.model.BasicColumnDefinition;
@@ -160,11 +162,13 @@ public abstract class AbstractCassandraRdfHector extends Store {
 	}
 
 	public boolean existsKeyspace(String keyspaceName) { 
-		for (KeyspaceDefinition ksDef : _cluster.describeKeyspaces()) {
+		if( _cluster.describeKeyspace(keyspaceName) != null ) 
+			return true;
+/*		for (KeyspaceDefinition ksDef : _cluster.describeKeyspaces()) {
 			if (ksDef.getName().equals(keyspaceName)) {
 				return true;
 			}
-		}
+		} */
 		return false;
 	}
 	
@@ -439,13 +443,33 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		return HFactory.createKeyspace(keyspace, _cluster);
 	}
 
-	// drop a keyspace if it exists
-	public int dropKeyspace(String keyspaceName) { 
+	public boolean emptyKeyspace(String keyspace) { 
+		try { 
+			int r = queryEntireKeyspace(keyspace, new PrintWriter("/dev/null"), 1);
+			if( r == 0 ) 
+				// not even one record, thus we assume it is emtpy 
+				return true;
+		}
+		catch( FileNotFoundException ex ) { 
+			ex.printStackTrace(); 
+			return false;
+		}
+		return false;
+		
+	}
+
+	// drop a keyspace if it exists (if force is true, delete even if it is not empty)
+	public int dropKeyspace(String keyspaceName, boolean force) { 
 		if(keyspaceName.startsWith("system")) 
 			return 3;
-		if (! existsKeyspace(keyspaceName))
+		if ( !existsKeyspace(keyspaceName))
 			return 1;
 	
+		if ( !force ) {
+			// test first of all if the keyspace / graph is empty 
+			if( ! emptyKeyspace(keyspaceName) ) 
+				return 4;
+		}
 		try { 
 			_cluster.dropKeyspace(keyspaceName);
 		} catch(HectorException ex) { 
@@ -454,7 +478,7 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		}
 		return 0;
 	}
-	
+
 	protected ColumnDefinition createColDef(String colName, String validationClass, boolean indexed) {
 		return createColDef(colName, validationClass, indexed, colName + "_index");
 	}
@@ -588,17 +612,21 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		String triple = e + " " + p + " " + v + " ."; 
 		try { 
 			Node[] nx = NxParser.parseNodes(triple);
-	 		List<Node[]> batch = new ArrayList<Node[]>();
-			batch.add(nx);
-			for (String cf : _cfs) {
-				batchDelete(cf, batch, keyspace);
-			}
+			this.deleteData(nx, keyspace);
 			return 0;
 		} 
 		catch( ParseException ex ) { 
 			ex.printStackTrace();
 			_log.severe(ex.getMessage());
 			return -1;
+		}
+	}
+	
+	public void deleteData(Node[] nx, String keyspace) { 
+	 	List<Node[]> batch = new ArrayList<Node[]>();
+		batch.add(nx);
+		for (String cf : _cfs) {
+			batchDelete(cf, batch, keyspace);
 		}
 	}
 

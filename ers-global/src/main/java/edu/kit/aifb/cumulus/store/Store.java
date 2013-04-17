@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.logging.Logger;
+import java.io.PrintWriter;
 
 import org.semanticweb.yars.nx.Literal;
 import org.semanticweb.yars.nx.Node;
@@ -114,9 +115,20 @@ public abstract class Store {
 	public abstract int updateData(String e, String p, String v_old, String v_new, String keyspace);
 	// delete (e,p,v,g)  
 	public abstract int deleteData(String e, String p, String v, String keyspace);
-	// delete all data 
-	public abstract int dropKeyspace(String keyspace);
+	// this is called by deleteData(...) and for the "clever" delete() that uses query()
+	public abstract void deleteData(Node[] nx, String keyspace);
+
+	// delete all data (if force is true, then delete even if it is not empty) 
+	public int dropKeyspace(String keyspace) { 
+		return dropKeyspace(keyspace, false);
+	}
+	public abstract int dropKeyspace(String keyspace, boolean force);
+	// create a keyspace / graph 
 	public abstract int createKeyspace(String keyspace);
+	// test if a keyspace / graph exists
+	public abstract boolean existsKeyspace(String keyspace);
+	// test if a keyspace / graph is empty or not 
+	public abstract boolean emptyKeyspace(String keyspace);
 	
 	// run transactions 
 	public abstract int runTransaction(Transaction t);
@@ -125,6 +137,14 @@ public abstract class Store {
 	
 	public abstract Iterator<Node[]> query(Node[] query, String keyspace) throws StoreException;
 	public abstract Iterator<Node[]> query(Node[] query, int limit, String keyspace) throws StoreException;
+	
+	public int queryEntireKeyspace(String keyspace, PrintWriter out, int limit) { 
+		return -1;
+	}
+	
+	public int queryAllKeyspaces(int limit, PrintWriter out) { 
+		return -1;
+	}
 	
 	public abstract String getStatus();
 	

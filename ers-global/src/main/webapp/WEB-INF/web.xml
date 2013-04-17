@@ -9,7 +9,8 @@
 -->
   	<context-param> 
  		<param-name>cassandra-hosts</param-name>
-		<param-value>127.0.0.1:9160</param-value>
+<!--		 <param-value>127.0.0.1:9160</param-value> --> 
+  		<param-value>134.21.73.204:9160</param-value>  
 <!--		<param-value>127.0.0.1:9171</param-value>   -->
  	</context-param> 
 
@@ -68,7 +69,7 @@
   </servlet>
   <servlet>
   	<servlet-name>delete</servlet-name>
-  	<servlet-class>edu.kit.aifb.cumulus.webapp.DeleteServlet</servlet-class>
+  	<servlet-class>edu.kit.aifb.cumulus.webapp.CleverDeleteServlet</servlet-class>
   </servlet>
   <servlet>
 	<servlet-name>bulkload</servlet-name>
@@ -79,7 +80,22 @@
 	<servlet-class>edu.kit.aifb.cumulus.webapp.TransactionServlet</servlet-class>
   </servlet>
 
-
+  <servlet>
+	<servlet-name>query_graph</servlet-name>
+	<servlet-class>edu.kit.aifb.cumulus.webapp.QueryGraphServlet</servlet-class>
+  </servlet>
+  <servlet>
+	<servlet-name>query_all_graphs</servlet-name>
+	<servlet-class>edu.kit.aifb.cumulus.webapp.QueryAllGraphsServlet</servlet-class>
+  </servlet>
+  <servlet>
+	<servlet-name>exist_graph</servlet-name>
+	<servlet-class>edu.kit.aifb.cumulus.webapp.ExistGraphServlet</servlet-class>
+  </servlet>
+  <servlet>
+	<servlet-name>exist_entity</servlet-name>
+	<servlet-class>edu.kit.aifb.cumulus.webapp.ExistEntityServlet</servlet-class>
+  </servlet>
 
 
   <servlet>
@@ -96,12 +112,63 @@
   	<servlet-name>proxy</servlet-name>
   	<servlet-class>edu.kit.aifb.cumulus.webapp.ProxyServlet</servlet-class>
   </servlet>
-  
+
+<!--
   <servlet-mapping>
     <servlet-name>dispatcher</servlet-name>
     <url-pattern>/*</url-pattern>
   </servlet-mapping>
-  
+-->
+ 
+  <servlet-mapping>
+    <servlet-name>graph</servlet-name>
+    <url-pattern>/graph</url-pattern>
+  </servlet-mapping>
+  <servlet-mapping>
+    <servlet-name>create</servlet-name>
+    <url-pattern>/create</url-pattern>
+  </servlet-mapping>
+  <servlet-mapping>
+    <servlet-name>read</servlet-name>
+    <url-pattern>/read</url-pattern>
+  </servlet-mapping>
+  <servlet-mapping>
+    <servlet-name>update</servlet-name>
+    <url-pattern>/update</url-pattern>
+  </servlet-mapping>
+  <servlet-mapping>
+    <servlet-name>delete</servlet-name>
+    <url-pattern>/delete</url-pattern>
+  </servlet-mapping>
+  <servlet-mapping>
+    <servlet-name>query_graph</servlet-name>
+    <url-pattern>/query_graph</url-pattern>
+  </servlet-mapping>
+  <servlet-mapping>
+    <servlet-name>query_all_graphs</servlet-name>
+    <url-pattern>/query_all_graphs</url-pattern>
+  </servlet-mapping>
+  <servlet-mapping>
+    <servlet-name>exist_graph</servlet-name>
+    <url-pattern>/exist_graph</url-pattern>
+  </servlet-mapping>
+  <servlet-mapping>
+    <servlet-name>exist_entity</servlet-name>
+    <url-pattern>/exist_entity</url-pattern>
+  </servlet-mapping>
+  <servlet-mapping>
+    <servlet-name>query</servlet-name>
+    <url-pattern>/query</url-pattern>
+  </servlet-mapping>
+  <servlet-mapping>
+    <servlet-name>bulkload</servlet-name>
+    <url-pattern>/bulkload</url-pattern>
+  </servlet-mapping>
+  <servlet-mapping>
+    <servlet-name>transaction</servlet-name>
+    <url-pattern>/transaction</url-pattern>
+  </servlet-mapping>
+
   <error-page>
     <error-code>400</error-code>
     <location>/error</location>
