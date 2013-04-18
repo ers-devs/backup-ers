@@ -173,7 +173,6 @@ public abstract class AbstractCassandraRdfHector extends Store {
 	}
 	
 	// create a keyspace if it does not exist yet
-	// NOTE: don't forget to strip out "<" and ">" chars
 	public int createKeyspace(String keyspaceName) {
 		if( keyspaceName.startsWith("system") )
 			return 2;

@@ -69,7 +69,7 @@ public class ReadServlet extends AbstractHttpServlet {
 		int triples = 0;
 		List<String> keyspaces = new ArrayList<String>(); 
 		if( a != null && !a.isEmpty() )
-			keyspaces.add(a.replace("<","").replace(">","")); 
+			keyspaces.add(Store.encodeKeyspace(a)); 
 		else {
 			// add all keyspaces
 			keyspaces = crdf.getAllKeyspaces();
@@ -78,6 +78,9 @@ public class ReadServlet extends AbstractHttpServlet {
 		boolean found = false; 
 		for(Iterator it_k = keyspaces.iterator(); it_k.hasNext(); ) { 
 			String k = (String)it_k.next();
+			// read only the graphs whose names starts with our pre-defined prefix
+			if( !k.startsWith(Listener.DEFAULT_ERS_KEYSPACES_PREFIX) ) 
+				continue;
 			try {
 				Iterator<Node[]> it = crdf.describe(resource, false, subjects, objects, k);
 				if (it.hasNext()) {

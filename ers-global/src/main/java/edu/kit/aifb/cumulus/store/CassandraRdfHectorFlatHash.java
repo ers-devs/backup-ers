@@ -311,15 +311,15 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 				    if (row.getColumnSlice().getColumns().isEmpty()) 
 			    		continue;
 				    StringBuffer buf = new StringBuffer(); 
-				    buf.append(row.getKey()); 
-				    buf.append(" "); 
 				    for(Iterator it = row.getColumnSlice().getColumns().iterator(); it.hasNext(); ) { 		
 				        HColumn c = (HColumn)it.next(); 
+		   		        buf.append(row.getKey()); 
+					buf.append(" "); 
 					buf.append(c.getName()); 
 				        buf.append(" "); 
 					buf.append(c.getValue());
+				        buf.append(Store.decodeKeyspace(keyspace) + "\n");
 				    }
-				    buf.append("<"+keyspace+"> ");
   				    out.println(buf.toString());
 				    ++total_row_count; 
 				    if( total_row_count >= limit ) 
@@ -329,8 +329,8 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
         	        	break;
 			} catch(Exception e){ 
 				e.printStackTrace(); 
-				out.println(e.getMessage());
-				return -1;
+				out.println("Exception message: " + e.getMessage());
+				return 0;
 			}
         	}
 		return total_row_count;
@@ -341,7 +341,8 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 		int total_rows = 0;
 		for (KeyspaceDefinition ksDef : _cluster.describeKeyspaces()) {
 			String keyspace = ksDef.getName(); 
-			if( keyspace.startsWith("system") || keyspace.equals(Listener.AUTHOR_KEYSPACE) ) 
+			// only keyspaces that uses as prefix our pre-defined one
+			if( ! keyspace.startsWith(Listener.DEFAULT_ERS_KEYSPACES_PREFIX) ) 
 				continue;
 			// query this keyspace
 			total_rows += queryEntireKeyspace(keyspace, out, limit);

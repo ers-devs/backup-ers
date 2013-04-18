@@ -94,7 +94,7 @@ public class DeleteServlet extends AbstractHttpServlet {
 		PrintWriter out = resp.getWriter();
 		resp.setContentType(formatter.getContentType());
 		// do the deletion here 
-		if( crdf.deleteData(e,p,v,a.replace("<","").replace(">","")) == -2 ) { 
+		if( crdf.deleteData(e,p,v,Store.encodeKeyspace(a)) == -2 ) { 
 			out.println("Graph " + a + " does not exist.");
 		}
 		else { 

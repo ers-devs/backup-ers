@@ -82,7 +82,7 @@ public class ExistEntityServlet extends AbstractHttpServlet {
 		// search within given keyspace or all if none is given
 		List<String> keyspaces = new ArrayList<String>(); 
 		if( a != null && ! a.isEmpty() ) 
-			keyspaces.add(a.replace("<","").replace(">","")); 
+			keyspaces.add(Store.encodeKeyspace(a)); 
 		else 
 			keyspaces = crdf.getAllKeyspaces(); 
 

@@ -33,7 +33,7 @@ import edu.kit.aifb.cumulus.webapp.formatter.NTriplesFormat;
 import edu.kit.aifb.cumulus.webapp.formatter.SerializationFormat;
 import edu.kit.aifb.cumulus.webapp.formatter.StaxRDFXMLFormat;
 
-//import org.cassandraunit.utils.EmbeddedCassandraServerHelper;
+import org.cassandraunit.utils.EmbeddedCassandraServerHelper;
 /** 
  * 
  * @author aharth
@@ -43,7 +43,8 @@ public class Listener implements ServletContextListener {
 	private static final String PARAM_CONFIGFILE = "config-file";
 	
 	private static final String PARAM_HOSTS = "cassandra-hosts";
-	private static final String PARAM_KEYSPACE = "cassandra-keyspace";
+	private static final String PARAM_EMBEDDED_HOST = "cassandra-embedded-host";
+	private static final String PARAM_ERS_KEYSPACES_PREFIX = "ers-keyspaces-prefix";
 	private static final String PARAM_LAYOUT = "storage-layout";
 	private static final String PARAM_PROXY_MODE = "proxy-mode";
 //	private static final String PARAM_RESOURCE_PREFIX = "resource-prefix";
@@ -52,12 +53,17 @@ public class Listener implements ServletContextListener {
 	private static final String PARAM_TRIPLES_OBJECT = "triples-object";
 	private static final String PARAM_QUERY_LIMIT = "query-limit";
 	private static final String PARAM_TUPLE_LENGTH = "tuple_length";
+	private static final String PARAM_DEFAULT_REPLICATION_FACTOR = "default-replication-factor";
+	private static final String PARAM_START_EMBEDDED = "start-embedded";
 	
+	// add here the params stored in web.xml
 	private static final String[] CONFIG_PARAMS = new String[] {
-		PARAM_HOSTS, PARAM_KEYSPACE, PARAM_LAYOUT, PARAM_PROXY_MODE,
+		PARAM_HOSTS, PARAM_EMBEDDED_HOST, PARAM_ERS_KEYSPACES_PREFIX, 
+		PARAM_LAYOUT, PARAM_PROXY_MODE,
 		//PARAM_RESOURCE_PREFIX, PARAM_DATA_PREFIX,
 		PARAM_TRIPLES_OBJECT,
-		PARAM_TRIPLES_SUBJECT, PARAM_QUERY_LIMIT
+		PARAM_TRIPLES_SUBJECT, PARAM_QUERY_LIMIT,
+		PARAM_DEFAULT_REPLICATION_FACTOR, PARAM_START_EMBEDDED
 		};
 	
 //	private static final String DEFAULT_RESOURCE_PREFIX = "resource";
@@ -68,7 +74,9 @@ public class Listener implements ServletContextListener {
 	
 	private static final String LAYOUT_SUPER = "super";
 	private static final String LAYOUT_FLAT = "flat";
-	public static final String AUTHOR_KEYSPACE = "ERS_authors";
+	
+	public static String DEFAULT_ERS_KEYSPACES_PREFIX = "ERS_";
+	public static final String AUTHOR_KEYSPACE = "authors";
 
 	// NOTE: consistency level is tunable per keyspace, per CF, per operation type 
         // for the moment all keyspaces use this default policy 
@@ -94,7 +102,8 @@ public class Listener implements ServletContextListener {
                         }   
 	};
 	// NOTE: this can be adjusted per keyspace, the default one is used for now by all of the keyspaces
-	public static final Integer DEFAULT_REPLICATION_FACTOR = 3; 
+	// NOTE2: this is a web.xml parameter; use the default value for the Embedded version
+	public static Integer DEFAULT_REPLICATION_FACTOR = 1; 
 
 	public static final String TRIPLES_SUBJECT = "tsubj";
 	public static final String TRIPLES_OBJECT = "tobj";
@@ -128,7 +137,6 @@ public class Listener implements ServletContextListener {
 		Map<String,String> config = null;
 		if (configFile != null && new File(configFile).exists()) {
 			_log.info("config file: " + configFile);
-			
 			try {
 				Map<String,Object> yaml = (Map<String,Object>)new Yaml().load(new FileInputStream(new File(configFile)));
 
@@ -174,23 +182,36 @@ public class Listener implements ServletContextListener {
 		_formats.put("ntriples", new NTriplesFormat());
 		_formats.put("html", new HTMLFormat());
 		
-//		if (!config.containsKey(PARAM_HOSTS) || !config.containsKey(PARAM_KEYSPACE) ||
-		if (!config.containsKey(PARAM_HOSTS) || !config.containsKey(PARAM_LAYOUT)) {
-			_log.severe("config must contain at least these parameters: " + (Arrays.asList(PARAM_HOSTS, PARAM_KEYSPACE, PARAM_LAYOUT)));
+		if (!config.containsKey(PARAM_HOSTS) || !config.containsKey(PARAM_EMBEDDED_HOST) ||
+		    !config.containsKey(PARAM_LAYOUT)) {
+			_log.severe("config must contain at least these parameters: " + 
+				(Arrays.asList(PARAM_HOSTS, PARAM_EMBEDDED_HOST, PARAM_LAYOUT)));
 			ctx.setAttribute(ERROR, "params missing");
 			return;
 		}
 		try {
 			String hosts = config.get(PARAM_HOSTS);
-			String keyspace = config.get(PARAM_KEYSPACE);
 			String layout = config.get(PARAM_LAYOUT);
+
+			// NOTE: do not set it > than total number of cassandra instances 
+  			// NOTE2: this must be enforeced to 1 if embedded version is used
+ 			Listener.DEFAULT_REPLICATION_FACTOR = config.containsKey(PARAM_DEFAULT_REPLICATION_FACTOR) ? 
+				Integer.parseInt(config.get(PARAM_DEFAULT_REPLICATION_FACTOR)) : Listener.DEFAULT_REPLICATION_FACTOR;
+			// all keyspaces created using this system will prepend this prefix
+			Listener.DEFAULT_ERS_KEYSPACES_PREFIX = config.containsKey(PARAM_ERS_KEYSPACES_PREFIX) ? 
+				config.get(PARAM_ERS_KEYSPACES_PREFIX) : Listener.DEFAULT_ERS_KEYSPACES_PREFIX;
 			
 			_log.info("hosts: " + hosts);
-			_log.info("keyspace: " + keyspace);
+			_log.info("ers keyspaces prefix: " + Listener.DEFAULT_ERS_KEYSPACES_PREFIX );
 			_log.info("storage layout: " + layout);
 
-			// start embedded Cassandra
-			//EmbeddedCassandraServerHelper.startEmbeddedCassandra();
+			if( config.containsKey(PARAM_START_EMBEDDED) && config.get(PARAM_START_EMBEDDED).equals("yes") ) {
+				// force the replication to 1 as, most probably, there will be just one instance of embedded Cassandra running locally
+				Listener.DEFAULT_REPLICATION_FACTOR = 1; 
+				// start embedded Cassandra
+				EmbeddedCassandraServerHelper.startEmbeddedCassandra();
+				_log.info("embedded cassandra host: " + config.get(PARAM_EMBEDDED_HOST));
+			}
 			
 			if (LAYOUT_SUPER.equals(layout))
 				_crdf = new CassandraRdfHectorHierHash(hosts);
@@ -201,7 +222,7 @@ public class Listener implements ServletContextListener {
 			// set some cluster wide parameters 
 			_crdf.open();
    			// create the Authors keyspace
-			_crdf.createKeyspace(AUTHOR_KEYSPACE);
+			_crdf.createKeyspace(Store.encodeKeyspace(AUTHOR_KEYSPACE));
 			ctx.setAttribute(STORE, _crdf);
 		} catch (Exception e) {
 			_log.severe(e.getMessage());
@@ -222,6 +243,7 @@ public class Listener implements ServletContextListener {
 		_log.info("subject triples: " + subjects);
 		_log.info("object triples: " + objects);
 		_log.info("query limit: " + queryLimit);
+		_log.info("default replication level: " + Listener.DEFAULT_REPLICATION_FACTOR);
 
 		ctx.setAttribute(TRIPLES_SUBJECT, subjects);
 		ctx.setAttribute(TRIPLES_OBJECT, objects);

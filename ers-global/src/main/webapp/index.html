@@ -26,7 +26,7 @@
    <h3>Test if graph exists</h3>
     <p>
       <code>
-	curl -v -X GET -H "http://diufpc304.unifr.ch:8080/ers/exist_graph?g=&#60;graph_name&#62;"
+	curl -v -X GET "http://diufpc304.unifr.ch:8080/ers/exist_graph?g=&#60;graph_name&#62;"
       </code>
     </p>
     <form action="./exist_graph" method="get" name="test_exist_graph">
@@ -34,9 +34,23 @@
       <input type="submit" value="Exists?"/>
     </form>
 
+   <h3>BulkLoad multiple entities for a given graph</h3>
+    <p>
+      Note: DO NOT add "&#60" or "&#62" at graph name as "&#60" curl interprets it and cannot be escaped. <br/>
+      <code>
+	curl -v -X POST -i -F filedata=@./rdf_ntriples/repo10k.nt -F g=graph http://diufpc304.unifr.ch:8080/ers/bulkload
+      </code>
+    </p>
+    <form action="./bulkload" enctype="multipart/form-data" method="post" name="bulkload">
+      Graph: <input type="text" name="g" size="15" id="a4"/>
+      Entities file: <input type="file" name="file" size="30" value=""/>
+      <input type="submit" value="BulkLoad"/>
+    </form>
+
+
     <h3>Delete all entities of a graph</h3>
     <p>
-      NOTE: flag 'f' is optional; by default it is set to "no" (i.e. do not delete non-empty graphs)
+      NOTE: flag 'f' is optional; by default it is set to "no" (i.e. do not delete non-empty graphs) <br/>
       <code>
 	curl -v -X DELETE  "http://diufpc304.unifr.ch:8080/ers/graph?g=&#60;graph&#62;&amp;f=y" 
       </code>
@@ -49,18 +63,6 @@
     </form>
 <!-- END GRAPH STUFF -->
 	
-   <h3>BulkLoad multiple entities for a given graph</h3>
-    <p>
-      <code>
-	curl -v -X POST -i -F filedata=@./rdf_ntriples/repo10k.nt -F g=graph http://diufpc304.unifr.ch:8080/ers/bulkload
-      </code>
-    </p>
-    <form action="./bulkload" enctype="multipart/form-data" method="post" name="bulkload">
-      Graph: <input type="text" name="g" size="15" id="a4"/>
-      Entities file: <input type="file" name="file" size="30" value=""/>
-      <input type="submit" value="BulkLoad"/>
-    </form>
-
     <h3>Create entity</h3>
     <p>
       <code>
@@ -90,7 +92,7 @@
       <input type="submit" value="Exists?"/>
     </form>
  
-    <h3>Get entities (it returns also back links). If no graph is given, it returns entities from all provenances.</h3>
+<!--    <h3>Get entities (it returns also back links). If no graph is given, it returns entities from all provenances.</h3>
     <p>
       <code>
 	curl -v -X GET http://localhost:8080/ers/read?e=&#60;entity&#62;&amp;g=&#60;graph&#62;
@@ -101,6 +103,7 @@
       Graph: <input name="g" size="15" value="" id="g5" />
       <input type="submit" value="Read"/>
     </form>
+-->
 
     <h3>Update a given entity</h3>
     <p>

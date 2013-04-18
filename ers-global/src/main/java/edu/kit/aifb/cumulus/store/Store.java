@@ -11,6 +11,8 @@ import org.semanticweb.yars.nx.Node;
 import org.semanticweb.yars.nx.Resource;
 import org.semanticweb.yars.nx.Variable;
 
+import edu.kit.aifb.cumulus.webapp.Listener;
+
 /** 
  * 
  * @author aharth
@@ -137,6 +139,15 @@ public abstract class Store {
 	
 	public abstract Iterator<Node[]> query(Node[] query, String keyspace) throws StoreException;
 	public abstract Iterator<Node[]> query(Node[] query, int limit, String keyspace) throws StoreException;
+
+	// input: <test> | output: ERS_test
+	public static final String encodeKeyspace(String keyspace) { 
+		return Listener.DEFAULT_ERS_KEYSPACES_PREFIX.concat(keyspace.replace("<","").replace(">",""));
+	}
+	// input: ERS_test | output: <test>
+	public static final String decodeKeyspace(String keyspace) { 
+		return "<" + keyspace.substring(Listener.DEFAULT_ERS_KEYSPACES_PREFIX.length()) + ">";
+	}
 	
 	public int queryEntireKeyspace(String keyspace, PrintWriter out, int limit) { 
 		return -1;

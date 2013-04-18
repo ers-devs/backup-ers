@@ -53,11 +53,11 @@ public class QueryGraphServlet extends AbstractHttpServlet {
 		AbstractCassandraRdfHector crdf = (AbstractCassandraRdfHector)ctx.getAttribute(Listener.STORE);
 
 		// check if graph exists 
-		if( ! crdf.existsKeyspace(g.replace("<","").replace(">","")) ) { 
+		if( ! crdf.existsKeyspace(Store.encodeKeyspace(g)) ) { 
 			out.println("The graph " + g + " passed as input does not exist. No data returned.");
 			return;
 		}
-		int triples = crdf.queryEntireKeyspace(g.replace("<","").replace(">",""), out, Integer.MAX_VALUE); // do not enfore the limite here, get all entities of a graph
+		int triples = crdf.queryEntireKeyspace(Store.encodeKeyspace(g), out, Integer.MAX_VALUE); // do not enfore the limite here, get all entities of a graph
 		if( triples == 0 ) 
 			out.println("The graph " + g + " is empty. No data returned.");
 		 else

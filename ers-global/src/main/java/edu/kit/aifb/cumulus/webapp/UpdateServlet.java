@@ -95,7 +95,7 @@ public class UpdateServlet extends AbstractHttpServlet {
 		PrintWriter out = resp.getWriter();
 		resp.setContentType(formatter.getContentType());
 		// do an update here 
-		if( crdf.updateData(e,p,v_old,v_new,a.replace("<","").replace(">","")) == -2 ) { 
+		if( crdf.updateData(e,p,v_old,v_new,Store.encodeKeyspace(a)) == -2 ) { 
 			out.print("Author " + a + " does not exists.");
 		}
 		else {

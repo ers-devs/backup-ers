@@ -9,9 +9,17 @@
 -->
   	<context-param> 
  		<param-name>cassandra-hosts</param-name>
-<!--		 <param-value>127.0.0.1:9160</param-value> --> 
   		<param-value>134.21.73.204:9160</param-value>  
-<!--		<param-value>127.0.0.1:9171</param-value>   -->
+	</context-param>
+
+	<context-param>	
+		<param-name>start-embedded</param-name> 
+		<param-value>yes</param-value>  <!-- possible values: yes,no; if 'yes', the replication is set to 1 -->
+	</context-param>
+
+	<context-param>	
+		<param-name>cassandra-embedded-host</param-name>
+-		<param-value>127.0.0.1:9171</param-value> 
  	</context-param> 
 
   	<context-param>
@@ -24,11 +32,16 @@
   		<param-value>false</param-value>
  	</context-param>
 
-<!-- 	<context-param>
- 		<param-name>cassandra-keyspace</param-name>
-  		<param-value>ERS</param-value>
+	<!-- IF embedded version is selected, this would be inforced to be 1; so it does not matter what's there if embedded is on -->
+	<context-param>	
+		<param-name>default-replication-factor</param-name>
+		<param-value>2</param-value>
+	</context-param>
+
+ 	<context-param>
+ 		<param-name>ers-keyspaces-prefix</param-name>
+  		<param-value>ERS_</param-value>
  	</context-param>
--->
 
   <listener>
     <listener-class>edu.kit.aifb.cumulus.webapp.Listener</listener-class>

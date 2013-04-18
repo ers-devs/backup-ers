@@ -85,15 +85,15 @@ public class QueryServlet extends AbstractHttpServlet {
 		// search within given keyspace or all if none is given
 		List<String> keyspaces = new ArrayList<String>(); 
 		if( a != null && ! a.isEmpty() ) 
-			keyspaces.add(a.replace("<","").replace(">","")); 
+			keyspaces.add(Store.encodeKeyspace(a)); 
 		else 
 			keyspaces = crdf.getAllKeyspaces(); 
 
 		boolean found = false;
 		for(Iterator it_k = keyspaces.iterator(); it_k.hasNext(); ) { 
 			String k = (String)it_k.next();
-			// skip system and authors keyspaces
-			if( k.startsWith("system") || k.equals(Listener.AUTHOR_KEYSPACE) )
+			// skip keyspaces that do not use our pre-defined prefix
+			if( ! k.startsWith(Listener.DEFAULT_ERS_KEYSPACES_PREFIX) )
 				continue;
 			try {
 				Iterator<Node[]> it = crdf.query(query, queryLimit, k);

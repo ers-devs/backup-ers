@@ -84,7 +84,7 @@ public class CreateServlet extends AbstractHttpServlet {
 		resp.setContentType(formatter.getContentType());
 		Store crdf = (Store)ctx.getAttribute(Listener.STORE);
 		// do the insert here 
-		if( crdf.addData(e,p,v,a.replace("<","").replace(">","")) == -2 ) { 
+		if( crdf.addData(e,p,v,Store.encodeKeyspace(a)) == -2 ) { 
 			out.print("Author " + a + " does not exist.");
 		}
 		else {

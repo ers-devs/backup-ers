@@ -117,11 +117,11 @@ public class BulkLoadServlet extends AbstractHttpServlet {
 				}
 			}
 			if( ! a_exists || a == null || a.isEmpty() ) { 
-				sendError(ctx, req, resp, HttpServletResponse.SC_NOT_ACCEPTABLE, "please pass also the author name as 'a' parameter");
+				sendError(ctx, req, resp, HttpServletResponse.SC_NOT_ACCEPTABLE, "please pass also the graph name as 'g' parameter");
 			}
 			else { 
 	   		        // load here 
-				if( crdf.bulkLoad(new File(file), format, threads, a.replace("<","").replace(">","")) == 1 ) 
+				if( crdf.bulkLoad(new File(file), format, threads, Store.encodeKeyspace(a)) == 1 ) 
 					resp_msg = "Author " + a + " does not exist yet. Please create if before bulk loading."; 
 				else
 					resp_msg += ", time " + (System.currentTimeMillis() - start) + "ms "; 

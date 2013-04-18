@@ -87,7 +87,7 @@ public class CleverDeleteServlet extends AbstractHttpServlet {
                     v != null && !v.isEmpty() && 
                     g != null && !g.isEmpty() ) { 
 			// run "clasical" delete as we have all information 
-			if( crdf.deleteData(e,p,v,g.replace("<","").replace(">","")) == -2 ) { 
+			if( crdf.deleteData(e,p,v,Store.encodeKeyspace(g)) == -2 ) { 
 				out.println("Graph " + g + " does not exist.");
 			}	
 			else { 
@@ -101,15 +101,15 @@ public class CleverDeleteServlet extends AbstractHttpServlet {
 		// search within given keyspace or all if none is given
 		List<String> keyspaces = new ArrayList<String>(); 
 		if( g != null && ! g.isEmpty() ) 
-			keyspaces.add(g.replace("<","").replace(">","")); 
+			keyspaces.add(Store.encodeKeyspace(g)); 
 		else 
 			keyspaces = crdf.getAllKeyspaces(); 
 
 		int total_deletion = 0;
 		for(Iterator it_k = keyspaces.iterator(); it_k.hasNext(); ) { 
 			String k = (String)it_k.next();
-			// skip system and authors keyspaces
-			if( k.startsWith("system") || k.equals(Listener.AUTHOR_KEYSPACE) )
+			// query only keyspaces that use the pre-defined prefix
+			if( ! k.startsWith(Listener.DEFAULT_ERS_KEYSPACES_PREFIX) )
 				continue;
 			try {
 				Iterator<Node[]> it = crdf.query(query, queryLimit, k);

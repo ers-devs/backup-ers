@@ -1,5 +1,13 @@
 # create an author or add new information about him 
-curl -v -X POST -H "Content-Type: application/x-www-form-urlencoded" --data "a_id=<author1>&a_p=<name>&a_v=\"TM\""  "http://diufpc304.unifr.ch:8080/ers/author"
+curl -v -X POST -H "Content-Type: application/x-www-form-urlencoded" --data "g_id=<graph>&g_p=<name>&g_v=\"TM\""  "http://diufpc304.unifr.ch:8080/ers/author"
+
+# test if an author / graph exists
+curl -v -X GET -H "http://diufpc304.unifr.ch:8080/ers/exist_graph?g=<graph_name>"
+
+# bulkload a bunch of entities for a given author
+# NOTE: graph name MUST not be passed together with "<" and ">" as "<" is interpreted by curl as "read from file"
+curl -v -X POST -i -F filedata=@/home/teodor/rdf_ntriples/repo10k.nt -F g=graph "http://diufpc304.unifr.ch:8080/ers/bulkload"
 
 # delete the graph associated with given authors; the metadata about the author is not erased 
-curl -v -X DELETE "http://diufpc304.unifr.ch:8080/ers/author?a_id=<author1>"
+# NOTE: f is optional; if set to 'y' then the graph is erased even if it is not empty
+curl -v -X DELETE "http://diufpc304.unifr.ch:8080/ers/author?g=<graph>&f=y"

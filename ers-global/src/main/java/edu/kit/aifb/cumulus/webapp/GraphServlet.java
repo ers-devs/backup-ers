@@ -117,7 +117,7 @@ public class GraphServlet extends AbstractHttpServlet {
 		}
 		Store crdf = (Store)ctx.getAttribute(Listener.STORE);
 		// create the associated keyspace with this graph, if it does not exist  
-		int r = crdf.createKeyspace(a_id.replace("<","").replace(">",""));
+		int r = crdf.createKeyspace(Store.encodeKeyspace(a_id));
 		String msg = "";
 		if( r == 2 ) 
 			msg = "Author " + a_id + " cannot be created. Do not use 'system' as prefix.";
@@ -173,7 +173,7 @@ public class GraphServlet extends AbstractHttpServlet {
 		Store crdf = (Store)ctx.getAttribute(Listener.STORE);
 		// do the deletion of entities associated with this graph  
 		// delete also the record from AUTHORS keyspace ?! for the moment, NO
-		int r = crdf.dropKeyspace(a_id.replace("<","").replace(">",""), force);
+		int r = crdf.dropKeyspace(Store.encodeKeyspace(a_id), force);
 		switch(r) { 
 			case 0: 
 				out.println("Entities of graph " + a_id + " have been deleted.");

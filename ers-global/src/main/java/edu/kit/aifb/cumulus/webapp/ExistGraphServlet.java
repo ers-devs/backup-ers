@@ -63,7 +63,7 @@ public class ExistGraphServlet extends AbstractHttpServlet {
 		resp.setContentType(formatter.getContentType());
 		Store crdf = (Store)ctx.getAttribute(Listener.STORE);
 		// test if graph exists
-		boolean r = crdf.existsKeyspace(g.replace("<","").replace(">",""));
+		boolean r = crdf.existsKeyspace(Store.encodeKeyspace(g));
 		if ( r ) {
 			out.println("TRUE");
 			out.println("Graph " + g + " exists.");
