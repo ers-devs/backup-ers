@@ -141,6 +141,10 @@
     <url-pattern>/delete</url-pattern>
   </servlet-mapping>
   <servlet-mapping>
+    <servlet-name>query</servlet-name>
+    <url-pattern>/query</url-pattern>
+  </servlet-mapping>
+  <servlet-mapping>
     <servlet-name>query_graph</servlet-name>
     <url-pattern>/query_graph</url-pattern>
   </servlet-mapping>
@@ -155,10 +159,6 @@
   <servlet-mapping>
     <servlet-name>exist_entity</servlet-name>
     <url-pattern>/exist_entity</url-pattern>
-  </servlet-mapping>
-  <servlet-mapping>
-    <servlet-name>query</servlet-name>
-    <url-pattern>/query</url-pattern>
   </servlet-mapping>
   <servlet-mapping>
     <servlet-name>bulkload</servlet-name>

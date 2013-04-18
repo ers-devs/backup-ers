@@ -88,7 +88,7 @@ public class CreateServlet extends AbstractHttpServlet {
 			out.print("Author " + a + " does not exist.");
 		}
 		else {
-			String msg = "Triple ("+e+","+p+","+v+") has been added by graph " + a;
+			String msg = "Quad ("+e+","+p+","+v+","+a+") has been added.";
 			msg = msg.replace("<", "&lt;").replace(">","&gt;");
 			out.print(msg);
 		}

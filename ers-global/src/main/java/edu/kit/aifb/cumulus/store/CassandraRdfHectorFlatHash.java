@@ -296,7 +296,6 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 	        while (true) {
         	    rangeSlicesQuery.setKeys(last_key, null);
 	            //System.out.println(" > " + last_key);
-
 	  	    try {
         	    	    QueryResult<OrderedRows<String, String, String>> result = rangeSlicesQuery.execute();
 		            OrderedRows<String, String, String> rows = result.get();
@@ -312,7 +311,6 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 				    if (row.getColumnSlice().getColumns().isEmpty()) 
 			    		continue;
 				    StringBuffer buf = new StringBuffer(); 
-				    buf.append("<"+keyspace+"> ");
 				    buf.append(row.getKey()); 
 				    buf.append(" "); 
 				    for(Iterator it = row.getColumnSlice().getColumns().iterator(); it.hasNext(); ) { 		
@@ -321,6 +319,7 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 				        buf.append(" "); 
 					buf.append(c.getValue());
 				    }
+				    buf.append("<"+keyspace+"> ");
   				    out.println(buf.toString());
 				    ++total_row_count; 
 				    if( total_row_count >= limit ) 

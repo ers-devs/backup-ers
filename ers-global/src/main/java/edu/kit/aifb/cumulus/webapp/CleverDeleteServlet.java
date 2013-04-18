@@ -47,7 +47,7 @@ public class CleverDeleteServlet extends AbstractHttpServlet {
 		String e = req.getParameter("e");
 		String p = req.getParameter("p");
 		String v = req.getParameter("v");
-		String a = req.getParameter("g");
+		String g = req.getParameter("g");
 //		_log.info("QUERYServlet: req " + req.getPathInfo() + " " + req.getQueryString() + " " + e + " " + p + " " + v);
 		// some checks
 		if( e != null && !e.isEmpty() && !e.startsWith("<") ) {
@@ -82,13 +82,16 @@ public class CleverDeleteServlet extends AbstractHttpServlet {
 		AbstractCassandraRdfHector crdf = (AbstractCassandraRdfHector)ctx.getAttribute(Listener.STORE);
 		int triples = 0;
 	
-		if( e != null && p != null & v != null && a != null ) { 
+		if( e != null && !e.isEmpty() && 
+                    p != null && !p.isEmpty() &&
+                    v != null && !v.isEmpty() && 
+                    g != null && !g.isEmpty() ) { 
 			// run "clasical" delete as we have all information 
-			if( crdf.deleteData(e,p,v,a.replace("<","").replace(">","")) == -2 ) { 
-				out.println("Graph " + a + " does not exist.");
+			if( crdf.deleteData(e,p,v,g.replace("<","").replace(">","")) == -2 ) { 
+				out.println("Graph " + g + " does not exist.");
 			}	
 			else { 
-				String msg = "Triple ("+e+","+p+","+v+") has been added for author " + a + ".";
+				String msg = "Quad ("+e+","+p+","+v+","+g+") has been added.";
 				msg = msg.replace("<", "&lt;").replace(">","&gt;");
 				out.print(msg);
 			}
@@ -97,8 +100,8 @@ public class CleverDeleteServlet extends AbstractHttpServlet {
 
 		// search within given keyspace or all if none is given
 		List<String> keyspaces = new ArrayList<String>(); 
-		if( a != null && ! a.isEmpty() ) 
-			keyspaces.add(a.replace("<","").replace(">","")); 
+		if( g != null && ! g.isEmpty() ) 
+			keyspaces.add(g.replace("<","").replace(">","")); 
 		else 
 			keyspaces = crdf.getAllKeyspaces(); 
 
@@ -111,9 +114,9 @@ public class CleverDeleteServlet extends AbstractHttpServlet {
 			try {
 				Iterator<Node[]> it = crdf.query(query, queryLimit, k);
 				// if data, delete :) 
-				if (it.hasNext()) {
+				for( ; it.hasNext(); ) {
+					++total_deletion;
 					Node[] n = (Node[]) it.next(); 
-					total_deletion += n.length; 
 					crdf.deleteData(n, k);
 				}
 			} catch (StoreException ex) {
@@ -130,5 +133,17 @@ public class CleverDeleteServlet extends AbstractHttpServlet {
 			return NxParser.parseNode(value);
 		else
 			return new Variable(varName);
+	}
+
+	public void doDelete(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
+		doGet(req, resp);
+	}
+
+	public void doPut(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
+		throw new UnsupportedOperationException("PUT currently not supported, sorry.");
+	}
+
+	public void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
+		throw new UnsupportedOperationException("POST currently not supported, sorry.");
 	}
 }

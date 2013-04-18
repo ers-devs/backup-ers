@@ -68,6 +68,7 @@ public class QueryAllGraphsServlet extends AbstractHttpServlet {
 		_log.info("[dataset] QUERY THE WHOLE GRAPH " + (System.currentTimeMillis() - start) + "ms " + quads + " quads");
 		return;
 	}
+
 	public void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
 		throw new UnsupportedOperationException("POST currently not supported, sorry.");
 	}
