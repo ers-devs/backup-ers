@@ -5,12 +5,15 @@ import java.io.PrintWriter;
 import java.util.Iterator;
 import java.util.logging.Logger;
 import java.util.StringTokenizer;
+import java.lang.StringBuffer;
 import java.util.HashMap;
 import java.util.List;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.FileOutputStream;
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.File;
 import java.util.UUID;
 
@@ -28,9 +31,11 @@ import edu.kit.aifb.cumulus.store.Store;
 import edu.kit.aifb.cumulus.store.AbstractCassandraRdfHector;
 import edu.kit.aifb.cumulus.store.StoreException;
 import edu.kit.aifb.cumulus.webapp.formatter.SerializationFormat;
+import edu.kit.aifb.cumulus.store.Transaction;
 
 import org.apache.commons.fileupload.servlet.ServletFileUpload;
 import org.apache.commons.fileupload.FileItemFactory; 
+import org.apache.commons.fileupload.DefaultFileItemFactory;
 import org.apache.commons.fileupload.FileUploadException;
 import org.apache.commons.fileupload.disk.DiskFileItemFactory;
 import org.apache.commons.fileupload.FileItem;
@@ -39,8 +44,12 @@ import org.apache.commons.fileupload.FileItem;
  * @author tmacicas
  */
 @SuppressWarnings("serial")
-public class BulkLoadServlet extends AbstractHttpServlet {
+public class TransactionServlet extends AbstractHttpServlet {
 	private final Logger _log = Logger.getLogger(this.getClass().getName());
+
+	public String getLN() {
+	    return Thread.currentThread().getStackTrace()[2].getLineNumber()+"";
+	}
 
 	@Override
 	public void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
@@ -57,7 +66,7 @@ public class BulkLoadServlet extends AbstractHttpServlet {
 			return;
 		}
 		PrintWriter out_r = resp.getWriter();
-		String resp_msg = "";
+		StringBuffer resp_msg = new StringBuffer();
 		// check that we have a file upload request
 		boolean isMultipart = ServletFileUpload.isMultipartContent(req);
 		if( ! isMultipart ) { 
@@ -65,35 +74,24 @@ public class BulkLoadServlet extends AbstractHttpServlet {
 			return;
 		}
 		// Create a factory for disk-based file items
-		FileItemFactory factory = new DiskFileItemFactory();
+		FileItemFactory factory = new DefaultFileItemFactory(512000, new File("/tmp"));
 		// Create a new file upload handler
 		ServletFileUpload upload = new ServletFileUpload(factory);
 		// Parse the request
 		try {
 			List<FileItem> items = upload.parseRequest(req);
-			// bulk load options
-			int threads = -1;
-			String format = "nt";
-			int batchSizeMB = 1;
 			//get store
 			AbstractCassandraRdfHector crdf = (AbstractCassandraRdfHector)ctx.getAttribute(Listener.STORE);
-			crdf.setBatchSize(batchSizeMB);
 
 			// Process the uploaded items
 			Iterator iter = items.iterator();
-			String a =""; 
-			boolean a_exists = false; 
 			String file = ""; 
+			String random_n = UUID.randomUUID().toString();
 			
 			while (iter.hasNext()) {
 			    FileItem item = (FileItem) iter.next();
 			    if (item.isFormField()) {
-				String name = item.getFieldName();
-				String value = item.getString();
-				if( name.equals("g") ) { 
-					a_exists = true; 
-					a = new String(value); 
-				}
+				// nothing to be done ... 
 			    } else {
 				   String fieldName = item.getFieldName();
 				   String fileName = item.getName();
@@ -103,7 +101,7 @@ public class BulkLoadServlet extends AbstractHttpServlet {
 				   // Process a file upload
 				   InputStream uploadedStream = item.getInputStream();
 				   // write the inputStream to a FileOutputStream
-			           file = "/tmp/upload_bulkload_"+UUID.randomUUID();
+			           file = "/tmp/ERS_transaction_"+random_n;
   			  	   OutputStream out = new FileOutputStream(new File(file));
 				   int read = 0;
 				   byte[] bytes = new byte[1024];
@@ -113,31 +111,64 @@ public class BulkLoadServlet extends AbstractHttpServlet {
 				   uploadedStream.close();
 				   out.flush();
 			  	   out.close();
-				   resp_msg += "[dataset] POST bulk load " + fileName + " for author " + a + ", size " + sizeInBytes;
+				   resp_msg.append( "[dataset] POST transaction load " + fileName +", size " + sizeInBytes );
 				}
 			}
-			if( ! a_exists || a == null || a.isEmpty() ) { 
-				sendError(ctx, req, resp, HttpServletResponse.SC_NOT_ACCEPTABLE, "please pass also the graph name as 'g' parameter");
+			// now we have the file on disk; if there are failures during the transactions, they can be replayed
+			// read one transaction from file 
+			BufferedReader bf = new BufferedReader(new FileReader(file));
+			int counter = 0;
+			int r;
+			Transaction t = null;
+			while (true) { 
+				String line = bf.readLine();
+				//_log.info("LINE: " + line);
+				if( line == null ) 
+					break;
+				line = line.trim();
+				if( line.equals("BEGIN") ) { 
+					// new T starts here 
+					++counter;
+					t = new Transaction(random_n+"_"+counter);
+				}
+				else if( line.equals("COMMIT") || line.equals("ROLLBACK") ) { 
+					// T ends here
+					r = crdf.runTransaction(t); 
+					if ( r != 0 ) {
+						_log.info("Error running transaction " + t.ID + " error: " + r);
+						resp_msg.append("\nERROR running transaction " + t.ID + " error: " + r);
+					}
+					else 		
+						resp_msg.append("\nTransaction " + t.ID + " ran successfully.");
+					t = null;
+				}
+				else if ( line.length() > 10 ) { 
+					// this must contain a line with an operation (insert, update, etc) 
+					r = t.addOp(line);
+					if( r != 0 ) { 
+						_log.info("Adding operation to transaction " + t.ID + " failed!");
+						_log.info("Returning value: " + r);
+						out_r.println("Adding operation to transwaction " + t.ID + " failed!" + "(line: " + line);
+						break;
+					}
+				}
 			}
-			else { 
-	   		        // load here 
-				if( crdf.bulkLoad(new File(file), format, threads, Store.encodeKeyspace(a)) == 1 ) 
-					resp_msg = "Author " + a + " does not exist yet. Please create if before bulk loading."; 
-				else
-					resp_msg += ", time " + (System.currentTimeMillis() - start) + "ms "; 
-				_log.info(resp_msg);
-			}
-			// delete the tmp file 
+			bf.close();
+
+			// delete the tmp file and write response 
 			new File(file).delete();
-			out_r.println(resp_msg);
+			resp_msg.append("\nEND TRANSACTIONS");
+			out_r.println(resp_msg.toString());
 			out_r.close();
+			
 		} catch(FileUploadException ex) { 
 			ex.printStackTrace(); 
 			return;
-		} catch(StoreException ex) { 
+		}	
+/*		} catch(StoreException ex) { 
 			ex.printStackTrace(); 
 			return;
-		}
+		} */
 		return;
 	}
 	

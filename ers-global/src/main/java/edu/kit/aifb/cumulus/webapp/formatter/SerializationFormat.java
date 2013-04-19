@@ -11,7 +11,7 @@ import org.semanticweb.yars.nx.parser.ParseException;
 public interface SerializationFormat {
 	public String getContentType();
 	
-	public int print(Iterator<Node[]> it, PrintWriter pw);
-	
+	public int print(Iterator<Node[]> it, PrintWriter pw, String author);
+
 	public Iterator<Node[]> parse(InputStream is) throws ParseException, IOException;
 }

@@ -2,6 +2,7 @@
 
 import couchdbkit
 import rdflib
+import peer_monitor
 from collections import defaultdict
 from models import ModelS, ModelT
                                                         
@@ -25,9 +26,9 @@ class EntityCache(defaultdict):
 
 
 class ERSReadOnly(object):
-    def __init__(self, server_url=r'http://admin:admin@127.0.0.1:5984/', db_name='ers', model=DEFAULT_MODEL):
+    def __init__(self, server_url=r'http://admin:admin@127.0.0.1:5984/', dbname='ers', model=DEFAULT_MODEL):
         self.server = couchdbkit.Server(server_url)
-        self.db = self.server.get_db(db_name)
+        self.db = self.server.get_db(dbname)
         self.model = model
 
     def get_data(self, subject, graph=None):
@@ -59,19 +60,20 @@ class ERSReadOnly(object):
 
 
 class ERSReadWrite(ERSReadOnly):
-    def __init__(self, server_url=r'http://admin:admin@127.0.0.1:5984/', db_name='ers', model=DEFAULT_MODEL):
+    def __init__(self, server_url=r'http://admin:admin@127.0.0.1:5984/',
+                 dbname='ers', model=DEFAULT_MODEL):
         self.server = couchdbkit.Server(server_url)
-        self.db = self.server.get_or_create_db(db_name)
+        self.db = self.server.get_or_create_db(dbname)
         self.model = model
 
     def add_data(self, s, p, o, g):
-        """add a property+value to an identifier (create it if it does not exist yet)"""
+        """Adds the value for the given property in the given entity. Create the entity if it does not exist yet)"""
         triples = EntityCache()
         triples.add(s, p, o)
         self.write_cache(triples, g)
 
     def delete_entity(self, entity, graph=None):
-        """delete ids."""
+        """Deletes the entity."""
         # Assumes there is only one entity per doc.
         if graph is None:
             docs = [{'_id': r['id'], '_rev': r['value']['rev'], "_deleted": True} 
@@ -82,16 +84,22 @@ class ERSReadWrite(ERSReadOnly):
                     if r['value']['g'] == graph]
         return self.db.save_docs(docs)
 
-    def delete_value(self, subject, graph):
-        """delete value"""
-        pass
+    def delete_value(self, entity, prop, graph=None):
+        """Deletes all of the user's values for the given property in the given entity."""
+        if graph is None:
+            docs = [r['doc'] for r in self.db.view('index/by_entity', key=entity, include_docs=True)]
+        else:
+            docs = [r['doc'] for r in self.db.view('index/by_entity', key=entity, include_docs=True)
+                             if r['value']['g'] == graph]
+        for doc in docs:
+            self.model.delete_property(doc, prop)
+        return self.db.save_docs(docs)        
 
     def import_nt(self, file_name, target_graph):
         """Import N-Triples file."""
         cache = EntityCache()
         input_doc = open(file_name, "r")
         for input_line in input_doc:
-             # parsing a triple @@FIXME: employ real NTriples parser here!
             triple = input_line.split(None, 2) # assumes SPO is separated by any whitespace string with leading and trailing spaces ignored
             s = triple[0][1:-1] # get rid of the <>, naively assumes no bNodes for now
             p = triple[1][1:-1] # get rid of the <>
@@ -123,7 +131,7 @@ class ERSReadWrite(ERSReadOnly):
                                   keys=[self.model.couch_key(k, graph) for k in cache])
         for doc in couch_docs:
             couch_doc = doc.get('doc', {'_id': doc['key']})
-            self.model.refresh_doc(couch_doc, cache)
+            self.model.add_data(couch_doc, cache)
             docs.append(couch_doc)
         self.db.save_docs(docs)
 
@@ -133,18 +141,14 @@ class ERSReadWrite(ERSReadOnly):
 
 
 class ERSLocal(ERSReadWrite):
-    def __init__(self, server_url=r'http://admin:admin@127.0.0.1:5984/', db_name='ers', model=DEFAULT_MODEL,
-                 neighbors=None):
-        super(ERSLocal, self).__init__(server_url, db_name, model)
-        self.peers = []
-        if neighbors is not None:
-            for peer_server, peer_db_name in neighbors:
-                peer_ers = ERSReadOnly(server_url=peer_server, db_name=peer_db_name, model=DEFAULT_MODEL)
-                self.peers.append(peer_ers)
+    def __init__(self, server_url=r'http://admin:admin@127.0.0.1:5984/', dbname='ers', model=DEFAULT_MODEL,
+                fixed_peers=()):
+        super(ERSLocal, self).__init__(server_url, dbname, model)
+        self.fixed_peers = list(fixed_peers)
 
     def get_annotation(self, entity):
         result = self.get_data(entity)
-        for remote in self.peers:
+        for remote in self.get_peer_ers_interfaces():
             merge_annotations(result, remote.get_data(entity))
         return result
 
@@ -152,58 +156,85 @@ class ERSLocal(ERSReadWrite):
         entity_data = self.get_annotation(entity)
         return entity_data.get(prop, [])
 
+    def get_peer_ers_interfaces(self):
+        result = []
+
+        for peer_info in self.fixed_peers + peer_monitor.get_peers():
+            if 'url' in peer_info:
+                server_url = peer_info['url']
+            elif 'host' in peer_info and 'port' in peer_info:
+                server_url = r'http://admin:admin@' + peer_info['host'] + ':' + str(peer_info['port']) + '/'
+            else:
+                continue
+
+            dbname = peer_info['dbname'] if 'dbname' in peer_info else self.dbname
+
+            peer_ers = ERSReadOnly(server_url, dbname)
+            result.append(peer_ers)
+
+        return result
+
 
 def test():
     server = couchdbkit.Server(r'http://admin:admin@127.0.0.1:5984/')
 
-    def prepare_ers(model, db_name='ers_test'):
-        if db_name in server:
-            server.delete_db(db_name)
-        ers = ERSLocal(db_name=db_name, model=model)
-        ers.import_nt('../../tests/data/timbl.nt', 'timbl')
-        view = ers.model.views_doc.copy()  # avoid writing _rev to the view_doc
-        ers.db.save_doc(view)
-        return ers
-
+    def create_ers(dbname, model=DEFAULT_MODEL):
+        if dbname in server:
+            server.delete_db(dbname)           
+        ers_new = ERSLocal(dbname=dbname, model=model)
+        view = ers_new.model.views_doc.copy()  # avoid writing _rev to the view_doc
+        ers_new.db.save_doc(view)
+        return ers_new
+ 
     def test_ers():
         """Model independent tests"""
+        ers.import_nt('../../tests/data/timbl.nt', 'timbl')
         assert ers.db.doc_exist('_design/index')
         assert ers.exist('http://www4.wiwiss.fu-berlin.de/booksMeshup/books/006251587X', 'bad_graph') == False
         assert ers.exist('http://www4.wiwiss.fu-berlin.de/booksMeshup/books/006251587X', 'timbl') == True
         ers.delete_entity('http://www4.wiwiss.fu-berlin.de/booksMeshup/books/006251587X', 'timbl')
         assert ers.exist('http://www4.wiwiss.fu-berlin.de/booksMeshup/books/006251587X', 'timbl') == False
-        s = 'urn:ers:meta:testEntity'
-        p = 'urn:ers:meta:predicates:hasValue'
-        g = 'urn:ers:meta:testGraph'
-        g2 = 'urn:ers:meta:testGraph2'
-        objects = set(['value 1', 'value 2'])
-        objects2 = set(['value 3', 'value 4'])
         for o in objects:
             ers.add_data(s, p, o, g)
+            ers.add_data(s, p2, o, g)
         for o in objects2:
             ers.add_data(s, p, o, g2)
+            ers.add_data(s, p2, o, g2)
         data = ers.get_data(s, g)
         assert set(data[p]) == objects
         data2 = ers.get_data(s) # get data from all graphs
-        assert set(data2[p]) == objects.union(objects2)
+        assert set(data2[p]) == local_objects
+        ers.delete_value(entity, p2)
+        assert p2 not in ers.get_annotation(entity)
 
+
+    # Test data
+    s = entity = 'urn:ers:meta:testEntity'
+    p = 'urn:ers:meta:predicates:hasValue'
+    p2 = 'urn:ers:meta:predicates:property'
+    g = 'urn:ers:meta:testGraph'
+    g2 = 'urn:ers:meta:testGraph2'
+    g3 = 'urn:ers:meta:testGraph3'
+    objects = set(['value 1', 'value 2'])
+    objects2 = set(['value 3', 'value 4'])
+    local_objects = objects | objects2
+    remote_objects = set(['value 5', 'value 6'])
+    all_objects = local_objects | remote_objects
+
+    # Test local ers using differend document models
     for model in [ModelS(), ModelT()]:
-        db_name = 'ers_' + model.__class__.__name__.lower()
-        ers = prepare_ers(model, db_name)
+        dbname = 'ers_' + model.__class__.__name__.lower()
+        ers = create_ers(dbname, model)
         test_ers()
 
-    # Peer query
-    entity = 'urn:ers:meta:testEntity'
-    p = 'urn:ers:meta:predicates:hasValue'
-    g3 = 'urn:ers:meta:testGraph3'
-    remote_objects = set(['value 5', 'value 6'])
-    local_objects = set(['value 1', 'value 2', 'value 3', 'value 4'])
-    all_objects = local_objects.union(remote_objects)
-    ers_remote = prepare_ers(DEFAULT_MODEL, 'ers_remote')
+    # Prepare remote ers
+    ers_remote = create_ers('ers_remote')
     for o in remote_objects:
         ers_remote.add_data(entity, p, o, g3)
 
-    ers_local = ERSLocal(db_name='ers_models', neighbors=[(r'http://admin:admin@127.0.0.1:5984/', 'ers_remote')])
+    # Query remote
+    ers_local = ERSLocal(dbname='ers_models', fixed_peers=[{'url': r'http://admin:admin@127.0.0.1:5984/',
+                                                            'dbname': 'ers_remote'}])
     assert set(ers_local.get_annotation(entity)[p]) == all_objects
     assert set(ers_local.get_values(entity, p)) == all_objects
     ers_local.delete_entity(entity)

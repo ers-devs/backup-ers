@@ -18,12 +18,12 @@ public class NTriplesFormat implements SerializationFormat {
 	}
 	
 	@Override
-	public int print(Iterator<Node[]> it, PrintWriter pw) {
+	public int print(Iterator<Node[]> it, PrintWriter pw, String author) {
 		int triples = 0;
 		while (it.hasNext()) {
 			Node[] nx = it.next();
 			if (nx[0] != null && nx[1] != null && nx[2] != null) { // don't ask
-				pw.println(Nodes.toN3(nx));
+				pw.println(Nodes.toN3(nx) + " " + author);
 				triples++;
 			}
 		}

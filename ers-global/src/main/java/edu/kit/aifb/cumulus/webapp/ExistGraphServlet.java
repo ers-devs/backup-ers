@@ -7,7 +7,6 @@ import java.util.logging.Logger;
 import java.util.StringTokenizer;
 import java.util.HashMap;
 import java.util.List;
-import java.util.ArrayList;
 
 import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
@@ -26,32 +25,32 @@ import edu.kit.aifb.cumulus.webapp.formatter.SerializationFormat;
 
 /** 
  * 
- * @author aharth
  * @author tmacicas
  */
 @SuppressWarnings("serial")
-public class ReadServlet extends AbstractHttpServlet {
+public class ExistGraphServlet extends AbstractHttpServlet {
 	private final Logger _log = Logger.getLogger(this.getClass().getName());
 
 	@Override
 	public void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
 		long start = System.currentTimeMillis();
-			
 		ServletContext ctx = getServletContext();
 		if (req.getCharacterEncoding() == null)
 			req.setCharacterEncoding("UTF-8");
-
 		resp.setCharacterEncoding("UTF-8");
-		String e = req.getParameter("e");
-		String a = req.getParameter("g");
-		_log.info("req " + req.getPathInfo() + " " + req.getQueryString());
 
-		if (e == null || e.isEmpty()) {
-			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please give a non-empty entity");
+		String uri = req.getRequestURI();
+		if (uri == null) {
+			resp.sendError(HttpServletResponse.SC_BAD_REQUEST);
 			return;
 		}
-		if( !e.startsWith("<") ) { 
-			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please give a resource (&lt;resource&gt;) as entity");
+		String g = req.getParameter("g");  	//author = keyspace_name 
+		if( g == null || g.isEmpty() ) { 
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please the name of graph as 'g' parameter'");
+			return;
+		}	
+		if( g.startsWith("system") ) { 
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "queries about 'system*' keyspaces is forbidden");
 			return;
 		}
 		String accept = req.getHeader("Accept");
@@ -60,52 +59,31 @@ public class ReadServlet extends AbstractHttpServlet {
 			sendError(ctx, req, resp, HttpServletResponse.SC_NOT_ACCEPTABLE, "no known mime type in Accept header");
 			return;
 		}
-		int subjects = (Integer)ctx.getAttribute(Listener.TRIPLES_SUBJECT);
-		int objects = (Integer)ctx.getAttribute(Listener.TRIPLES_OBJECT);
-		Resource resource = new Resource(e);
-		
 		PrintWriter out = resp.getWriter();
-		AbstractCassandraRdfHector crdf = (AbstractCassandraRdfHector)ctx.getAttribute(Listener.STORE);
-		int triples = 0;
-		List<String> keyspaces = new ArrayList<String>(); 
-		if( a != null && !a.isEmpty() )
-			keyspaces.add(Store.encodeKeyspace(a)); 
-		else {
-			// add all keyspaces
-			keyspaces = crdf.getAllKeyspaces();
-		}	 
-			
-		boolean found = false; 
-		for(Iterator it_k = keyspaces.iterator(); it_k.hasNext(); ) { 
-			String k = (String)it_k.next();
-			// read only the graphs whose names starts with our pre-defined prefix
-			if( !k.startsWith(Listener.DEFAULT_ERS_KEYSPACES_PREFIX) ) 
-				continue;
-			try {
-				Iterator<Node[]> it = crdf.describe(resource, false, subjects, objects, k);
-				if (it.hasNext()) {
-					resp.setContentType(formatter.getContentType());
-					triples = formatter.print(it, out, k);
-					found = true;
-				}
-			} 
-			catch (StoreException ex) {
-				_log.severe(ex.getMessage());
-				sendError(ctx, req, resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, ex.getMessage());
-			}
+		resp.setContentType(formatter.getContentType());
+		Store crdf = (Store)ctx.getAttribute(Listener.STORE);
+		// test if graph exists
+		boolean r = crdf.existsKeyspace(Store.encodeKeyspace(g));
+		if ( r ) {
+			out.println("TRUE");
+			out.println("Graph " + g + " exists.");
 		}
-		if( ! found ) 
-			sendError(ctx, req, resp, HttpServletResponse.SC_NOT_FOUND, "resource not found");
-		_log.info("[dataset] GET " + resource.toN3() + " " + (System.currentTimeMillis() - start) + "ms " + triples + " t");
+		else {		
+			out.println("FALSE");
+			out.println("Graph " + g + " does not exist.");
+		}
+		_log.info("[dataset] GET exist keyspace " + (System.currentTimeMillis() - start) + "ms ");
 	}
 	
 	@Override
 	public void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
 		throw new UnsupportedOperationException("POST currently not supported, sorry.");
-	}	
-	public void doDelete(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
-		throw new UnsupportedOperationException("DELETE currently not supported, sorry.");
 	}
+	
+	public void doDelete(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
+		throw new UnsupportedOperationException("GET currently not supported, sorry.");
+	}
+
 	public void doPut(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
 		throw new UnsupportedOperationException("PUT currently not supported, sorry.");
 	}

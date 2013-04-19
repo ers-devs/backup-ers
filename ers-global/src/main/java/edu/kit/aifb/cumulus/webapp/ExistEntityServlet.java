@@ -28,7 +28,7 @@ import edu.kit.aifb.cumulus.webapp.formatter.SerializationFormat;
  * @author aharth
  */
 @SuppressWarnings("serial")
-public class QueryServlet extends AbstractHttpServlet {
+public class ExistEntityServlet extends AbstractHttpServlet {
 	private final Logger _log = Logger.getLogger(this.getClass().getName());
 
 	public void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
@@ -41,14 +41,12 @@ public class QueryServlet extends AbstractHttpServlet {
 			sendError(ctx, req, resp, HttpServletResponse.SC_NOT_ACCEPTABLE, "no known mime type in Accept header");
 			return;
 		}
-		int queryLimit = (Integer)ctx.getAttribute(Listener.QUERY_LIMIT);
 		resp.setCharacterEncoding("UTF-8");
 
 		String e = req.getParameter("e");
 		String p = req.getParameter("p");
 		String v = req.getParameter("v");
 		String a = req.getParameter("g");
-//		_log.info("QUERYServlet: req " + req.getPathInfo() + " " + req.getQueryString() + " " + e + " " + p + " " + v);
 		// some checks
 		if( e != null && !e.isEmpty() && !e.startsWith("<") ) {
 			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass a resource (e.g. &lt;resource&gt;) as entity");
@@ -73,7 +71,6 @@ public class QueryServlet extends AbstractHttpServlet {
 			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "could not parse query string");
 			return;
 		}
-
 		if (query[0] instanceof Variable && query[1] instanceof Variable && query[2] instanceof Variable) {
 			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "query must contain at least one constant");
 			return;
@@ -92,16 +89,15 @@ public class QueryServlet extends AbstractHttpServlet {
 		boolean found = false;
 		for(Iterator it_k = keyspaces.iterator(); it_k.hasNext(); ) { 
 			String k = (String)it_k.next();
-			// skip keyspaces that do not use our pre-defined prefix or the authors one
-			if( ! k.startsWith(Listener.DEFAULT_ERS_KEYSPACES_PREFIX) || 
-			      k.equals(Listener.AUTHOR_KEYSPACE) )
+			// skip system and authors keyspaces
+			if( k.startsWith("system") || k.equals(Listener.AUTHOR_KEYSPACE) )
 				continue;
 			try {
-				Iterator<Node[]> it = crdf.query(query, queryLimit, k);
+				// the querylimit is set to 1, just to find out if such a queried entity exists	
+				Iterator<Node[]> it = crdf.query(query, 1, k);
 				if (it.hasNext()) {
-					resp.setContentType(formatter.getContentType());
-					triples = formatter.print(it, out, k);
 					found = true;
+					break;
 				}
 			} catch (StoreException ex) {
 				_log.severe(ex.getMessage());
@@ -109,7 +105,10 @@ public class QueryServlet extends AbstractHttpServlet {
 			}
 		}
 		if( !found ) 
-			sendError(ctx, req, resp, HttpServletResponse.SC_NOT_FOUND, "resource not found");
+			//sendError(ctx, req, resp, HttpServletResponse.SC_NOT_FOUND, "no such resource not found");
+			out.println("FALSE\nSuch a resource does not exist.");
+		else 
+			out.println("TRUE\nSuch a resource exists.");
 		_log.info("[dataset] QUERY " + Nodes.toN3(query) + " " + (System.currentTimeMillis() - start) + "ms " + triples + "t");
 	}
 

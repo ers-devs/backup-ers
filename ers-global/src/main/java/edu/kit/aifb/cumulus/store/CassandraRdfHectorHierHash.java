@@ -31,11 +31,7 @@ public class CassandraRdfHectorHierHash extends CassandraRdfHectorQuads {
 	transient private final Logger _log = Logger.getLogger(this.getClass().getName()); //CassandraRdfHectorHierHash.class);
 	
 	public CassandraRdfHectorHierHash(String hosts) {
-		this(hosts, DEFAULT_KS);
-	}
-	
-	public CassandraRdfHectorHierHash(String hosts, String keyspace) {
-		super(hosts, keyspace);
+		super(hosts);
 		_hosts = hosts;
 		_cfs.add(CF_SPO);
 		_cfs.add(CF_POS);
@@ -47,19 +43,15 @@ public class CassandraRdfHectorHierHash extends CassandraRdfHectorQuads {
 	}
 		
 	@Override
-	protected List<ColumnFamilyDefinition> createColumnFamiliyDefinitions() {
-		ColumnFamilyDefinition spo = createCfDefHier(CF_SPO);
-		ColumnFamilyDefinition pos = createCfDefHier(CF_POS);
-		ColumnFamilyDefinition osp = createCfDefHier(CF_OSP);
+	protected List<ColumnFamilyDefinition> createColumnFamiliyDefinitions(String keyspace) {
+		ColumnFamilyDefinition spo = createCfDefHier(CF_SPO, keyspace);
+		ColumnFamilyDefinition pos = createCfDefHier(CF_POS, keyspace);
+		ColumnFamilyDefinition osp = createCfDefHier(CF_OSP, keyspace);
 		
 		ArrayList<ColumnFamilyDefinition> li = new ArrayList<ColumnFamilyDefinition>();
-		li.addAll(super.createColumnFamiliyDefinitions());
+		li.addAll(super.createColumnFamiliyDefinitions(keyspace));
 		li.addAll(Arrays.asList(spo, osp, pos));
-		
 		return li;
-		
-		//return Arrays.asList(spo, pos, osp);
-		//return HFactory.createKeyspaceDefinition(_keyspaceName, "org.apache.cassandra.locator.SimpleStrategy", 1, Arrays.asList(spo, pos, osp));
 	}
 	
 	private String selectColumnFamily(Node[] q) {
@@ -88,8 +80,8 @@ public class CassandraRdfHectorHierHash extends CassandraRdfHectorQuads {
 		return CF_SPO;
 	}
 
-	public Iterator<Node[]> query(Node[] query, int limit) throws StoreException {
-		Iterator<Node[]> it = super.query(query, limit);
+	public Iterator<Node[]> query(Node[] query, int limit, String keyspace) throws StoreException {
+		Iterator<Node[]> it = super.query(query, limit, keyspace);
 		if (it != null) {
 			return it;
 		}
@@ -107,14 +99,14 @@ public class CassandraRdfHectorHierHash extends CassandraRdfHectorQuads {
 		if (!(q[0] instanceof Variable)) {
 			if (q[1] instanceof Variable) {
 				// triple pattern with one constant
-				SuperSliceQuery<String,String,String,String> rq = HFactory.createSuperSliceQuery(_keyspace, _ss, _ss, _ss, _ss);
+				SuperSliceQuery<String,String,String,String> rq = HFactory.createSuperSliceQuery(getExistingKeyspace(keyspace), _ss, _ss, _ss, _ss);
 				rq.setColumnFamily(columnFamily)
 					.setKey(q[0].toN3());
 //					.setRange("", "", false, Integer.MAX_VALUE);
 				it = new SuperSlicesIterator(rq, q[0], map, limit);
 			} else if (q[2] instanceof Variable) {
 				// triple pattern with two constants
-				SuperColumnQuery<String,String,String,String> scq = HFactory.createSuperColumnQuery(_keyspace, _ss, _ss, _ss, _ss);
+				SuperColumnQuery<String,String,String,String> scq = HFactory.createSuperColumnQuery(getExistingKeyspace(keyspace), _ss, _ss, _ss, _ss);
 				scq.setColumnFamily(columnFamily)
 					.setKey(q[0].toN3())
 					.setSuperName(q[1].toN3());
@@ -123,7 +115,7 @@ public class CassandraRdfHectorHierHash extends CassandraRdfHectorQuads {
 			}
 			else {
 				// triple pattern with three constants
-				SubSliceQuery<String,String,String,String> ssq = HFactory.createSubSliceQuery(_keyspace, _ss, _ss, _ss, _ss);
+				SubSliceQuery<String,String,String,String> ssq = HFactory.createSubSliceQuery(getExistingKeyspace(keyspace), _ss, _ss, _ss, _ss);
 				ssq.setColumnFamily(columnFamily)
 					.setKey(q[0].toN3())
 					.setSuperColumn(q[1].toN3())
@@ -181,12 +173,12 @@ public class CassandraRdfHectorHierHash extends CassandraRdfHectorQuads {
 	}
 
 	@Override
-	protected void batchInsert(String cf, List<Node[]> li) {
+	protected void batchInsert(String cf, List<Node[]> li, String keyspace) {
 		if (CF_C_SPO.equals(cf)) {
-			super.batchInsert(cf, li);
+			super.batchInsert(cf, li, keyspace);
 		} else {
 			long start = System.currentTimeMillis();
-			Mutator<String> m = HFactory.createMutator(_keyspace, _ss);
+			Mutator<String> m = HFactory.createMutator(getExistingKeyspace(keyspace), _ss);
 
 			Map<String,Map<String,List<String[]>>> map = createTripleMap(cf, li);
 			for (String key : map.keySet()) {
@@ -197,11 +189,9 @@ public class CassandraRdfHectorHierHash extends CassandraRdfHectorQuads {
 						columns.add(HFactory.createStringColumn(c[0], c[1]));
 
 					HSuperColumn<String,String,String> sc = HFactory.createSuperColumn(scName, columns, _ss, _ss, _ss);
-
 					m.addInsertion(key, cf, sc);
 				}
 			}
-
 			m.execute();
 		}
 //		_log.info("mutator create and execute in " + (System.currentTimeMillis() - start) + " ms");
@@ -209,12 +199,12 @@ public class CassandraRdfHectorHierHash extends CassandraRdfHectorQuads {
 	
 	// TM
 	@Override
-	protected void batchDelete(String cf, List<Node[]> li) {
+	protected void batchDelete(String cf, List<Node[]> li, String keyspace) {
 		if (CF_C_SPO.equals(cf)) {
-			super.batchDelete(cf, li);
+			super.batchDelete(cf, li, keyspace);
 		} else {
 			long start = System.currentTimeMillis();
-			Mutator<String> m = HFactory.createMutator(_keyspace, _ss);
+			Mutator<String> m = HFactory.createMutator(getExistingKeyspace(keyspace), _ss);
 
 			Map<String,Map<String,List<String[]>>> map = createTripleMap(cf, li);
 			for (String key : map.keySet()) {
@@ -235,12 +225,12 @@ public class CassandraRdfHectorHierHash extends CassandraRdfHectorQuads {
 
 	// TM
 	@Override
-	protected void batchDeleteRow(String cf, List<Node[]> li) {
+	protected void batchDeleteRow(String cf, List<Node[]> li, String keyspace) {
 		if (CF_C_SPO.equals(cf)) {
-			super.batchDelete(cf, li);
+			super.batchDelete(cf, li, keyspace);
 		} else {
 			long start = System.currentTimeMillis();
-			Mutator<String> m = HFactory.createMutator(_keyspace, _ss);
+			Mutator<String> m = HFactory.createMutator(getExistingKeyspace(keyspace), _ss);
 
 			Map<String,Map<String,List<String[]>>> map = createTripleMap(cf, li);
 			for (String key : map.keySet()) {

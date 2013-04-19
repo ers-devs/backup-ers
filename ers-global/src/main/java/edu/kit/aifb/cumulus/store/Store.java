@@ -4,11 +4,14 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.logging.Logger;
+import java.io.PrintWriter;
 
 import org.semanticweb.yars.nx.Literal;
 import org.semanticweb.yars.nx.Node;
 import org.semanticweb.yars.nx.Resource;
 import org.semanticweb.yars.nx.Variable;
+
+import edu.kit.aifb.cumulus.webapp.Listener;
 
 /** 
  * 
@@ -29,15 +32,17 @@ public abstract class Store {
 		private Iterator<Node[]> m_oit;
 		private int m_subjects;
 		private int m_objects;
+		private String m_keyspace; 
 		
-		public DescribeIterator(Resource resource, boolean include2Hop, int subjects, int objects) throws StoreException {
+		public DescribeIterator(Resource resource, boolean include2Hop, int subjects, int objects, String keyspace) throws StoreException {
 			m_resource = resource;
 			m_include2Hop = include2Hop;
 			m_subjects = subjects;
 			m_objects = objects;
+			m_keyspace = keyspace;
 			
-			// start with pattern with resource as subject
-			m_sit = query(pattern(resource, null, null), m_subjects);
+			// start with pattern with resource as subjectk
+			m_sit = query(pattern(resource, null, null), m_subjects, keyspace);
 		}
 		
 		@Override
@@ -66,7 +71,7 @@ public abstract class Store {
 				// pattern has the current object as subject
 				if (m_include2Hop) {
 					try {
-						m_hit = query(pattern(next[2], null, null), m_subjects);
+						m_hit = query(pattern(next[2], null, null), m_subjects, m_keyspace);
 					} catch (StoreException e) {
 						e.printStackTrace();
 						m_hit = null;
@@ -77,7 +82,7 @@ public abstract class Store {
 				// triples in the hop iterator, get the object iterator
 				if (!m_sit.hasNext() && (!m_include2Hop || !m_hit.hasNext())) {
 					try {
-						m_oit = query(pattern(null, null, m_resource), m_objects);
+						m_oit = query(pattern(null, null, m_resource), m_objects, m_keyspace);
 					} catch (StoreException e) {
 						e.printStackTrace();
 						m_oit = null;
@@ -104,33 +109,62 @@ public abstract class Store {
 	
 	public abstract void open() throws StoreException;
 	public abstract void close() throws StoreException;
-	public abstract int addData(Iterator<Node[]> it) throws StoreException;
+	public abstract int addData(Iterator<Node[]> it, String keyspace) throws StoreException;
 
-	// TM
-	// add (e,p,v)
-	public abstract int addData(String e, String p, String v);
-	// update/replace (e,p,v_old) with (e,p,v_new);
-	public abstract int updateData(String e, String p, String v_old, String v_new);
-	// delete (e,p,v)  
-	public abstract int deleteData(String e, String p, String v);
+	// add (e,p,v,g)
+	public abstract int addData(String e, String p, String v, String keyspace);
+	// update/replace (e,p,v_old,g) with (e,p,v_new,g);
+	public abstract int updateData(String e, String p, String v_old, String v_new, String keyspace);
+	// delete (e,p,v,g)  
+	public abstract int deleteData(String e, String p, String v, String keyspace);
+	// this is called by deleteData(...) and for the "clever" delete() that uses query()
+	public abstract void deleteData(Node[] nx, String keyspace);
 
-	public abstract boolean contains(Node s) throws StoreException;
+	// delete all data (if force is true, then delete even if it is not empty) 
+	public int dropKeyspace(String keyspace) { 
+		return dropKeyspace(keyspace, false);
+	}
+	public abstract int dropKeyspace(String keyspace, boolean force);
+	// create a keyspace / graph 
+	public abstract int createKeyspace(String keyspace);
+	// test if a keyspace / graph exists
+	public abstract boolean existsKeyspace(String keyspace);
+	// test if a keyspace / graph is empty or not 
+	public abstract boolean emptyKeyspace(String keyspace);
 	
-	public abstract Iterator<Node[]> query(Node[] query) throws StoreException;
-	public abstract Iterator<Node[]> query(Node[] query, int limit) throws StoreException;
+	// run transactions 
+	public abstract int runTransaction(Transaction t);
+
+	public abstract boolean contains(Node s, String keyspace) throws StoreException;
+	
+	public abstract Iterator<Node[]> query(Node[] query, String keyspace) throws StoreException;
+	public abstract Iterator<Node[]> query(Node[] query, int limit, String keyspace) throws StoreException;
+
+	// input: <test> | output: ERS_test
+	public static final String encodeKeyspace(String keyspace) { 
+		return Listener.DEFAULT_ERS_KEYSPACES_PREFIX.concat(keyspace.replace("<","").replace(">",""));
+	}
+	// input: ERS_test | output: <test>
+	public static final String decodeKeyspace(String keyspace) { 
+		return "<" + keyspace.substring(Listener.DEFAULT_ERS_KEYSPACES_PREFIX.length()) + ">";
+	}
+	
+	public int queryEntireKeyspace(String keyspace, PrintWriter out, int limit) { 
+		return -1;
+	}
+	
+	public int queryAllKeyspaces(int limit, PrintWriter out) { 
+		return -1;
+	}
 	
 	public abstract String getStatus();
 	
-	public Iterator<Node[]> describe(Resource resource, boolean include2Hop) throws StoreException {
-		return describe(resource, include2Hop, -1, -1);
+	public Iterator<Node[]> describe(Resource resource, boolean include2Hop, String keyspace) throws StoreException {
+		return describe(resource, include2Hop, -1, -1, keyspace);
 	}
 	
-	public Iterator<Node[]> describe(Resource resource, boolean include2Hop, int subjects, int objects) throws StoreException {
-		if (resource.toString().startsWith("http://sws.geonames.org"))
-			resource = new Resource(resource.toString() + "/");
-//		_log.info("describe resource: " + resource + ", 2hop: " + include2Hop);
-		
-		return new DescribeIterator(resource, include2Hop, subjects, objects);
+	public Iterator<Node[]> describe(Resource resource, boolean include2Hop, int subjects, int objects, String keyspace) throws StoreException {
+		return new DescribeIterator(resource, include2Hop, subjects, objects, keyspace);
 	}
 	
 	private Node[] pattern(Node s, Node p, Node o) {

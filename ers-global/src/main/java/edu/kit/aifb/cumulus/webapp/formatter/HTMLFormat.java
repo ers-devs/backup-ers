@@ -18,14 +18,14 @@ public class HTMLFormat implements SerializationFormat {
 	}
 
 	@Override
-	public int print(Iterator<Node[]> it, PrintWriter pw) {
+	public int print(Iterator<Node[]> it, PrintWriter pw, String author) {
 		pw.println("<html><head></head><body>");
 		
 		int triples = 0;
 		while (it.hasNext()) {
 			Node[] nx = it.next();
 			if (nx[0] != null && nx[1] != null && nx[2] != null) { // don't ask
-				pw.println(NxUtil.escapeForMarkup(Nodes.toN3(nx)));
+				pw.println(NxUtil.escapeForMarkup(Nodes.toN3(nx))+ " " + author);
 				pw.println("<br/>");
 				triples++;
 			}

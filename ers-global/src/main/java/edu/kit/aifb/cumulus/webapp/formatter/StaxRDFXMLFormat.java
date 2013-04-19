@@ -26,7 +26,7 @@ public class StaxRDFXMLFormat implements SerializationFormat {
 	}
 	
 	@Override
-	public int print(Iterator<Node[]> it, PrintWriter pw) {
+	public int print(Iterator<Node[]> it, PrintWriter pw, String author) {
 		XMLOutputFactory factory = XMLOutputFactory.newInstance();
 		factory.setProperty(XMLOutputFactory.IS_REPAIRING_NAMESPACES, Boolean.TRUE);
 
@@ -52,11 +52,8 @@ public class StaxRDFXMLFormat implements SerializationFormat {
 					printRDFXML(list, ch);
 					list = new ArrayList<Node[]>();
 				}
-	
 				list.add(nx);
-	
 				oldsubj = subj;
-	
 			}
 	
 			if (!list.isEmpty()) {

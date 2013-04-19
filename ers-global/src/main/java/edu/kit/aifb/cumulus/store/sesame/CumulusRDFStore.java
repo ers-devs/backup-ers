@@ -20,12 +20,14 @@ import edu.kit.aifb.cumulus.store.StoreException;
 public class CumulusRDFStore extends NotifyingSailBase {
 
 	private Store _crdf;
+	private String _keyspace;
 	private CumulusRDFValueFactory _factory;
 	
 	private static final Logger _log = Logger.getLogger(CumulusRDFStore.class.getName());
 	
-	public CumulusRDFStore(Store crdf) {
+	public CumulusRDFStore(Store crdf, String keyspace) {
 		_crdf = crdf;
+		_keyspace = keyspace;
 		_factory = new CumulusRDFValueFactory();
 	}
 
@@ -41,7 +43,7 @@ public class CumulusRDFStore extends NotifyingSailBase {
 
 	@Override
 	protected NotifyingSailConnection getConnectionInternal() throws SailException {
-		return new CumulusRDFStoreConnection(this);
+		return new CumulusRDFStoreConnection(this, _keyspace);
 	}
 
 	protected <X extends Exception> CloseableIteration<Statement, X> createStatementIterator(Resource subj, URI pred, Value obj, Resource... contexts) throws SailException {
@@ -62,7 +64,7 @@ public class CumulusRDFStore extends NotifyingSailBase {
 //		_log.debug(Nodes.toN3(nx));
 		
 		try {
-			return new CumulusRDFIterator<X>(_crdf.query(nx), this);
+			return new CumulusRDFIterator<X>(_crdf.query(nx, _keyspace), this);
 		}
 		catch (StoreException e) {
 			e.printStackTrace();

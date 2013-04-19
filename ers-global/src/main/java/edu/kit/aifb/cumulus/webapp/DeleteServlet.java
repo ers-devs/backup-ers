@@ -26,13 +26,15 @@ import edu.kit.aifb.cumulus.webapp.formatter.SerializationFormat;
  * @author aharth
  * @author tmacicas
  */
+
+// TODO: add keyspace info
 @SuppressWarnings("serial")
 public class DeleteServlet extends AbstractHttpServlet {
 	private final Logger _log = Logger.getLogger(this.getClass().getName());
 
 	@Override
 	public void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
-		throw new UnsupportedOperationException("PUT currently not supported, sorry.");
+		throw new UnsupportedOperationException("GET currently not supported, sorry.");
 	}
 
 	// accept also POST as there is not possible to submit a delete html form
@@ -58,12 +60,13 @@ public class DeleteServlet extends AbstractHttpServlet {
 		String e = req.getParameter("e"); 
 		String p = req.getParameter("p");
 		String v = req.getParameter("v");
-		if( e == null || p == null || v == null ) { 
-			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass data like 'e=_&p=_&v=_'");
+		String a = req.getParameter("g"); 
+		if( e == null || p == null || v == null || a == null ) { 
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass data like 'e=_&p=_&v=_&a=_'");
 			return;
 		}
-		if( e.isEmpty() || p.isEmpty() || v.isEmpty() ) { 
-			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass non empty data 'e=_&p=_&v=_'");
+		if( e.isEmpty() || p.isEmpty() || v.isEmpty() || a.isEmpty() ) { 
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass non empty data 'e=_&p=_&v=_&a=_'");
 			return;
 		}
 		// add brackets if there were not already
@@ -88,14 +91,17 @@ public class DeleteServlet extends AbstractHttpServlet {
 			return;
 		}
 		Store crdf = (Store)ctx.getAttribute(Listener.STORE);
-		// do the deletion here 
-		crdf.deleteData(e,p,v);
-
 		PrintWriter out = resp.getWriter();
 		resp.setContentType(formatter.getContentType());
-		String msg = "Triple ("+e+","+p+","+v+") has been added.";
-		msg = msg.replace("<", "&lt;").replace(">","&gt;");
-		out.print(msg);
+		// do the deletion here 
+		if( crdf.deleteData(e,p,v,Store.encodeKeyspace(a)) == -2 ) { 
+			out.println("Graph " + a + " does not exist.");
+		}
+		else { 
+			String msg = "Triple ("+e+","+p+","+v+") has been added for author " + a + ".";
+			msg = msg.replace("<", "&lt;").replace(">","&gt;");
+			out.print(msg);
+		}
 		_log.info("[dataset] DELETE " + (System.currentTimeMillis() - start) + "ms ");
 	}
 

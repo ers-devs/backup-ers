@@ -28,7 +28,7 @@ import edu.kit.aifb.cumulus.webapp.formatter.SerializationFormat;
  * @author aharth
  */
 @SuppressWarnings("serial")
-public class QueryServlet extends AbstractHttpServlet {
+public class CleverDeleteServlet extends AbstractHttpServlet {
 	private final Logger _log = Logger.getLogger(this.getClass().getName());
 
 	public void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
@@ -47,7 +47,7 @@ public class QueryServlet extends AbstractHttpServlet {
 		String e = req.getParameter("e");
 		String p = req.getParameter("p");
 		String v = req.getParameter("v");
-		String a = req.getParameter("g");
+		String g = req.getParameter("g");
 //		_log.info("QUERYServlet: req " + req.getPathInfo() + " " + req.getQueryString() + " " + e + " " + p + " " + v);
 		// some checks
 		if( e != null && !e.isEmpty() && !e.startsWith("<") ) {
@@ -81,36 +81,51 @@ public class QueryServlet extends AbstractHttpServlet {
 		PrintWriter out = resp.getWriter();
 		AbstractCassandraRdfHector crdf = (AbstractCassandraRdfHector)ctx.getAttribute(Listener.STORE);
 		int triples = 0;
+	
+		if( e != null && !e.isEmpty() && 
+                    p != null && !p.isEmpty() &&
+                    v != null && !v.isEmpty() && 
+                    g != null && !g.isEmpty() ) { 
+			// run "clasical" delete as we have all information 
+			if( crdf.deleteData(e,p,v,Store.encodeKeyspace(g)) == -2 ) { 
+				out.println("Graph " + g + " does not exist.");
+			}	
+			else { 
+				String msg = "Quad ("+e+","+p+","+v+","+g+") has been added.";
+				msg = msg.replace("<", "&lt;").replace(">","&gt;");
+				out.print(msg);
+			}
+			return;
+		}
 
 		// search within given keyspace or all if none is given
 		List<String> keyspaces = new ArrayList<String>(); 
-		if( a != null && ! a.isEmpty() ) 
-			keyspaces.add(Store.encodeKeyspace(a)); 
+		if( g != null && ! g.isEmpty() ) 
+			keyspaces.add(Store.encodeKeyspace(g)); 
 		else 
 			keyspaces = crdf.getAllKeyspaces(); 
 
-		boolean found = false;
+		int total_deletion = 0;
 		for(Iterator it_k = keyspaces.iterator(); it_k.hasNext(); ) { 
 			String k = (String)it_k.next();
-			// skip keyspaces that do not use our pre-defined prefix or the authors one
-			if( ! k.startsWith(Listener.DEFAULT_ERS_KEYSPACES_PREFIX) || 
-			      k.equals(Listener.AUTHOR_KEYSPACE) )
+			// query only keyspaces that use the pre-defined prefix
+			if( ! k.startsWith(Listener.DEFAULT_ERS_KEYSPACES_PREFIX) )
 				continue;
 			try {
 				Iterator<Node[]> it = crdf.query(query, queryLimit, k);
-				if (it.hasNext()) {
-					resp.setContentType(formatter.getContentType());
-					triples = formatter.print(it, out, k);
-					found = true;
+				// if data, delete :) 
+				for( ; it.hasNext(); ) {
+					++total_deletion;
+					Node[] n = (Node[]) it.next(); 
+					crdf.deleteData(n, k);
 				}
 			} catch (StoreException ex) {
 				_log.severe(ex.getMessage());
 				resp.sendError(500, ex.getMessage());
 			}
 		}
-		if( !found ) 
-			sendError(ctx, req, resp, HttpServletResponse.SC_NOT_FOUND, "resource not found");
-		_log.info("[dataset] QUERY " + Nodes.toN3(query) + " " + (System.currentTimeMillis() - start) + "ms " + triples + "t");
+		out.print("Total " + total_deletion + " quads have been deleted.");
+		_log.info("[dataset] DELETE " + (System.currentTimeMillis() - start) + "ms " + total_deletion + " quads");
 	}
 
 	private Node getNode(String value, String varName) throws ParseException {
@@ -118,5 +133,17 @@ public class QueryServlet extends AbstractHttpServlet {
 			return NxParser.parseNode(value);
 		else
 			return new Variable(varName);
+	}
+
+	public void doDelete(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
+		doGet(req, resp);
+	}
+
+	public void doPut(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
+		throw new UnsupportedOperationException("PUT currently not supported, sorry.");
+	}
+
+	public void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
+		throw new UnsupportedOperationException("POST currently not supported, sorry.");
 	}
 }

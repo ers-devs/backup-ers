@@ -49,16 +49,17 @@ public class CreateServlet extends AbstractHttpServlet {
 			resp.sendError(HttpServletResponse.SC_BAD_REQUEST);
 			return;
 		}
-		String e = req.getParameter("e"); 
-		String p = req.getParameter("p");
-		String v = req.getParameter("v");
+		String e = req.getParameter("e"); 	//entity
+		String p = req.getParameter("p");	//property
+		String v = req.getParameter("v");	//value
+		String a = req.getParameter("g");  	//author = keyspace_name 
 		// some checks
-		if( e == null || p == null || v == null ) { 
-			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass data like 'e=_&p=_&v=_'");
+		if( e == null || p == null || v == null || a == null ) { 
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass data like 'e=_&p=_&v=_&a=_'");
 			return;
 		}
-		if( e.isEmpty() || p.isEmpty() || v.isEmpty() ) { 
-			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass non empty data 'e=_&p=_&v=_'");
+		if( e.isEmpty() || p.isEmpty() || v.isEmpty() || a.isEmpty() ) { 
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass non empty data 'e=_&p=_&v=_&a=_'");
 			return;
 		}
 		if( !e.startsWith("<") ) {
@@ -73,22 +74,24 @@ public class CreateServlet extends AbstractHttpServlet {
 			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass either a resource (e.g. &lt;resource&gt;) or a literal (e.g. \"literal\") as value");
 			return;
 		}	
-
 		String accept = req.getHeader("Accept");
 		SerializationFormat formatter = Listener.getSerializationFormat(accept);
 		if (formatter == null) {
 			sendError(ctx, req, resp, HttpServletResponse.SC_NOT_ACCEPTABLE, "no known mime type in Accept header");
 			return;
 		}
-		Store crdf = (Store)ctx.getAttribute(Listener.STORE);
-		// do the insert here 
-		crdf.addData(e,p,v);
-
 		PrintWriter out = resp.getWriter();
 		resp.setContentType(formatter.getContentType());
-		String msg = "Triple ("+e+","+p+","+v+") has been added.";
-		msg = msg.replace("<", "&lt;").replace(">","&gt;");
-		out.print(msg);
+		Store crdf = (Store)ctx.getAttribute(Listener.STORE);
+		// do the insert here 
+		if( crdf.addData(e,p,v,Store.encodeKeyspace(a)) == -2 ) { 
+			out.print("Author " + a + " does not exist.");
+		}
+		else {
+			String msg = "Quad ("+e+","+p+","+v+","+a+") has been added.";
+			msg = msg.replace("<", "&lt;").replace(">","&gt;");
+			out.print(msg);
+		}
 		_log.info("[dataset] POST " + (System.currentTimeMillis() - start) + "ms ");
 	}
 	

@@ -4,10 +4,12 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Hashtable;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -15,7 +17,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
+import java.io.FileNotFoundException;
 
 import me.prettyprint.cassandra.connection.LeastActiveBalancingPolicy;
 import me.prettyprint.cassandra.model.BasicColumnDefinition;
@@ -36,6 +41,7 @@ import me.prettyprint.hector.api.ddl.ColumnType;
 import me.prettyprint.hector.api.ddl.ComparatorType;
 import me.prettyprint.hector.api.ddl.KeyspaceDefinition;
 import me.prettyprint.hector.api.factory.HFactory;
+import me.prettyprint.hector.api.exceptions.HectorException;
 
 import org.semanticweb.yars.nx.Node;
 import org.semanticweb.yars.nx.Resource;
@@ -44,18 +50,22 @@ import org.semanticweb.yars.nx.parser.NxParser;
 import org.semanticweb.yars.nx.parser.ParseException;
 import org.semanticweb.yars2.rdfxml.RDFXMLParser;
 
-public abstract class AbstractCassandraRdfHector extends Store {
-	protected class LoadThread extends Thread {
+import edu.kit.aifb.cumulus.webapp.Listener;
 
+public abstract class AbstractCassandraRdfHector extends Store {
+
+	protected class LoadThread extends Thread {
 		private BlockingQueue<List<Node[]>> m_queue;
 		private String m_cf;
 		private boolean m_finished;
 		private int m_id;
+ 		private String m_keyspace;
 		
-		public LoadThread(String columnFamily, int id) {
+		public LoadThread(String columnFamily, int id, String keyspace) {
 			m_cf = columnFamily;
 			m_queue = new ArrayBlockingQueue<List<Node[]>>(5);
 			m_id = id;
+			m_keyspace = keyspace;
 		}
 		
 		public void enqueue(List<Node[]> list) throws InterruptedException {
@@ -80,7 +90,7 @@ public abstract class AbstractCassandraRdfHector extends Store {
 				int tries = 10;
 				while (tries >= 0) {
 					try {
-						batchInsert(m_cf, list);
+						batchInsert(m_cf, list, m_keyspace);
 						tries = -1;
 					}
 					catch (Exception e) {
@@ -100,12 +110,10 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		
 	}
 
-	protected static final String DEFAULT_KS = "KeyspaceCumulus";
-	
 	protected static final String COL_S = "s";
 	protected static final String COL_P = "p";
 	protected static final String COL_O = "o";
-	
+
 	private final Logger _log = Logger.getLogger(this.getClass().getName());
 	
 	protected List<String> _cfs;
@@ -113,18 +121,15 @@ public abstract class AbstractCassandraRdfHector extends Store {
 	protected Map<String,int[]> _maps;
 	protected String _hosts;
 	protected Cluster _cluster;
-	protected String _keyspaceName;
-	protected Keyspace _keyspace;
 	protected int _batchSizeMB = 1;
+
 	protected StringSerializer _ss = StringSerializer.get();
 	protected BytesArraySerializer _bs = BytesArraySerializer.get();
 
+	// data structure to keep track of what kind of locks are held by different entities (transactional context)
+	protected static ConcurrentHashMap<String, LockEnt> lock_map = new ConcurrentHashMap<String, LockEnt>();
+
 	protected AbstractCassandraRdfHector(String hosts) {
-		this(hosts, DEFAULT_KS);
-	}
-	
-	protected AbstractCassandraRdfHector(String hosts, String keyspace) {
-		_keyspaceName = keyspace;
 		_hosts = hosts;
 		_maps = new HashMap<String,int[]>();
 		_cfs = new ArrayList<String>();
@@ -139,8 +144,8 @@ public abstract class AbstractCassandraRdfHector extends Store {
 	public void open() throws StoreException {
 		CassandraHostConfigurator config = new CassandraHostConfigurator(_hosts);
 		config.setCassandraThriftSocketTimeout(60*1000);
-//		config.setMaxActive(6);
-//		config.setExhaustedPolicy(ExhaustedPolicy.WHEN_EXHAUSTED_BLOCK);
+		//config.setMaxActive(6);
+		//config.setExhaustedPolicy(ExhaustedPolicy.WHEN_EXHAUSTED_BLOCK);
 		config.setRetryDownedHostsDelayInSeconds(5);
 		config.setRetryDownedHostsQueueSize(128);
 		config.setRetryDownedHosts(true);
@@ -149,24 +154,40 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		config.setCassandraThriftSocketTimeout(0);
 		config.setMaxWaitTimeWhenExhausted(-1);
 		
-//		config.setLoadBalancingPolicy(new RoundRobinBalancingPolicy());
+		// RoundRobin, LeastActive and Dynamic as possible values
+		//config.setLoadBalancingPolicy(new RoundRobinBalancingPolicy());
 		config.setLoadBalancingPolicy(new LeastActiveBalancingPolicy());
 		_cluster = HFactory.getOrCreateCluster("CassandraRdfHectorHierHash", config);
-		
-		boolean found = false;
-		for (KeyspaceDefinition ksDef : _cluster.describeKeyspaces()) {
-			if (ksDef.getName().equals(_keyspaceName)) {
-				found = true;
-				break;
+		_log.finer("connected to " + _hosts);
+	}
+
+	public boolean existsKeyspace(String keyspaceName) { 
+		if( _cluster.describeKeyspace(keyspaceName) != null ) 
+			return true;
+/*		for (KeyspaceDefinition ksDef : _cluster.describeKeyspaces()) {
+			if (ksDef.getName().equals(keyspaceName)) {
+				return true;
 			}
-		}
+		} */
+		return false;
+	}
+	
+	// create a keyspace if it does not exist yet
+	public int createKeyspace(String keyspaceName) {
+		if( keyspaceName.startsWith("system") )
+			return 2;
+		if (! existsKeyspace(keyspaceName)) 
+			_cluster.addKeyspace(createKeyspaceDefinition(keyspaceName));
+		else 
+			return 1;
 		
-		if (!found)
-			_cluster.addKeyspace(createKeyspaceDefinition());
-		
-		_keyspace = HFactory.createKeyspace(_keyspaceName, _cluster, new ConsistencyLevelPolicy() {
+		HFactory.createKeyspace(keyspaceName, _cluster, Listener.DEFAULT_CONSISTENCY_POLICY);
+/*		HFactory.createKeyspace(keyspaceName, _cluster, new ConsistencyLevelPolicy() {
 			@Override
-			public HConsistencyLevel get(OperationType arg0, String arg1) {
+			public HConsistencyLevel get(OperationType arg0, String cf) {
+				/*NOTE: based on operation type and/or column family, the 
+				   consistency level is tunable
+				   However, we just use for the moment the given parameter 
 				return HConsistencyLevel.ONE;
 			}
 			
@@ -174,10 +195,289 @@ public abstract class AbstractCassandraRdfHector extends Store {
 			public HConsistencyLevel get(OperationType arg0) {
 				return HConsistencyLevel.ONE;
 			}
-		});
-		_log.finer("connected to " + _hosts);
+		}; */
+		return 0;
 	}
+
+	public int runTransaction(Transaction t) { 
+		if( t == null ) 
+			return -1;
+		t.printTransaction();
+		
+		Hashtable<String, LockEnt> locks_hold = new Hashtable<String, LockEnt>();
+		try { 	
+			// first of all lock all entities involved in this transaction; then execute
+			for(Iterator it = t.getOps().iterator(); it.hasNext(); ) { 
+				Operation op = (Operation) it.next(); 
+				String key = op.getParam(0);
+				
+				// maybe a previous operation has already acquired the needed lock, check this 
+				LockEnt prev_lock = locks_hold.get(key);
+				if( prev_lock != null && prev_lock.type == LockEnt.LockType.WRITE_LOCK ) 
+					// don't need anything else as a previous operation has acquired the exclusive lock
+					continue;
+
+				_log.info("Acquire lock for key: " + key);
+				// add this to the lock map, if absent 
+				LockEnt prev_val = AbstractCassandraRdfHector.lock_map.get(key);
+				if( prev_val != null && prev_val.type == LockEnt.LockType.WRITE_LOCK ) {
+					// conflict 
+					_log.info("CONFLICT: transaction " + t.ID + " @ operation with key " + key + " (write lock already acquired by another T)");
+					return 1;
+				}
+
+				// try to get needed lock 
+				if( op.getType() == Operation.Type.GET ) { 
+					if( prev_lock != null && ( prev_lock.type == LockEnt.LockType.READ_LOCK || 
+								   prev_lock.type == LockEnt.LockType.WRITE_LOCK ) ) 
+						// lock has been acquired already for this entity, go to next transaction 
+						continue;
+
+					// only read lock is needed here 
+					if( prev_val != null ) {
+						// increment the previous read lock counter 
+						LockEnt new_lock = new LockEnt(LockEnt.LockType.READ_LOCK, prev_val.counter.get()+1);
+						if( AbstractCassandraRdfHector.lock_map.replace(key, prev_val, new_lock) == false ) 
+							return 2;
+						else 	
+							// keep local track about locks acquired
+							locks_hold.put(key, new_lock);
+					}
+					else {
+						// just add the lock object (no one existed before)
+						if( AbstractCassandraRdfHector.lock_map.putIfAbsent(key, new LockEnt(LockEnt.LockType.READ_LOCK, 1)) != null )
+							return 3;
+						else 
+							// keep local track about locks acquired
+							locks_hold.put(key, new LockEnt(LockEnt.LockType.READ_LOCK, 1));
+					}
+				}
+				else { 
+					// operation != GET
+					if( prev_lock != null ) { 
+						if ( prev_lock.type == LockEnt.LockType.WRITE_LOCK )
+							// lock has been acquired already for this entity, go to next transaction 
+							continue;
+						else if ( prev_lock.type == LockEnt.LockType.READ_LOCK ) {
+							// upgrade to write lock if we are the only reader 
+							if( AbstractCassandraRdfHector.lock_map.replace(key, new LockEnt(LockEnt.LockType.READ_LOCK, 1), new LockEnt(LockEnt.LockType.WRITE_LOCK)) == false ) { 
+								// it failed (there is another reader besides me) 
+								_log.info("CONFLICT: transaction " + t.ID + " @ operation with key " + key + " (cannot upgrade to write lock as another reader is present)");
+								return 4;
+							}
+							else { 
+								// keep local track of this updated lock (the old value is replaced)
+								locks_hold.put(key, new LockEnt(LockEnt.LockType.WRITE_LOCK));
+								// don't bother anymore as we have now the right lock 
+								continue; 
+							}
+						}
+					}
+
+					if( prev_val != null && prev_val.type == LockEnt.LockType.READ_LOCK ) {
+						//conflict, write lock is excusive 
+						return 5; 
+					}
+
+					if( prev_val != null ) {
+						// write lock is needed here, no existing read locks are allowed
+						if( AbstractCassandraRdfHector.lock_map.replace(key, prev_val, new LockEnt(LockEnt.LockType.WRITE_LOCK)) == false ) {
+							_log.info("CONFLICT: transaction " + t.ID + " @ operation with key " + key + " (cannot get write lock as another one did it already)");
+							// somebody messed it up in the meanwhile, thus conflict 
+							return 6;
+						}
+						else {
+							// keep local track about locks acquired
+							locks_hold.put(key, new LockEnt(LockEnt.LockType.WRITE_LOCK));
+						}
+					}
+					else {
+						if ( AbstractCassandraRdfHector.lock_map.putIfAbsent(key, new LockEnt(LockEnt.LockType.WRITE_LOCK)) != null ) 
+							return 7;
+						else 
+							// keep locl track about locks acquired 
+							locks_hold.put(key, new LockEnt(LockEnt.LockType.WRITE_LOCK));
+					}
+						
+				}
+			}
+			// here, all locks are held 
+
+			// print what locks this transaction holds
+			_log.info("Following locks are held by transaction " + t.ID); 
+			for( Iterator it = locks_hold.keySet().iterator(); it.hasNext(); ) { 
+				 String k = (String) it.next(); 
+				_log.info("KEY: " + k + " " + locks_hold.get(k).toString());
+			}
+
+			try { 
+				_log.info("SLEEEEEEEEEEEEEEEEEEEPPPPPPPP...........");
+				Thread.sleep(15000);	
+			} catch (Exception e ) { 
+			}
+			_log.info("WAKE UP !!"); 
+
+			// run the ops 
+			int r=0;
+			for( int j=0; j < t.ops.size(); ++j) { 
+				Operation c_op = t.ops.get(j);
+				switch(c_op.getType()) { 	
+					case GET: 
+						// perform just a read (well, perpahs not so common used as there are no if-else structures into the transaction flow 
+						break;
+					case INSERT:
+						r = this.addData(c_op.params[0], c_op.params[1],
+							c_op.params[2], 
+							c_op.params[3].replace("<","").replace(">",""));
+						if ( r != 0 ) 
+							_log.info("COMMIT INSERT " + c_op.params[0] + " failed with exit code " + r);
+						break;
+					case UPDATE:
+						r = this.updateData(c_op.params[0], c_op.params[1],
+						   c_op.params[4], c_op.params[2], 
+						   c_op.params[3].replace("<","").replace(">",""));
+						if ( r != 0 ) 
+							_log.info("COMMIT UPDATE " + c_op.params[0] + " failed with exit code " + r);
+						break;
+					case DELETE:
+						r = this.deleteData(c_op.params[0], c_op.params[1],
+							c_op.params[2], 
+							c_op.params[3].replace("<","").replace(">",""));
+						if ( r != 0 ) 
+							_log.info("COMMIT DELETE " + c_op.params[0] + " failed with exit code " + r);
+						break;
+					default:
+						break;	
+				}
+				if( r != 0 ) {		
+					// ROLLBACK !!! 
+					// operation failed, rollback all the previous ones
+					for( int k=j-1; k>=0; --k ) { 
+						Operation p_op = t.getReverseOp(k); 
+						switch(p_op.getType()) { 	
+							case GET: 	
+								// no reverse op for t
+								break;
+							case INSERT:
+								r = this.addData(p_op.params[0], p_op.params[1],
+									p_op.params[2], 
+									p_op.params[3].replace("<","").replace(">",""));
+								if ( r != 0 ) 
+									_log.info("ROLLBACK INSERT " + p_op.params[0] + " failed with exit code " + r);
+								break;
+							case UPDATE:
+								r = this.updateData(p_op.params[0], p_op.params[1],
+								   p_op.params[4], p_op.params[2], 
+								   p_op.params[3].replace("<","").replace(">",""));
+								if ( r != 0 ) 
+									_log.info("ROLLBACK UPDATE " + p_op.params[0] + " failed with exit code " + r);
+								break;
+							case DELETE:
+								r = this.deleteData(p_op.params[0], p_op.params[1],
+									p_op.params[2], 
+									p_op.params[3].replace("<","").replace(">",""));
+								if ( r != 0 ) 
+									_log.info("ROLLBACK DELETE " + p_op.params[0] + " failed with exit code " + r);
+								break;
+							default:
+								break;	
+
+						}
+					}	
+					if( r != 0 )
+						// problems while rollback-ing 
+						return 100;
+					//rollback has occured successfully 
+					return 10;
+				}
+			}
+			// COMMIT !!!
+			return 0;
+		}
+		finally { 
+			// release the locks the reverse way they were acquired
+			for( int i = t.getOps().size()-1; i>=0; --i) { 
+				Operation op_r = t.getOps().get(i);
+				String key = op_r.getParam(0); 
+				
+				LockEnt used_lock = locks_hold.get(key); 
+				if( used_lock != null ) {
+					if( used_lock.type == LockEnt.LockType.WRITE_LOCK ) { 
+						// it was an exclusive lock, just delete it 
+						AbstractCassandraRdfHector.lock_map.remove(key); 
+						_log.info("WRITE LOCK FOR KEY " + key + " HAS BEEN RELEASED ");
+						locks_hold.remove(key);
+					}	
+					else { 
+						// decrement the counter of a read lock and delete it if counter == 0 
+						while( true ) { 
+							// get current value 
+							LockEnt curr_v = AbstractCassandraRdfHector.lock_map.get(key); 
+							// try to replace 
+							if( AbstractCassandraRdfHector.lock_map.replace(key, curr_v, new LockEnt(LockEnt.LockType.READ_LOCK, curr_v.counter.get()-1)) == true ) {
+								// remove if the counter is 0 
+								AbstractCassandraRdfHector.lock_map.remove(key, new LockEnt(LockEnt.LockType.READ_LOCK, 0));
+								_log.info("READ LOCK FOR KEY " + key + " HAS BEEN RELEASED ");
+								locks_hold.remove(key);
+								break;
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// get all keyspaces' names
+	public List<String> getAllKeyspaces() {
+		List<String> res = new ArrayList<String>();
+		for (KeyspaceDefinition ksDef : _cluster.describeKeyspaces()) {
+			if (!ksDef.getName().startsWith("system"))
+				res.add(ksDef.getName());
+		}
+		return res;
+	}
+
+	protected Keyspace getExistingKeyspace(String keyspace) { 
+		return HFactory.createKeyspace(keyspace, _cluster);
+	}
+
+	public boolean emptyKeyspace(String keyspace) { 
+		try { 
+			int r = queryEntireKeyspace(keyspace, new PrintWriter("/dev/null"), 1);
+			if( r == 0 ) 
+				// not even one record, thus we assume it is emtpy 
+				return true;
+		}
+		catch( FileNotFoundException ex ) { 
+			ex.printStackTrace(); 
+			return false;
+		}
+		return false;
+		
+	}
+
+	// drop a keyspace if it exists (if force is true, delete even if it is not empty)
+	public int dropKeyspace(String keyspaceName, boolean force) { 
+		if(keyspaceName.startsWith("system")) 
+			return 3;
+		if ( !existsKeyspace(keyspaceName))
+			return 1;
 	
+		if ( !force ) {
+			// test first of all if the keyspace / graph is empty 
+			if( ! emptyKeyspace(keyspaceName) ) 
+				return 4;
+		}
+		try { 
+			_cluster.dropKeyspace(keyspaceName);
+		} catch(HectorException ex) { 
+			ex.printStackTrace(); 
+			return 2;
+		}
+		return 0;
+	}
+
 	protected ColumnDefinition createColDef(String colName, String validationClass, boolean indexed) {
 		return createColDef(colName, validationClass, indexed, colName + "_index");
 	}
@@ -197,15 +497,17 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		_batchSizeMB = batchSizeMB;
 	}
 	
-	protected KeyspaceDefinition createKeyspaceDefinition() {
-		return HFactory.createKeyspaceDefinition(_keyspaceName, "org.apache.cassandra.locator.SimpleStrategy", 1, createColumnFamiliyDefinitions());
+	//TODO: accept as parameter consistency level and/or strategy !
+	protected KeyspaceDefinition createKeyspaceDefinition(String keyspaceName) {
+		return HFactory.createKeyspaceDefinition(keyspaceName, "org.apache.cassandra.locator.SimpleStrategy", 
+			Listener.DEFAULT_REPLICATION_FACTOR, createColumnFamiliyDefinitions(keyspaceName));
 	}
 
-	protected abstract List<ColumnFamilyDefinition> createColumnFamiliyDefinitions();
+	protected abstract List<ColumnFamilyDefinition> createColumnFamiliyDefinitions(String keyspaceName);
 
-	protected ColumnFamilyDefinition createCfDefFlat(String cfName, List<String> cols, List<String> indexedCols, ComparatorType keyComp) {
+	protected ColumnFamilyDefinition createCfDefFlat(String cfName, List<String> cols, List<String> indexedCols, ComparatorType keyComp, String keyspaceName) {
 		BasicColumnFamilyDefinition cfdef = new BasicColumnFamilyDefinition();
-		cfdef.setKeyspaceName(_keyspaceName);
+		cfdef.setKeyspaceName(keyspaceName);
 		cfdef.setName(cfName);
 		cfdef.setColumnType(ColumnType.STANDARD);
 		cfdef.setComparatorType(ComparatorType.UTF8TYPE);
@@ -223,9 +525,9 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		return new ThriftCfDef(cfdef);
 	}
 	
-	protected ColumnFamilyDefinition createCfDefHier(String cfName) {
+	protected ColumnFamilyDefinition createCfDefHier(String cfName, String keyspaceName) {
 		BasicColumnFamilyDefinition cfdef = new BasicColumnFamilyDefinition();
-		cfdef.setKeyspaceName(_keyspaceName);
+		cfdef.setKeyspaceName(keyspaceName);
 		cfdef.setName(cfName);
 		cfdef.setColumnType(ColumnType.SUPER);
 		cfdef.setComparatorType(ComparatorType.UTF8TYPE);
@@ -235,9 +537,9 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		return new ThriftCfDef(cfdef);
 	}
 	
-	protected abstract void batchInsert(String cf, List<Node[]> li);
-	protected abstract void batchDelete(String cf, List<Node[]> li);
-	protected abstract void batchDeleteRow(String cf, List<Node[]> li);
+	protected abstract void batchInsert(String cf, List<Node[]> li, String keyspace);
+	protected abstract void batchDelete(String cf, List<Node[]> li, String keyspace);
+	protected abstract void batchDeleteRow(String cf, List<Node[]> li, String keyspace);
 
 	protected boolean isVariable(Node n) {
 		return n instanceof Variable;
@@ -249,7 +551,11 @@ public abstract class AbstractCassandraRdfHector extends Store {
 	}
 
 	@Override
-	public int addData(Iterator<Node[]> it) throws StoreException {
+	public int addData(Iterator<Node[]> it, String keyspace) throws StoreException {
+		// check firstly if keyspace exists, if not, return error 
+		if( !existsKeyspace(keyspace) ) { 
+			return -1;
+		} 
 		List<Node[]> batch = new ArrayList<Node[]>();
 		int batchSize = 0;
 		int count = 0;
@@ -263,26 +569,29 @@ public abstract class AbstractCassandraRdfHector extends Store {
 			if (batchSize >= _batchSizeMB * 1048576) {
 				_log.finer("insert batch of size " + batchSize + " (" + batch.size() + " tuples)");
 				for (String cf : _cfs)
-					batchInsert(cf, batch);
+					batchInsert(cf, batch, keyspace);
 				batch = new ArrayList<Node[]>();
 				batchSize = 0;
 			}
 		}
 		if (batch.size() > 0)
 			for (String cf : _cfs)
-				batchInsert(cf, batch);
+				batchInsert(cf, batch, keyspace);
 		return count;
 	}
 
 	// TM: add just one record
-	public int addData(String e, String p, String v) {
+	public int addData(String e, String p, String v, String keyspace) {
+		if( !existsKeyspace(keyspace) ) { 
+			return -2; 
+		}
 		String triple = e + " " + p + " " + v + " ."; 
 		try { 
 			Node[] nx = NxParser.parseNodes(triple);	
 	 		List<Node[]> batch = new ArrayList<Node[]>();
 			batch.add(nx);
 			for (String cf : _cfs) {
-				batchInsert(cf, batch);
+				batchInsert(cf, batch, keyspace);
 			}
 			return 0;
 		} 
@@ -294,15 +603,15 @@ public abstract class AbstractCassandraRdfHector extends Store {
 	}
 
 	// TM: delete a record 
-	public int deleteData(String e, String p, String v) { 
+	public int deleteData(String e, String p, String v, String keyspace) { 
+		// check if keyspace exists	
+		if( !existsKeyspace(keyspace)) { 
+			return -2; 
+		}
 		String triple = e + " " + p + " " + v + " ."; 
 		try { 
 			Node[] nx = NxParser.parseNodes(triple);
-	 		List<Node[]> batch = new ArrayList<Node[]>();
-			batch.add(nx);
-			for (String cf : _cfs) {
-				batchDelete(cf, batch);
-			}
+			this.deleteData(nx, keyspace);
 			return 0;
 		} 
 		catch( ParseException ex ) { 
@@ -311,28 +620,39 @@ public abstract class AbstractCassandraRdfHector extends Store {
 			return -1;
 		}
 	}
+	
+	public void deleteData(Node[] nx, String keyspace) { 
+	 	List<Node[]> batch = new ArrayList<Node[]>();
+		batch.add(nx);
+		for (String cf : _cfs) {
+			batchDelete(cf, batch, keyspace);
+		}
+	}
 
 	/* TM: update just one record
          * NOTE: this has a bit of overhead since the value is stored as column name; thus 
          * for updating it needs 1 deletion and 1 insertion 
   	*/
-	public int updateData(String e, String p, String v_old, String v_new) { 
+	public int updateData(String e, String p, String v_old, String v_new, String keyspace) { 
+		// check if keyspace exists
+		if ( !existsKeyspace(keyspace) ) { 
+			return -2; 
+		}
 		// assuming the old record exists, run a del
-		if( deleteData(e, p, v_old) == -1 )
+		if( deleteData(e, p, v_old, keyspace) == -1 )
 			return -1;
 		// now run an add
-	 	return addData(e, p, v_new);	
-	}
-
-
-	@Override
-	public boolean contains(Node s) throws StoreException {
-		return query(new Node[] { s, new Variable("p"), new Variable("o") }).hasNext();
+	 	return addData(e, p, v_new, keyspace);	
 	}
 
 	@Override
-	public Iterator<Node[]> query(Node[] query) throws StoreException {
-		return query(query, Integer.MAX_VALUE);
+	public boolean contains(Node s, String keyspace) throws StoreException {
+		return query(new Node[] { s, new Variable("p"), new Variable("o") }, keyspace).hasNext();
+	}
+
+	@Override
+	public Iterator<Node[]> query(Node[] query, String keyspace) throws StoreException {
+		return query(query, Integer.MAX_VALUE, keyspace);
 	}
 
 	private Node urlDecode(Node n) {
@@ -346,14 +666,14 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		return n;
 	}
 
-	public void batchBulkLoad(InputStream fis, String format, String columnFamily, int threadCount) throws IOException, InterruptedException {
+	public void batchBulkLoad(InputStream fis, String format, String columnFamily, int threadCount, String keyspace) throws IOException, InterruptedException {
 		_log.info("bulk loading " + columnFamily);
 		List<LoadThread> threads = new ArrayList<LoadThread>();
 		if (threadCount < 0)
 			threadCount = Math.max(1, (int)(_cluster.getConnectionManager().getHosts().size() / 1.5));
 
 		for (int i = 0; i < threadCount; i++) {
-			LoadThread t = new LoadThread(columnFamily, i);
+			LoadThread t = new LoadThread(columnFamily, i, keyspace);
 			threads.add(t);
 			t.start();
 		}
@@ -421,15 +741,20 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		_log.info(i + " triples inserted into " + columnFamily + " in " + time + " ms (" + ((double)i / time * 1000) + " triples/s)");
 	}
 
-	public void bulkLoad(File file, String format) throws StoreException, IOException {
-		bulkLoad(file, format, -1);
+	public void bulkLoad(File file, String format, String keyspace) throws StoreException, IOException {
+		bulkLoad(file, format, -1, keyspace);
 	}
 	
-	public void bulkLoad(File file, String format, int threads) throws StoreException, IOException {
+	// called by BulkLoad servet 
+	public int bulkLoad(File file, String format, int threads, String keyspace) throws StoreException, IOException {
 		try {
+			// check firstly if keyspace exists, if not, return error 
+			if( !existsKeyspace(keyspace) ) { 
+				return 1;
+			} 
 			for (String cf : _cfs) {
 				FileInputStream fis = new FileInputStream(file);
-				batchBulkLoad(fis, format, cf, threads);
+				batchBulkLoad(fis, format, cf, threads, keyspace);
 				fis.close();
 			}			
 		} catch (InterruptedException e) {
@@ -437,16 +762,17 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		} catch (IOException e) {
 			throw new StoreException(e);
 		}
+		return 0;
 	}
 
-	public void bulkLoad(File file, String format, String cf) throws StoreException, IOException {
-		bulkLoad(file, format, cf, -1);
+	public void bulkLoad(File file, String format, String cf, String keyspace) throws StoreException, IOException {
+		bulkLoad(file, format, cf, -1, keyspace);
 	}
 
-	public void bulkLoad(File file, String format, String cf, int threads) throws StoreException {
+	public void bulkLoad(File file, String format, String cf, int threads, String keyspace) throws StoreException {
 		try {
 			FileInputStream fis = new FileInputStream(file);
-			batchBulkLoad(fis, format, cf, threads);
+			batchBulkLoad(fis, format, cf, threads, keyspace);
 			fis.close();
 		} catch (InterruptedException e) {
 			throw new StoreException(e);
@@ -455,26 +781,13 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		}
 	}
 
-	//TM: added for enabling bulk load from servlet
-	public void bulkLoad(InputStream fis, String format, int threads) throws StoreException, IOException {
-		try {
-			for (String cf : _cfs) {
-				batchBulkLoad(fis, format, cf, threads);
-			}			
-		} catch (InterruptedException e) {
-			throw new StoreException(e);
-		} catch (IOException e) {
-			throw new StoreException(e);
-		}
+	public void bulkLoad(InputStream is, String format, String cf, String keyspace) throws StoreException, IOException {
+		bulkLoad(is, format, cf, -1, keyspace);
 	}
 
-	public void bulkLoad(InputStream is, String format, String cf) throws StoreException, IOException {
-		bulkLoad(is, format, cf, -1);
-	}
-
-	public void bulkLoad(InputStream is, String format, String cf, int threads) throws StoreException {
+	public void bulkLoad(InputStream is, String format, String cf, int threads, String keyspace) throws StoreException {
 		try {
-			batchBulkLoad(is, format, cf, threads);
+			batchBulkLoad(is, format, cf, threads, keyspace);
 		} catch (InterruptedException e) {
 			throw new StoreException(e);
 		} catch (IOException e) {

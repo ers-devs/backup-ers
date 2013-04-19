@@ -1,0 +1,7 @@
+BEGIN 
+	insert(<TEDDY3>,"abc","123",<test>)	
+	insert(<TEDDY2>,"bcd","234",<test>)
+	update(<already>,"acd","9999",<test>,"12345")
+	get(<da>, "123", "123", <test>)
+	insert(<TEDDY18>, "dad", <123123>, <test>)
+COMMIT

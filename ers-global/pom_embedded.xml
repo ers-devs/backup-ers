@@ -6,7 +6,7 @@
   <version>1.1-SNAPSHOT</version>
   <name>ERS Global Server Maven Webapp</name>
   <url>http://maven.apache.org</url>
-  <packaging>war</packaging>  
+<!--  <packaging>war</packaging>  -->
   <properties>
     <tomcat.version>7.0.34</tomcat.version>
   </properties>
@@ -122,15 +122,14 @@
         <version>${tomcat.version}</version>
     </dependency> 
 
-    <!-- add dependencies of cumulusRDF according to WEB-INF/lib/ dir and https://repository.sonatype.org/ 
--->
+    <!-- add dependencies of cumulusRDF according to WEB-INF/lib/ dir and https://repository.sonatype.org/ -->
     <dependency>
     	    <groupId>org.cassandraunit</groupId>
 	    <artifactId>cassandra-unit</artifactId>
 	    <version>1.1.1.2</version>
     </dependency> 
 
-<!-- REMOVE this because of cassandra -unit -->
+<!-- REMOVE this because of cassandra -unit 
     <dependency>
   	<groupId>org.apache.cassandra</groupId>
   	<artifactId>apache-cassandra</artifactId>
@@ -152,6 +151,7 @@
  	  <artifactId>hector-core</artifactId>
 	  <version>1.1-1</version>
     </dependency>
+-->
 
      <dependency>
  	  <groupId>commons-cli</groupId>

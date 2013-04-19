@@ -45,28 +45,43 @@ public class SPARQLServlet extends HttpServlet {
 	private final Logger _log = Logger.getLogger(this.getClass().getName());
 	static SimpleDateFormat RFC822 = new SimpleDateFormat("EEE', 'dd' 'MMM' 'yyyy' 'HH:mm:ss' 'Z", Locale.US);
 
+	protected void sendError(ServletContext ctx, HttpServletRequest req, HttpServletResponse resp, int sc, String msg) {
+		resp.setStatus(sc);
+		req.setAttribute("javax.servlet.error.status_code",sc);
+		req.setAttribute("javax.servlet.error.message", msg);
+		try {
+			ctx.getNamedDispatcher("error").include(req, resp);
+		}
+		catch (ServletException e) {
+			e.printStackTrace();
+		}
+		catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
 	public void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
 		OutputStream out = resp.getOutputStream();
+		ServletContext ctx = getServletContext();
 
 		String query = req.getParameter("query");
-		
-		ServletContext ctx = getServletContext();
-		
+		String g = req.getParameter("g"); 
+		if( g == null || g.isEmpty() ) { 
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please give a non-empty graph name as 'g' parameter");
+			return;
+		}
 		Store crdf = (Store)ctx.getAttribute(Listener.STORE);
+	        String accept = req.getParameter("accept");
+	        if (accept == null) {
+	        	accept = req.getHeader("accept");
+	        }
+	        // XXX @@@ HACK include proper accept header parsing
+	        if (accept.contains("application/sparql-results+json")) {
+        		accept = "application/sparql-results+json";
+	        }
+	        _log.info("accept header is " + accept);
 		
-        String accept = req.getParameter("accept");
-        if (accept == null) {
-        	accept = req.getHeader("accept");
-        }
-        
-        // XXX @@@ HACK include proper accept header parsing
-        if (accept.contains("application/sparql-results+json")) {
-        	accept = "application/sparql-results+json";
-        }
-        
-        _log.info("accept header is " + accept);
-		
-		CumulusRDFStore store = new CumulusRDFStore(crdf);
+		CumulusRDFStore store = new CumulusRDFStore(crdf, g);
 		
 		try {
 			store.initialize();

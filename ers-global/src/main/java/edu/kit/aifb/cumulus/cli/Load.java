@@ -25,7 +25,7 @@ public class Load {
 		Option hostsO = new Option("n", "Cassandra hosts as comma-separated list ('host1:port1,host2:port2,...') (default localhost:9160)");
 		hostsO.setArgs(1);
 
-		Option keyspaceO = new Option("k", "Cassandra keyspace (default KeyspaceCumulus)");
+		Option keyspaceO = new Option("g", "Cassandra keyspace / graph name (mandatory)");
 		keyspaceO.setArgs(1);
 
 		Option indexO = new Option("x", "index to create");
@@ -96,13 +96,18 @@ public class Load {
 			hosts = cmd.getOptionValue("n");
 		}
 		
-		String keyspace = "KeyspaceCumulus";
-		if (cmd.hasOption("k"))
-			keyspace = cmd.getOptionValue("k");
-		
 		int threads = -1;
 		if (cmd.hasOption("t")) {
 			threads = Integer.parseInt(cmd.getOptionValue("t"));
+		}
+	
+		String keyspace = "";
+		if (cmd.hasOption("g")) { 
+			keyspace = cmd.getOptionValue("g"); 
+		}
+		if( keyspace.isEmpty() ) { 
+			System.err.println("Please pass the graph name as -g parameter"); 
+			System.exit(-1);	
 		}
 	
 		String format = "nt";
@@ -119,9 +124,9 @@ public class Load {
 			String sl = cmd.getOptionValue("s");
 			System.out.println("storage layout: " + sl);
 			if ("super".equals(sl))
-				crdf = new CassandraRdfHectorHierHash(hosts, keyspace);
+				crdf = new CassandraRdfHectorHierHash(hosts);
 			else if ("flat".equals(sl))
-				crdf = new CassandraRdfHectorFlatHash(hosts, keyspace);
+				crdf = new CassandraRdfHectorFlatHash(hosts);
 			else {
 				System.err.println("unknown storage layout");
 				return;
@@ -129,9 +134,11 @@ public class Load {
 		}
 		else {
 			System.out.println("Default storage layout: FLAT");
-			crdf = new CassandraRdfHectorFlatHash(hosts, keyspace);
+			crdf = new CassandraRdfHectorFlatHash(hosts);
 		}
-		
+		crdf.createKeyspace(keyspace);
+
+	
 		int batchSizeMB = 1;
 		if (cmd.hasOption("b")) {
 			batchSizeMB = Integer.parseInt(cmd.getOptionValue("b"));
@@ -140,12 +147,12 @@ public class Load {
 		crdf.open();
 
 		if (!cmd.hasOption("x")) {
-			crdf.bulkLoad(new File(in), format, threads);
+			crdf.bulkLoad(new File(in), format, threads, keyspace);
 		} else {
 			if (in.equals("stdin")) {
-				crdf.bulkLoad(System.in, format, cmd.getOptionValue("x"), threads);
+				crdf.bulkLoad(System.in, format, cmd.getOptionValue("x"), threads, keyspace);
 			} else {
-				crdf.bulkLoad(new File(in), format, cmd.getOptionValue("x"), threads);
+				crdf.bulkLoad(new File(in), format, cmd.getOptionValue("x"), threads, keyspace);
 			}
 		}
 		System.out.println("closing...");

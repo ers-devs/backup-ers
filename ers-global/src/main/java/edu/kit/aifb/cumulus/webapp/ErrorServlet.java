@@ -32,45 +32,45 @@ public class ErrorServlet extends HttpServlet {
 		Object codeObj, messageObj, typeObj;
 		Throwable throwable;
 	    
-	    // Retrieve the three possible error attributes, some may be null
-	    codeObj = req.getAttribute("javax.servlet.error.status_code");
-	    messageObj = req.getAttribute("javax.servlet.error.message");
-	    typeObj = req.getAttribute("javax.servlet.error.exception_type");
-	    throwable = (Throwable) req.getAttribute("javax.servlet.error.exception");
-	    uri = (String) req.getAttribute("javax.servlet.error.request_uri");
+	        // Retrieve the three possible error attributes, some may be null
+	        codeObj = req.getAttribute("javax.servlet.error.status_code");
+	        messageObj = req.getAttribute("javax.servlet.error.message");
+	        typeObj = req.getAttribute("javax.servlet.error.exception_type");
+	        throwable = (Throwable) req.getAttribute("javax.servlet.error.exception");
+	        uri = (String) req.getAttribute("javax.servlet.error.request_uri");
 
-	    if (uri == null) {
-	      uri = req.getRequestURI(); // in case there's no URI given
-	    }
-	    // Convert the attributes to string values
-	    // We do things this way because some old servers return String
-	    // types while new servers return Integer, String, and Class types.
-	    // This works for all.
-	    if (codeObj != null) code = codeObj.toString();
-	    if (messageObj != null) message = messageObj.toString();
-	    if (typeObj != null) type = typeObj.toString();
-
-	    // The error reason is either the status code or exception type
-	    String reason = (code != null ? code : type);
-
-	    resp.setContentType(accept);
-
-	    if (accept.contains("text/plain")) {
-	    	out.println("ERROR " + uri + " " + reason + ": " + message);
-	    	if (throwable != null) {
-	    		throwable.printStackTrace(out);
+	        if (uri == null) {
+	            uri = req.getRequestURI(); // in case there's no URI given
 	    	}
-	    } else {
-	    	out.println("<html><body><h1>Error</h1><p>Status code " + reason + "</p><p>" + uri + "</p><p>" + message + "</p>");
-	    	if (throwable != null) {
+	    	// Convert the attributes to string values
+	    	// We do things this way because some old servers return String
+	    	// types while new servers return Integer, String, and Class types.
+	    	// This works for all.
+	    	if (codeObj != null) code = codeObj.toString();
+	    	if (messageObj != null) message = messageObj.toString();
+	    	if (typeObj != null) type = typeObj.toString();
+
+	    	// The error reason is either the status code or exception type
+	    	String reason = (code != null ? code : type);
+
+	    	resp.setContentType(accept);
+
+     	        if (accept.contains("text/plain")) {
+	    	    out.println("ERROR " + uri + " " + reason + ": " + message);
+	    	    if (throwable != null) {
+	    		throwable.printStackTrace(out);
+	    	    }
+	        } else {
+	    	    out.println("<html><body><h1>Error</h1><p>Status code " + reason + "</p><p>" + uri + "</p><p>" + message + "</p>");
+	    	    if (throwable != null) {
 	    		out.println("<pre>");
 	    		throwable.printStackTrace(out);
 	    		out.println("</pre>");
-	    	}
-	    	out.println("</body><html>");
-	    }
-	    out.flush();
-	    out.close();
+	    	    }
+	    	    out.println("</body><html>");
+	        }
+	        out.flush();
+	        out.close();
 	}
 
 	// TM
