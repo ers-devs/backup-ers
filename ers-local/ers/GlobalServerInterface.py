@@ -201,11 +201,6 @@ class GlobalServerInternalException(RuntimeError):
 
 
 def test():
-    server = GlobalServerInterface('http://cassandra2-ersdevs.rhcloud.com/')
-    test_file = '../../tests/data/timbl.nt'
-    bulk_tuples = [[decode_rdflib_term(x) for x in tup]
-                   for tup in rdflib.Graph().parse(test_file, format='nt')]
-
     def unique(l):
         if l is None:
             return None
@@ -246,6 +241,14 @@ def test():
             server.delete(e, p, v)
         for e, p, v in bulk_tuples:
             server.delete(e, p, v)
+
+
+    # Start of tests
+    server = GlobalServerInterface('http://localhost:8888/')
+    #server = GlobalServerInterface('http://cassandra2-ersdevs.rhcloud.com/')
+    test_file = '../../tests/data/timbl.nt'
+    bulk_tuples = [[decode_rdflib_term(x) for x in tup]
+                   for tup in rdflib.Graph().parse(test_file, format='nt')]
 
     # Create
     server.create('ers:testEntity1', 'ers:testProp1', 'testValue1')
