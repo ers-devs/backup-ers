@@ -182,13 +182,22 @@ class GlobalServerInterface(object):
 
 
 class GlobalServerAccessException(RuntimeError):
-    def __init__(self, message='Cannot access global server'):
-        RuntimeError.__init__(self, message)
+    """Thrown when the global server is not accessible at the given URL.
+       Repeating the command at a later time may work."""
+    def __init__(self, message='Unspecified error'):
+        RuntimeError.__init__(self, 'Cannot access global server: ' + message)
 
 
 class GlobalServerOperationException(RuntimeError):
-    def __init__(self, message='Error in global server operation'):
-        RuntimeError.__init__(self, message)
+    """Thrown when there is an error with the operation itself (missing parameter, conflicts, resource exists etc.)"""
+    def __init__(self, message='Unspecified error'):
+        RuntimeError.__init__(self, 'Error performing operation on global server: ' + message)
+
+
+class GlobalServerInternalException(RuntimeError):
+    """Thrown when the operation should be valid but the server behaves unexpectedly"""
+    def __init__(self, message='Unspecified error'):
+        RuntimeError.__init__(self, 'Internal error in global server: ' + message)
 
 
 def test():
