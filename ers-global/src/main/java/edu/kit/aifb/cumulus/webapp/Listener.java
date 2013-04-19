@@ -43,7 +43,8 @@ public class Listener implements ServletContextListener {
 	private static final String PARAM_CONFIGFILE = "config-file";
 	
 	private static final String PARAM_HOSTS = "cassandra-hosts";
-	private static final String PARAM_EMBEDDED_HOST = "cassandra-embedded-host";
+	private static final String PARAM_EMBEDDED_HOST = "cassandra-embedded-host";		// this must be set to 'true' if intended to be run as embedded version
+	private static final String PARAM_RUN_ON_OPENSHIFT = "run-on-openshift";		// this must be set to 'true' if intended to be run on Openshift platform
 	private static final String PARAM_ERS_KEYSPACES_PREFIX = "ers-keyspaces-prefix";
 	private static final String PARAM_LAYOUT = "storage-layout";
 	private static final String PARAM_PROXY_MODE = "proxy-mode";
@@ -59,7 +60,7 @@ public class Listener implements ServletContextListener {
 	// add here the params stored in web.xml
 	private static final String[] CONFIG_PARAMS = new String[] {
 		PARAM_HOSTS, PARAM_EMBEDDED_HOST, PARAM_ERS_KEYSPACES_PREFIX, 
-		PARAM_LAYOUT, PARAM_PROXY_MODE,
+		PARAM_LAYOUT, PARAM_PROXY_MODE, PARAM_RUN_ON_OPENSHIFT,
 		//PARAM_RESOURCE_PREFIX, PARAM_DATA_PREFIX,
 		PARAM_TRIPLES_OBJECT,
 		PARAM_TRIPLES_SUBJECT, PARAM_QUERY_LIMIT,
@@ -76,7 +77,8 @@ public class Listener implements ServletContextListener {
 	private static final String LAYOUT_FLAT = "flat";
 	
 	public static String DEFAULT_ERS_KEYSPACES_PREFIX = "ERS_";
-	public static final String AUTHOR_KEYSPACE = "authors";
+	public static final String AUTHOR_KEYSPACE = "ERS_authors";
+	private static String DEFAULT_RUN_ON_OPENSHIFT = "no";
 
 	// NOTE: consistency level is tunable per keyspace, per CF, per operation type 
         // for the moment all keyspaces use this default policy 
@@ -190,9 +192,6 @@ public class Listener implements ServletContextListener {
 			return;
 		}
 		try {
-			String hosts = config.get(PARAM_HOSTS);
-			String layout = config.get(PARAM_LAYOUT);
-
 			// NOTE: do not set it > than total number of cassandra instances 
   			// NOTE2: this must be enforeced to 1 if embedded version is used
  			Listener.DEFAULT_REPLICATION_FACTOR = config.containsKey(PARAM_DEFAULT_REPLICATION_FACTOR) ? 
@@ -200,18 +199,41 @@ public class Listener implements ServletContextListener {
 			// all keyspaces created using this system will prepend this prefix
 			Listener.DEFAULT_ERS_KEYSPACES_PREFIX = config.containsKey(PARAM_ERS_KEYSPACES_PREFIX) ? 
 				config.get(PARAM_ERS_KEYSPACES_PREFIX) : Listener.DEFAULT_ERS_KEYSPACES_PREFIX;
-			
-			_log.info("hosts: " + hosts);
-			_log.info("ers keyspaces prefix: " + Listener.DEFAULT_ERS_KEYSPACES_PREFIX );
-			_log.info("storage layout: " + layout);
+			// this parameter must be set if intended to run the project on Openshift platform
+			Listener.DEFAULT_RUN_ON_OPENSHIFT = config.containsKey(PARAM_RUN_ON_OPENSHIFT) ? 
+				config.get(PARAM_RUN_ON_OPENSHIFT) : Listener.DEFAULT_RUN_ON_OPENSHIFT;
 
+			String hosts="";
+			// embedded ?!
 			if( config.containsKey(PARAM_START_EMBEDDED) && config.get(PARAM_START_EMBEDDED).equals("yes") ) {
 				// force the replication to 1 as, most probably, there will be just one instance of embedded Cassandra running locally
 				Listener.DEFAULT_REPLICATION_FACTOR = 1; 
 				// start embedded Cassandra
 				EmbeddedCassandraServerHelper.startEmbeddedCassandra();
-				_log.info("embedded cassandra host: " + config.get(PARAM_EMBEDDED_HOST));
+				hosts = config.get(PARAM_EMBEDDED_HOST);
+				_log.info("embedded cassandra host: " + hosts);
+				if( Listener.DEFAULT_RUN_ON_OPENSHIFT.equals("yes")) { 
+					_log.severe("The project cannot be run on Openshift as embedded! Please set either Openshift or Embedded on web.xml and run once again");
+					ctx.setAttribute(ERROR, "conflict parameters");
+					return;
+				}
 			}
+			// openshift ?!
+			else if( Listener.DEFAULT_RUN_ON_OPENSHIFT.equals("yes")) { 	
+				// force the replication to 1 as, most probably, one may use just one instance of Openshift
+				Listener.DEFAULT_REPLICATION_FACTOR = 1;
+				hosts = System.getenv("OPENSHIFT_INTERNAL_IP") + ":19160";
+				_log.info("Openshift cassandra host: " + hosts);
+			}
+			// standalone case 
+			else { 
+				hosts = config.get(PARAM_HOSTS);
+				_log.info("Cassandra host: " + hosts); 
+			}
+			String layout = config.get(PARAM_LAYOUT);
+			
+			_log.info("ers keyspaces prefix: " + Listener.DEFAULT_ERS_KEYSPACES_PREFIX );
+			_log.info("storage layout: " + layout);
 			
 			if (LAYOUT_SUPER.equals(layout))
 				_crdf = new CassandraRdfHectorHierHash(hosts);
@@ -222,7 +244,7 @@ public class Listener implements ServletContextListener {
 			// set some cluster wide parameters 
 			_crdf.open();
    			// create the Authors keyspace
-			_crdf.createKeyspace(Store.encodeKeyspace(AUTHOR_KEYSPACE));
+			_crdf.createKeyspace(AUTHOR_KEYSPACE);
 			ctx.setAttribute(STORE, _crdf);
 		} catch (Exception e) {
 			_log.severe(e.getMessage());

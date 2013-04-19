@@ -295,7 +295,6 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 
 	        while (true) {
         	    rangeSlicesQuery.setKeys(last_key, null);
-	            //System.out.println(" > " + last_key);
 	  	    try {
         	    	    QueryResult<OrderedRows<String, String, String>> result = rangeSlicesQuery.execute();
 		            OrderedRows<String, String, String> rows = result.get();
@@ -308,28 +307,40 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 			    while (rowsIterator.hasNext()) {
 				    Row<String, String, String> row = rowsIterator.next();
 				    last_key = row.getKey();
-				    if (row.getColumnSlice().getColumns().isEmpty()) 
-			    		continue;
-				    StringBuffer buf = new StringBuffer(); 
+			 	    // print even if we just have row_key but none columns ?! yes ... 
+				    if (row.getColumnSlice().getColumns().isEmpty()) {
+				    	StringBuffer buf = new StringBuffer(); 
+		   		        buf.append(row.getKey()); 
+					buf.append(" NULL NULL . "); 
+				        buf.append(Store.decodeKeyspace(keyspace) + "\n");
+  				    	out.println(buf.toString());
+					++total_row_count; 
+				        if( total_row_count >= limit ) 
+						return total_row_count;
+				    }
 				    for(Iterator it = row.getColumnSlice().getColumns().iterator(); it.hasNext(); ) { 		
 				        HColumn c = (HColumn)it.next(); 
+				    	StringBuffer buf = new StringBuffer(); 
 		   		        buf.append(row.getKey()); 
 					buf.append(" "); 
 					buf.append(c.getName()); 
 				        buf.append(" "); 
 					buf.append(c.getValue());
 				        buf.append(Store.decodeKeyspace(keyspace) + "\n");
+  				    	out.println(buf.toString());
+					// because the same row key can contain multiple column records, we consider a row each of them rather than the entire row :) 
+					// (see how cumulusrdf flat storage works)
+					++total_row_count; 
+				        if( total_row_count >= limit ) 
+						return total_row_count;
 				    }
-  				    out.println(buf.toString());
-				    ++total_row_count; 
-				    if( total_row_count >= limit ) 
-					return total_row_count;
-	           	    }
-	            	    if (rows.getCount() < row_count)
-        	        	break;
+			     }
+	            	     if (rows.getCount() < row_count)
+        	             	break;
 			} catch(Exception e){ 
 				e.printStackTrace(); 
 				out.println("Exception message: " + e.getMessage());
+				out.println("Exception: " + e.toString());
 				return 0;
 			}
         	}
@@ -342,7 +353,8 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 		for (KeyspaceDefinition ksDef : _cluster.describeKeyspaces()) {
 			String keyspace = ksDef.getName(); 
 			// only keyspaces that uses as prefix our pre-defined one
-			if( ! keyspace.startsWith(Listener.DEFAULT_ERS_KEYSPACES_PREFIX) ) 
+			if( ! keyspace.startsWith(Listener.DEFAULT_ERS_KEYSPACES_PREFIX) || 
+     			      keyspace.equals(Listener.AUTHOR_KEYSPACE) ) 
 				continue;
 			// query this keyspace
 			total_rows += queryEntireKeyspace(keyspace, out, limit);
