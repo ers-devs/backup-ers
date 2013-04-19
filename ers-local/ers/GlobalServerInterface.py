@@ -58,6 +58,9 @@ class GlobalServerInterface(object):
 
         self._server_url = server_url
 
+    def graph_exists(self, graph):
+        return self._do_bool_request('exist_graph', {'g': graph})
+
     def create(self, entity, prop, value):
         self._do_write_request('create', {'e': entity, 'p': prop, 'v': value})
 
@@ -129,29 +132,22 @@ class GlobalServerInterface(object):
 
         self._do_request(request)
 
-    def _do_read_request(self, operation, params):
-        req_url = self._server_url + urllib.quote_plus(operation) + '?' + self._encode_params(params)
-        request = urllib2.Request(req_url)
-        request.add_header('Accept', 'text/html')
-
-        response = self._do_request(request).read()
-        tuples = self._read_tuples_response(response)
-
-        return tuples
-
-    def _do_write_request(self, operation, params):
+    def _do_request(self, operation, params, method='GET'):
         req_url = self._server_url + urllib.quote_plus(operation)
-        req_data = self._encode_params(params)
+        req_data = None
+
+        if method=='POST':
+            req_data = self._encode_params(params)
+        else:
+            req_url = req_url + '?' + self._encode_params(params)
+
         request = urllib2.Request(req_url, req_data)
         request.add_header('Accept', 'text/html')
 
-        self._do_request(request)
-
-    def _do_request(self, request):
         try:
             response = urllib2.urlopen(request, None, self.timeout_sec)
 
-            return response
+            return response.read()
         except urllib2.HTTPError as e:
             err_body = e.read()
 
@@ -179,6 +175,17 @@ class GlobalServerInterface(object):
             return [[decode_rdflib_term(x) for x in triple] for triple in graph]
         except:
             raise GlobalServerOperationException("Received malformed tuples data from server")
+
+    def _do_bool_request(self, operation, params):
+        response = self._do_request(operation, params)
+
+        if response.startswith('TRUE'):
+            return True
+        elif response.startswith('FALSE'):
+            return False
+        else:
+            raise GlobalServerInternalException(
+                "Invalid response to {0}; expected TRUE or FALSE, got '{0}'".format(operation, response))
 
 
 class GlobalServerAccessException(RuntimeError):
@@ -246,6 +253,8 @@ def test():
     # Start of tests
     server = GlobalServerInterface('http://localhost:8888/')
     #server = GlobalServerInterface('http://cassandra2-ersdevs.rhcloud.com/')
+
+    assert server.graph_exists('ers:bogusGraph1234') == False
 
     print "Tests OK so far"
     return
