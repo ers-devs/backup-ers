@@ -78,6 +78,7 @@ public class Listener implements ServletContextListener {
 	
 	public static String DEFAULT_ERS_KEYSPACES_PREFIX = "ERS_";
 	public static final String AUTHOR_KEYSPACE = "ERS_authors";
+	public static final String GRAPHS_NAMES_KEYSPACE = "ERS_graphs";
 	private static String DEFAULT_RUN_ON_OPENSHIFT = "no";
 
 	// NOTE: consistency level is tunable per keyspace, per CF, per operation type 
@@ -244,7 +245,9 @@ public class Listener implements ServletContextListener {
 			// set some cluster wide parameters 
 			_crdf.open();
    			// create the Authors keyspace
-			_crdf.createKeyspace(AUTHOR_KEYSPACE);
+			_crdf.createKeyspaceInit(AUTHOR_KEYSPACE);
+			// create the Graph names keyspace
+			_crdf.createKeyspaceInit(GRAPHS_NAMES_KEYSPACE);
 			ctx.setAttribute(STORE, _crdf);
 		} catch (Exception e) {
 			_log.severe(e.getMessage());

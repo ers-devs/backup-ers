@@ -100,7 +100,7 @@ public class QueryServlet extends AbstractHttpServlet {
 				Iterator<Node[]> it = crdf.query(query, queryLimit, k);
 				if (it.hasNext()) {
 					resp.setContentType(formatter.getContentType());
-					triples = formatter.print(it, out, k);
+					triples = formatter.print(it, out, crdf.decodeKeyspace(k));
 					found = true;
 				}
 			} catch (StoreException ex) {

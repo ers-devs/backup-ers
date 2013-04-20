@@ -6,6 +6,7 @@ import java.util.Iterator;
 import java.util.logging.Logger;
 import java.util.StringTokenizer;
 import java.util.HashMap;
+import java.lang.StringBuffer;
 
 import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
@@ -20,6 +21,8 @@ import org.semanticweb.yars.nx.parser.ParseException;
 import edu.kit.aifb.cumulus.store.Store;
 import edu.kit.aifb.cumulus.store.StoreException;
 import edu.kit.aifb.cumulus.webapp.formatter.SerializationFormat;
+
+import static org.apache.commons.lang.StringEscapeUtils.escapeHtml;
 
 /** 
  * 
@@ -99,12 +102,11 @@ public class UpdateServlet extends AbstractHttpServlet {
 			out.print("Author " + a + " does not exists.");
 		}
 		else {
-			String msg = "Triple ("+e+","+p+","+v_old+") has been removed.";
-			msg = msg.replace("<", "&lt;").replace(">","&gt;");
-			out.println(msg);
-			msg = "Triple ("+e+","+p+","+v_new+") has been added.";
-			msg = msg.replace("<", "&lt;").replace(">","&gt;");
-			out.print(msg);
+			StringBuffer buf = new StringBuffer(); 
+			buf.append(escapeHtml("Quad ("+e+","+p+","+v_old+","+a+") has been removed."));
+			buf.append("<br/>");
+			buf.append(escapeHtml("Quad ("+e+","+p+","+v_new+","+a+") has been added."));
+			out.print(buf.toString());
 		}
 		_log.info("[dataset] POST " + (System.currentTimeMillis() - start) + "ms ");
 	}

@@ -11,7 +11,16 @@ import org.semanticweb.yars.nx.Node;
 import org.semanticweb.yars.nx.Resource;
 import org.semanticweb.yars.nx.Variable;
 
+import org.semanticweb.yars.nx.Nodes;
+import org.semanticweb.yars.nx.parser.NxParser;
+import org.semanticweb.yars.nx.parser.ParseException;
+
+import edu.kit.aifb.cumulus.store.StoreException;
 import edu.kit.aifb.cumulus.webapp.Listener;
+
+import org.apache.commons.codec.binary.Hex;
+import org.apache.commons.codec.DecoderException;
+import org.apache.commons.codec.digest.DigestUtils;
 
 /** 
  * 
@@ -127,6 +136,7 @@ public abstract class Store {
 	public abstract int dropKeyspace(String keyspace, boolean force);
 	// create a keyspace / graph 
 	public abstract int createKeyspace(String keyspace);
+	public abstract int createKeyspaceInit(String keyspace);
 	// test if a keyspace / graph exists
 	public abstract boolean existsKeyspace(String keyspace);
 	// test if a keyspace / graph is empty or not 
@@ -140,13 +150,51 @@ public abstract class Store {
 	public abstract Iterator<Node[]> query(Node[] query, String keyspace) throws StoreException;
 	public abstract Iterator<Node[]> query(Node[] query, int limit, String keyspace) throws StoreException;
 
-	// input: <test> | output: ERS_test
+	 private Node getNode(String value, String varName) throws ParseException {
+	        if (value != null && value.trim().length() > 2)
+                         return NxParser.parseNode(value);
+                 else
+                         return new Variable(varName);
+         }
+
+	// input: <test> | output: ERS_sha1hexa(<test>)
 	public static final String encodeKeyspace(String keyspace) { 
-		return Listener.DEFAULT_ERS_KEYSPACES_PREFIX.concat(keyspace.replace("<","").replace(">",""));
-	}
-	// input: ERS_test | output: <test>
-	public static final String decodeKeyspace(String keyspace) { 
-		return "<" + keyspace.substring(Listener.DEFAULT_ERS_KEYSPACES_PREFIX.length()) + ">";
+		return Listener.DEFAULT_ERS_KEYSPACES_PREFIX.concat(DigestUtils.shaHex(keyspace));
+       	}
+
+	// input: ERS_sha1hexa(test) |USE THE LOOKUP => output: <test>
+	public final String decodeKeyspace(String keyspace) { 
+		// query the Listener.GRAPHS_NAMES_KEYSPACE to get the decoded/real name
+                Node[] query = new Node[3];
+                try {
+	                query[0] = getNode("\""+keyspace+"\"", "s");
+                        query[1] = getNode("\"hashValue\"", "p");
+                        query[2] = getNode(null, "o");
+                 }
+                 catch (ParseException ex) {
+			ex.printStackTrace();
+			_log.severe("ERS exception: " + ex.getMessage());
+                        return null; 
+                 }
+		try {
+			 Iterator<Node[]> it = this.query(query, 1, Listener.GRAPHS_NAMES_KEYSPACE);
+        	         if (it.hasNext()) {
+				Node[] n = (Node[]) it.next();
+				return n[2].toString();
+	                 }
+		 }
+		 catch( StoreException ex ) { 
+			ex.printStackTrace(); 
+			_log.severe("ERS exception: " + ex.getMessage());
+		}	
+		 return null;
+		/*
+	         try {
+                         return new String(Hex.decodeHex(keyspace.substring(Listener.DEFAULT_ERS_KEYSPACES_PREFIX.length()).toCharArray()));
+                 } catch( DecoderException ex) {
+                         ex.printStackTrace();
+                         return "ERS: Decode Exception!";
+                 } */
 	}
 	
 	public int queryEntireKeyspace(String keyspace, PrintWriter out, int limit) { 

@@ -23,6 +23,8 @@ import edu.kit.aifb.cumulus.store.AbstractCassandraRdfHector;
 import edu.kit.aifb.cumulus.store.StoreException;
 import edu.kit.aifb.cumulus.webapp.formatter.SerializationFormat;
 
+import static org.apache.commons.lang.StringEscapeUtils.escapeHtml;
+
 /** 
  * 
  * @author tmacicas
@@ -68,6 +70,7 @@ public class GraphServlet extends AbstractHttpServlet {
 				out.println(it.next());
 			}
 		}
+		out.close();
 		_log.info("[dataset] GET all graphs (keyspaces) " + (System.currentTimeMillis() - start) + "ms ");
 	}
 	
@@ -109,6 +112,7 @@ public class GraphServlet extends AbstractHttpServlet {
 			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass either a resource (e.g. &lt;resource&gt;) or a literal (e.g. \"literal\") as value");
 			return;
 		}	
+
 		String accept = req.getHeader("Accept");
 		SerializationFormat formatter = Listener.getSerializationFormat(accept);
 		if (formatter == null) {
@@ -116,19 +120,22 @@ public class GraphServlet extends AbstractHttpServlet {
 			return;
 		}
 		Store crdf = (Store)ctx.getAttribute(Listener.STORE);
+
 		// create the associated keyspace with this graph, if it does not exist  
-		int r = crdf.createKeyspace(Store.encodeKeyspace(a_id));
+		int r = crdf.createKeyspace(a_id);
 		String msg = "";
 		if( r == 2 ) 
-			msg = "Author " + a_id + " cannot be created. Do not use 'system' as prefix.";
+			msg = "Graph " + a_id + " cannot be created. Do not use 'system' as prefix.";
 		else {
 			// now insert the triple into Authors keyspace 
 			int r2 = crdf.addData(a_id, a_p, a_v, Listener.AUTHOR_KEYSPACE);
 			if( r2 != -1 ) { 
 				if (r == 1) 
-					msg = "Author " + a_id + " already exists. New data has been added.";
+					msg = "Graph " + escapeHtml(a_id) + " already exists. New data has been added.";
 				else if (r == 0) 
-					msg = "Author " + a_id + " has been created. Data added.";
+					msg = "Graph " + escapeHtml(a_id) + " has been created. Data added.";
+				else if(r == 3) 	
+					msg = "ERS exception on creating a keyspace!";
 			}
 			else 
 				msg = "Error on adding the triple !";
@@ -173,13 +180,16 @@ public class GraphServlet extends AbstractHttpServlet {
 		Store crdf = (Store)ctx.getAttribute(Listener.STORE);
 		// do the deletion of entities associated with this graph  
 		// delete also the record from AUTHORS keyspace ?! for the moment, NO
-		int r = crdf.dropKeyspace(Store.encodeKeyspace(a_id), force);
+		String encoded_keyspace = Store.encodeKeyspace(a_id);
+		int r = crdf.dropKeyspace(encoded_keyspace, force);
 		switch(r) { 
 			case 0: 
-				out.println("Entities of graph " + a_id + " have been deleted.");
+				out.println("The entire of graph " + escapeHtml(a_id) + " has been deleted.");
+				//delete from ERS_graphs
+				crdf.deleteData("\""+encoded_keyspace+"\"","\"hashValue\"", "\""+a_id+"\"", Listener.GRAPHS_NAMES_KEYSPACE);
 				break;
 			case 1: 	
-				out.println("The graph " + a_id + " does not exist. Nothing to delete.");
+				out.println("The graph " + escapeHtml(a_id) + " does not exist. Nothing to delete.");
 				break;
 			case 2: 
 				out.println("Deleting the graph has raised exceptions. Check tomcat log.");
