@@ -69,7 +69,10 @@ class GlobalServerInterface(object):
         return self._do_bool_request('exist_graph', {'g': graph})
 
     def add_graph_info(self, graph, prop, value):
-        self._do_request('graph', {'g_id': graph, 'g_p': prop, 'g_v': value})
+        self._do_request('graph', {'g_id': graph, 'g_p': prop, 'g_v': value}, 'POST')
+
+    def delete_graph(self, graph, force=False):
+        self._do_request('graph', {'g': graph, 'f': 'y' if force else 'n'}, 'DELETE')
 
     def create(self, entity, prop, value):
         self._do_write_request('create', {'e': entity, 'p': prop, 'v': value})
@@ -151,7 +154,7 @@ class GlobalServerInterface(object):
         else:
             req_url = req_url + '?' + self._encode_params(params)
 
-        request = urllib2.Request(req_url, req_data)
+        request = RequestEx(req_url, req_data, method=method)
         request.add_header('Accept', 'text/html')
 
         try:
@@ -217,6 +220,23 @@ class GlobalServerInternalException(RuntimeError):
         RuntimeError.__init__(self, 'Internal error in global server: ' + message)
 
 
+class RequestEx(urllib2.Request):
+    _method_override = None
+
+    def __init__(self, *args, **kwargs):
+        if 'method' in kwargs:
+            self._method_override = kwargs['method']
+            del kwargs['method']
+
+        urllib2.Request.__init__(self, *args, **kwargs)
+
+    def get_method(self):
+        return self._method_override if self._method_override is not None else urllib2.Request.get_method(self)
+
+    def set_method(self, method):
+        self._method_override = method
+
+
 def test():
     def unique(l):
         if l is None:
@@ -264,11 +284,20 @@ def test():
     server = GlobalServerInterface('http://localhost:8888/')
     #server = GlobalServerInterface('http://cassandra2-ersdevs.rhcloud.com/')
 
+    # Check graph exists
     assert server.graph_exists('ers:bogusGraph1234') is False
 
+    # Create graph (add graph info)
     server.add_graph_info('ers:testGraph1', URN_RDF_TYPE, URN_RDFG_GRAPH)
-
+    server.add_graph_info('ers:testGraph2', URN_RDF_TYPE, URN_RDFG_GRAPH)
+    server.add_graph_info('ers:testGraph3', URN_RDF_TYPE, URN_RDFG_GRAPH)
     assert server.graph_exists('ers:testGraph1') is True
+    assert server.graph_exists('ers:testGraph2') is True
+    assert server.graph_exists('ers:testGraph3') is True
+
+    # Delete graph
+    server.delete_graph('ers:testGraph3')
+    assert server.graph_exists('ers:testGraph3') is False
 
     print "Tests OK so far"
     return
