@@ -25,7 +25,7 @@ import edu.kit.aifb.cumulus.webapp.formatter.SerializationFormat;
 
 /** 
  * 
- * @author aharth
+ * @author tmacicas
  */
 @SuppressWarnings("serial")
 public class QueryGraphServlet extends AbstractHttpServlet {
@@ -45,8 +45,12 @@ public class QueryGraphServlet extends AbstractHttpServlet {
 		resp.setCharacterEncoding("UTF-8");
 
 		String g = req.getParameter("g");
-		if( g == null || g.isEmpty() ) {
-			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass the graph as 'g' parameter");
+		if( g == null || g.isEmpty() ) { 
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please pass the graph as 'g' parameter");
+			return;
+		}
+		if( !g.startsWith("<") || !g.endsWith(">") )  {
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please a resource as graph name.");
 			return;
 		}
 		PrintWriter out = resp.getWriter();
@@ -54,17 +58,17 @@ public class QueryGraphServlet extends AbstractHttpServlet {
 
 		// do not allow querying of system keyspaces, authors or graphs
 		if( g.startsWith("system") || g.equals(Listener.GRAPHS_NAMES_KEYSPACE) || g.equals(Listener.AUTHOR_KEYSPACE) ) { 
-			out.println("It is forbidden to query this keyspace " + g);
+			sendError(ctx, req, resp, HttpServletResponse.SC_FORBIDDEN, "It is forbidden to query this keyspace " + g);
 			return;
 		}
 		// check if graph exists 
 		if( ! crdf.existsKeyspace(Store.encodeKeyspace(g)) ) { 
-			out.println("The graph " + g + " passed as input does not exist. No data returned.");
+			sendError(ctx, req, resp, HttpServletResponse.SC_CONFLICT, "The graph " + g + " passed as input does not exist. No data returned.");
 			return;
 		}
 		int triples = crdf.queryEntireKeyspace(g, out, Integer.MAX_VALUE); // do not enfore the limite here, get all entities of a graph
 		if( triples == 0 ) 
-			out.println("The graph " + g + " is empty. No data returned.");
+			sendResponse(ctx, req, resp, HttpServletResponse.SC_OK, "The graph " + g + " is empty. No data returned.");
 		 else
 			out.println("Total quads returned: " + triples );
 		_log.info("[dataset] QUERY THE WHOLE GRAPH " + (System.currentTimeMillis() - start) + "ms " + triples + "t");

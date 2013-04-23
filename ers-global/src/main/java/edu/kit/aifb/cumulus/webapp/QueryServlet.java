@@ -23,6 +23,8 @@ import edu.kit.aifb.cumulus.store.AbstractCassandraRdfHector;
 import edu.kit.aifb.cumulus.store.StoreException;
 import edu.kit.aifb.cumulus.webapp.formatter.SerializationFormat;
 
+import static org.apache.commons.lang.StringEscapeUtils.escapeHtml;
+
 /** 
  * 
  * @author aharth
@@ -41,6 +43,11 @@ public class QueryServlet extends AbstractHttpServlet {
 			sendError(ctx, req, resp, HttpServletResponse.SC_NOT_ACCEPTABLE, "no known mime type in Accept header");
 			return;
 		}
+		// escape if the accept header is html
+		String resource = "<resource>";
+		if ( formatter.getContentType().equals("text/html") )
+			resource = escapeHtml(resource); 
+
 		int queryLimit = (Integer)ctx.getAttribute(Listener.QUERY_LIMIT);
 		resp.setCharacterEncoding("UTF-8");
 
@@ -48,18 +55,21 @@ public class QueryServlet extends AbstractHttpServlet {
 		String p = req.getParameter("p");
 		String v = req.getParameter("v");
 		String a = req.getParameter("g");
-//		_log.info("QUERYServlet: req " + req.getPathInfo() + " " + req.getQueryString() + " " + e + " " + p + " " + v);
 		// some checks
-		if( e != null && !e.isEmpty() && !e.startsWith("<") ) {
-			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass a resource (e.g. &lt;resource&gt;) as entity");
+		if( e != null && !e.isEmpty() && (!e.startsWith("<") || !e.endsWith(">")) ) {
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please pass a resource (e.g. "+resource+") as entity");
 			return;
 		}	
-		if( p!= null && !p.isEmpty() && !p.startsWith("<") && !p.startsWith("\"") ) {
-			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass either a resource (e.g. &lt;resource&gt;) or a literal (e.g. \"literal\") as property");
+		if( p!= null && !p.isEmpty() && (!p.startsWith("<") || !p.endsWith(">")) && (!p.startsWith("\"") || !p.endsWith("\"")) ) {
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please pass either a resource (e.g. "+resource+") or a literal (e.g. \"literal\") as property");
 			return;
 		}
-		if( v!=null && !v.isEmpty() && !v.startsWith("<") && !v.startsWith("\"") ) {
-			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass either a resource (e.g. &lt;resource&gt;) or a literal (e.g. \"literal\") as value");
+		if( v!=null && !v.isEmpty() && (!v.startsWith("<") || !v.endsWith(">")) && (!v.startsWith("\"") || !v.endsWith("\"")) ) {
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please pass either a resource (e.g. "+resource+") or a literal (e.g. \"literal\") as value");
+			return;
+		}
+		if( a!=null && !a.isEmpty() && (!a.startsWith("<") || !a.endsWith(">")) && (!a.startsWith("\"") || !a.endsWith("\"")) ) {
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please pass a resource (e.g. "+resource+") as graph name.");
 			return;
 		}
 		Node[] query = new Node[3];
@@ -70,22 +80,30 @@ public class QueryServlet extends AbstractHttpServlet {
 		}
 		catch (ParseException ex) {
 			_log.severe(ex.getMessage());
-			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "could not parse query string");
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Could not parse query string.");
 			return;
 		}
 
 		if (query[0] instanceof Variable && query[1] instanceof Variable && query[2] instanceof Variable) {
-			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "query must contain at least one constant");
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Query must contain at least one constant.");
 			return;
 		}
+		// escape if the accept header is not text/plain
+		String graph = a;
+		if ( a!=null && formatter.getContentType().equals("text/html") ) 
+			graph = escapeHtml(a);
+
 		PrintWriter out = resp.getWriter();
 		AbstractCassandraRdfHector crdf = (AbstractCassandraRdfHector)ctx.getAttribute(Listener.STORE);
 		int triples = 0;
 
 		// search within given keyspace or all if none is given
 		List<String> keyspaces = new ArrayList<String>(); 
-		if( a != null && ! a.isEmpty() ) 
+		if( a != null && ! a.isEmpty() ) {
+			if( ! crdf.existsKeyspace(Store.encodeKeyspace(a)) ) 
+				sendResponse(ctx, req, resp, HttpServletResponse.SC_CONFLICT, "Graph "+graph+" does not exist.");
 			keyspaces.add(Store.encodeKeyspace(a)); 
+		}
 		else 
 			keyspaces = crdf.getAllKeyspaces(); 
 
@@ -109,7 +127,7 @@ public class QueryServlet extends AbstractHttpServlet {
 			}
 		}
 		if( !found ) 
-			sendError(ctx, req, resp, HttpServletResponse.SC_NOT_FOUND, "resource not found");
+			sendResponse(ctx, req, resp, HttpServletResponse.SC_OK, "None quads found.");
 		_log.info("[dataset] QUERY " + Nodes.toN3(query) + " " + (System.currentTimeMillis() - start) + "ms " + triples + "t");
 	}
 

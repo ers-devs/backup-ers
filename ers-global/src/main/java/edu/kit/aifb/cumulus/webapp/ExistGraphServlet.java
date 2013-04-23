@@ -60,19 +60,20 @@ public class ExistGraphServlet extends AbstractHttpServlet {
 			sendError(ctx, req, resp, HttpServletResponse.SC_NOT_ACCEPTABLE, "no known mime type in Accept header");
 			return;
 		}
+		// escape if the accept header is not text/plain
+		String graph = g;
+		if ( formatter.getContentType().equals("text/html") ) 
+			graph = escapeHtml(g);
+
 		PrintWriter out = resp.getWriter();
 		resp.setContentType(formatter.getContentType());
 		Store crdf = (Store)ctx.getAttribute(Listener.STORE);
 		// test if graph exists
 		boolean r = crdf.existsKeyspace(Store.encodeKeyspace(g));
-		if ( r ) {
-			out.println("TRUE");
-			out.println("Graph " + escapeHtml(g) + " exists.");
-		}
-		else {		
-			out.println("FALSE");
-			out.println("Graph " + escapeHtml(g) + " does not exist.");
-		}
+		if ( r )
+			sendResponse(ctx, req, resp, HttpServletResponse.SC_OK, "TRUE - graph " + graph + " exists.");
+		else 
+			sendResponse(ctx, req, resp, HttpServletResponse.SC_OK, "FALSE - graph " + graph + " does not exist.");
 		_log.info("[dataset] GET exist keyspace " + (System.currentTimeMillis() - start) + "ms ");
 	}
 	

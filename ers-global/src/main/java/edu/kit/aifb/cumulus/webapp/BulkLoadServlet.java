@@ -58,6 +58,7 @@ public class BulkLoadServlet extends AbstractHttpServlet {
 			sendError(ctx, req, resp, HttpServletResponse.SC_NOT_ACCEPTABLE, "no known mime type in Accept header");
 			return;
 		}
+
 		PrintWriter out_r = resp.getWriter();
 		String resp_msg = "";
 		// check that we have a file upload request
@@ -83,7 +84,7 @@ public class BulkLoadServlet extends AbstractHttpServlet {
 
 			// Process the uploaded items
 			Iterator iter = items.iterator();
-			String a =""; 
+			String a =""; String graph ="";
 			boolean a_exists = false; 
 			String file = ""; 
 			
@@ -94,7 +95,11 @@ public class BulkLoadServlet extends AbstractHttpServlet {
 				String value = item.getString();
 				if( name.equals("g") ) { 
 					a_exists = true; 
-					a = new String(value); 
+					a = new String("<"+value+">"); 
+					// escape if the accept header is not text/plain
+					graph = new String(a);
+					if ( formatter.getContentType().equals("text/html") ) 
+						graph = escapeHtml(a);
 				}
 			    } else {
 				   String fieldName = item.getFieldName();
@@ -115,19 +120,21 @@ public class BulkLoadServlet extends AbstractHttpServlet {
 				   uploadedStream.close();
 				   out.flush();
 			  	   out.close();
-				   resp_msg += "Bulkload " + fileName + " for graph " + a + ", size " + sizeInBytes;
+				   resp_msg += "Bulkload " + fileName + ", size " + sizeInBytes;
 				}
 			}
 			if( ! a_exists || a == null || a.isEmpty() ) { 
-				sendError(ctx, req, resp, HttpServletResponse.SC_NOT_ACCEPTABLE, "please pass also the graph name as 'g' parameter");
+				sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please pass also the graph name as 'g' parameter");
 			}
 			else { 
 	   		        // load here 
 				if( crdf.bulkLoad(new File(file), format, threads, Store.encodeKeyspace(a)) == 1 ) 
-					resp_msg = "Author " + a + " does not exist yet. Please create if before bulk loading."; 
-				else
-					resp_msg += ", time " + (System.currentTimeMillis() - start) + "ms "; 
-				_log.info(resp_msg);
+					sendError(ctx, req, resp, HttpServletResponse.SC_CONFLICT, "Graph " + graph + " does not exist yet. Please create it before bulk loading."); 
+				else {
+					resp_msg = "Graph " + graph + " time " + (System.currentTimeMillis() - start) + "ms";
+					sendResponse(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, resp_msg); 
+					_log.info(resp_msg);
+				}
 			}
 			// delete the tmp file 
 			new File(file).delete();

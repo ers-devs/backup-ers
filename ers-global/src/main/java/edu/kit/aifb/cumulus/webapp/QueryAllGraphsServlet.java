@@ -27,7 +27,7 @@ import me.prettyprint.hector.api.ddl.KeyspaceDefinition;
 
 /** 
  * 
- * @author aharth
+ * @author tmacicas
  */
 @SuppressWarnings("serial")
 public class QueryAllGraphsServlet extends AbstractHttpServlet {
@@ -49,21 +49,21 @@ public class QueryAllGraphsServlet extends AbstractHttpServlet {
 		//NOTE: this refers to result limit per graph, NOT total limit
 		String l = req.getParameter("limit"); 
 		if( l == null || l.isEmpty() ) { 
-			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass the limit as 'limit' parameter");
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please pass the limit as 'limit' parameter");
 			return;
 		}
 		int limit=0; 
 		try { 
 			limit = Integer.parseInt(l);
 		} catch( NumberFormatException ex ) { 
-			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass the limit as integer parameter");
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please pass the limit as integer parameter");
 			return;
 		}
 		PrintWriter out = resp.getWriter();
 		AbstractCassandraRdfHector crdf = (AbstractCassandraRdfHector)ctx.getAttribute(Listener.STORE);
 
 		int quads = crdf.queryAllKeyspaces(limit, out);
-		out.println("Total number of quads returned: " + quads);
+		sendResponse(ctx, req, resp, HttpServletResponse.SC_OK, "Total number of quads returned: " + quads);
 
 		_log.info("[dataset] QUERY THE WHOLE GRAPH " + (System.currentTimeMillis() - start) + "ms " + quads + " quads");
 		return;

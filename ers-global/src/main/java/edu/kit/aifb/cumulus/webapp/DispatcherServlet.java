@@ -19,6 +19,7 @@ public class DispatcherServlet extends AbstractHttpServlet {
 	
 	private static final String INFO = "/info";
 	private static final String ERROR = "/error";
+	private static final String RESPONSE ="/response";
 
  	// TM  (C R U D)
 	private static final String CREATE = "/create";
@@ -55,6 +56,9 @@ public class DispatcherServlet extends AbstractHttpServlet {
 				}
 				else if (path.startsWith(ERROR)) {
 					ctx.getNamedDispatcher("error").forward(req, resp);
+				}
+				else if (path.startsWith(RESPONSE)) {
+					ctx.getNamedDispatcher("response").forward(req, resp);
 				}
 				else if (path.startsWith(INFO)) {
 					ctx.getNamedDispatcher("info").forward(req, resp);
@@ -119,6 +123,8 @@ public class DispatcherServlet extends AbstractHttpServlet {
 					ctx.getNamedDispatcher("transaction").forward(req, resp);
 				} else if (path.startsWith(ERROR)) { 
 					ctx.getNamedDispatcher("error").forward(req, resp);
+				} else if (path.startsWith(RESPONSE)) { 
+					ctx.getNamedDispatcher("response").forward(req, resp);
 				}
 			}
 			catch (ServletException e) {
