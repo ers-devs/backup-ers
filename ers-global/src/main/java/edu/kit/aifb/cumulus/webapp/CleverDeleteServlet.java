@@ -23,9 +23,11 @@ import edu.kit.aifb.cumulus.store.AbstractCassandraRdfHector;
 import edu.kit.aifb.cumulus.store.StoreException;
 import edu.kit.aifb.cumulus.webapp.formatter.SerializationFormat;
 
+import static org.apache.commons.lang.StringEscapeUtils.escapeHtml;
+
 /** 
  * 
- * @author aharth
+ * @author tmacicas
  */
 @SuppressWarnings("serial")
 public class CleverDeleteServlet extends AbstractHttpServlet {
@@ -41,6 +43,11 @@ public class CleverDeleteServlet extends AbstractHttpServlet {
 			sendError(ctx, req, resp, HttpServletResponse.SC_NOT_ACCEPTABLE, "no known mime type in Accept header");
 			return;
 		}
+		// escape if the accept header is not text/plain
+		String resource = "<resource>";
+		if ( formatter.getContentType().equals("text/html") )
+			resource = escapeHtml(resource); 
+
 		int queryLimit = (Integer)ctx.getAttribute(Listener.QUERY_LIMIT);
 		resp.setCharacterEncoding("UTF-8");
 
@@ -48,18 +55,21 @@ public class CleverDeleteServlet extends AbstractHttpServlet {
 		String p = req.getParameter("p");
 		String v = req.getParameter("v");
 		String g = req.getParameter("g");
-//		_log.info("QUERYServlet: req " + req.getPathInfo() + " " + req.getQueryString() + " " + e + " " + p + " " + v);
 		// some checks
-		if( e != null && !e.isEmpty() && !e.startsWith("<") ) {
-			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass a resource (e.g. &lt;resource&gt;) as entity");
+		if( e != null && !e.isEmpty() && (!e.startsWith("<") || !e.endsWith(">")) ) {
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please pass a resource (e.g."+resource+") as entity");
 			return;
 		}	
-		if( p!= null && !p.isEmpty() && !p.startsWith("<") && !p.startsWith("\"") ) {
-			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass either a resource (e.g. &lt;resource&gt;) or a literal (e.g. \"literal\") as property");
+		if( p!=null && (!p.startsWith("<") || !p.endsWith(">")) && (!p.startsWith("\"") || !p.endsWith("\"")) ) {
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please pass either a resource (e.g."+resource+") or a literal (e.g. \"literal\") as property");
 			return;
 		}
-		if( v!=null && !v.isEmpty() && !v.startsWith("<") && !v.startsWith("\"") ) {
-			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass either a resource (e.g. &lt;resource&gt;) or a literal (e.g. \"literal\") as value");
+		if( v!=null && (!v.startsWith("<") || !v.endsWith(">")) && (!v.startsWith("\"") || !v.endsWith("\"")) ) {
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please pass either a resource (e.g. "+resource+") or a literal (e.g. \"literal\") as value");
+			return;
+		}
+		if( g!=null && (!g.startsWith("<") || !g.endsWith(">")) ) {
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please either resources (e.g. "+resource+") as graph");
 			return;
 		}
 		Node[] query = new Node[3];
@@ -87,21 +97,26 @@ public class CleverDeleteServlet extends AbstractHttpServlet {
                     v != null && !v.isEmpty() && 
                     g != null && !g.isEmpty() ) { 
 			// run "clasical" delete as we have all information 
-			if( crdf.deleteData(e,p,v,Store.encodeKeyspace(g)) == -2 ) { 
-				out.println("Graph " + g + " does not exist.");
-			}	
+			if( crdf.deleteData(e,p,v,Store.encodeKeyspace(g)) == -2 ) 
+				sendResponse(ctx, req, resp, HttpServletResponse.SC_CONFLICT, "Graph " + g + " does not exists.");
 			else { 
-				String msg = "Quad ("+e+","+p+","+v+","+g+") has been added.";
-				msg = msg.replace("<", "&lt;").replace(">","&gt;");
-				out.print(msg);
+				String msg = "Quad ("+e+","+p+","+v+","+g+") has been deleted.";
+				if( formatter.getContentType().equals("text/html") ) 
+					sendResponse(ctx, req, resp, HttpServletResponse.SC_OK, escapeHtml(msg));
+				else	
+					sendResponse(ctx, req, resp, HttpServletResponse.SC_OK, msg);
+					
 			}
 			return;
 		}
 
 		// search within given keyspace or all if none is given
 		List<String> keyspaces = new ArrayList<String>(); 
-		if( g != null && ! g.isEmpty() ) 
+		if( g != null && ! g.isEmpty() ) {
+			if( ! crdf.existsKeyspace(Store.encodeKeyspace(g)) ) 
+				sendResponse(ctx, req, resp, HttpServletResponse.SC_CONFLICT, "Graph "+g+" does not exist.");
 			keyspaces.add(Store.encodeKeyspace(g)); 
+		}
 		else 
 			keyspaces = crdf.getAllKeyspaces(); 
 

@@ -58,6 +58,7 @@ public class GraphServlet extends AbstractHttpServlet {
 			return;
 		}
 		Store crdf = (Store)ctx.getAttribute(Listener.STORE);
+
 		// get all existing graphs here 
 		List<String> keyspaces = ((AbstractCassandraRdfHector)crdf).getAllKeyspaces();
 		PrintWriter out = resp.getWriter();
@@ -88,57 +89,65 @@ public class GraphServlet extends AbstractHttpServlet {
 			resp.sendError(HttpServletResponse.SC_BAD_REQUEST);
 			return;
 		}
-		String a_id = req.getParameter("g_id"); //graph id as entity
-		String a_p = req.getParameter("g_p");	//property
-		String a_v = req.getParameter("g_v");	//value
-		// some checks
-		if( a_id == null || a_p == null || a_v == null ) { 
-			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass data like 'a_id=_&a_p=_&a_v=_'");
-			return;
-		}
-		if( a_id.isEmpty() || a_p.isEmpty() || a_v.isEmpty() ) { 
-			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass non empty data 'a_id=_&a_p=_&a_v=_'");
-			return;
-		}
-		if( !a_id.startsWith("<") ) {
-			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass a resource (e.g. &lt;resource&gt;) as entity / graph id");
-			return;
-		}	
-		if( !a_p.startsWith("<") && !a_p.startsWith("\"") ) {
-			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass either a resource (e.g. &lt;resource&gt;) or a literal (e.g. \"literal\") as property");
-			return;
-		}
-		if( !a_v.startsWith("<") && !a_v.startsWith("\"") ) {
-			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass either a resource (e.g. &lt;resource&gt;) or a literal (e.g. \"literal\") as value");
-			return;
-		}	
-
 		String accept = req.getHeader("Accept");
 		SerializationFormat formatter = Listener.getSerializationFormat(accept);
 		if (formatter == null) {
 			sendError(ctx, req, resp, HttpServletResponse.SC_NOT_ACCEPTABLE, "no known mime type in Accept header");
 			return;
 		}
-		Store crdf = (Store)ctx.getAttribute(Listener.STORE);
+		// escape if the accept header is html
+		String resource = "<resource>";
+		if ( formatter.getContentType().equals("text/html") )
+			resource = escapeHtml(resource); 
 
+		String a_id = req.getParameter("g_id"); //graph id as entity
+		String a_p = req.getParameter("g_p");	//property
+		String a_v = req.getParameter("g_v");	//value
+		// some checks
+		if( a_id == null || a_p == null || a_v == null ) { 
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please pass data like 'a_id=_&a_p=_&a_v=_'");
+			return;
+		}
+		if( a_id.isEmpty() || a_p.isEmpty() || a_v.isEmpty() ) { 
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please pass non empty data 'a_id=_&a_p=_&a_v=_'");
+			return;
+		}
+		if( !a_id.startsWith("<") || !a_id.endsWith(">") ) {
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please pass a resource (e.g. "+resource+") as entity / graph id");
+			return;
+		}	
+		if( (!a_p.startsWith("<") || !a_p.endsWith(">")) && (!a_p.startsWith("\"") || !a_p.endsWith("\"")) ) {
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please pass either a resource (e.g."+resource+") or a literal (e.g. \"literal\") as property");
+			return;
+		}
+		if( (!a_v.startsWith("<") || !a_p.endsWith(">")) && (!a_v.startsWith("\"") || !a_v.endsWith("\"")) ) {
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please pass either a resource (e.g. "+resource+") or a literal (e.g. \"literal\") as value");
+			return;
+		}	
+		// escape if the accept header is html
+		String graph = a_id;
+		if ( formatter.getContentType().equals("text/html") )
+			graph = escapeHtml(a_id);
+
+		Store crdf = (Store)ctx.getAttribute(Listener.STORE);
 		// create the associated keyspace with this graph, if it does not exist  
 		int r = crdf.createKeyspace(a_id);
 		String msg = "";
 		if( r == 2 ) 
-			msg = "Graph " + a_id + " cannot be created. Do not use 'system' as prefix.";
+			sendError(ctx, req, resp, HttpServletResponse.SC_FORBIDDEN, "Graph " + graph + " cannot be created. Do not use 'system' as prefix.");
 		else {
 			// now insert the triple into Authors keyspace 
 			int r2 = crdf.addData(a_id, a_p, a_v, Listener.AUTHOR_KEYSPACE);
 			if( r2 != -1 ) { 
 				if (r == 1) 
-					msg = "Graph " + escapeHtml(a_id) + " already exists. New data has been added.";
+					sendResponse(ctx, req, resp, HttpServletResponse.SC_OK, "Graph " + graph + " already exists. New data has been added.");
 				else if (r == 0) 
-					msg = "Graph " + escapeHtml(a_id) + " has been created. Data added.";
+					sendResponse(ctx, req, resp, HttpServletResponse.SC_CREATED, "Graph " + graph + " has been created. Data added.");
 				else if(r == 3) 	
-					msg = "ERS exception on creating a keyspace!";
+					sendError(ctx, req, resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "ERS exception on creating a keyspace!");
 			}
 			else 
-				msg = "Error on adding the triple !";
+				sendError(ctx, req, resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Error on adding the triple!");
 		}
 		PrintWriter out = resp.getWriter();
 		resp.setContentType(formatter.getContentType());
@@ -158,22 +167,32 @@ public class GraphServlet extends AbstractHttpServlet {
 			resp.sendError(HttpServletResponse.SC_BAD_REQUEST);
 			return;
 		}
-		String a_id = req.getParameter("g");
-		String f = req.getParameter("f");
-		if( a_id == null || a_id.isEmpty() ) { 
-			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass the graph id as 'g' parameter");
-			return;
-		}
-		if( !a_id.startsWith("<") ) {
-			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "please pass either a resource (e.g. &lt;resource&gt;) as property");
-			return;
-		}
 		String accept = req.getHeader("Accept");
 		SerializationFormat formatter = Listener.getSerializationFormat(accept);
 		if (formatter == null) {
-			sendError(ctx, req, resp, HttpServletResponse.SC_NOT_ACCEPTABLE, "no known mime type in Accept header");
+			sendError(ctx, req, resp, HttpServletResponse.SC_NOT_ACCEPTABLE, "No known mime type in Accept header");
 			return;
 		}
+		// escape if the accept header is html
+		String resource = "<resource>";
+		if ( formatter.getContentType().equals("text/html") )
+			resource = escapeHtml(resource); 
+
+		String a_id = req.getParameter("g");
+		String f = req.getParameter("f");
+		if( a_id == null || a_id.isEmpty() ) { 
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please pass the graph id as 'g' parameter.");
+			return;
+		}
+		if( !a_id.startsWith("<") || !a_id.endsWith(">") ) {
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please pass a resource (e.g. "+resource+") as graph.");
+			return;
+		}
+		// escape if the accept header is not text/plain
+		String graph = a_id;
+		if ( ! formatter.getContentType().equals("text/plain") ) 
+			graph = escapeHtml(a_id);
+
 		boolean force = (f != null && f.equals("y")) ? true : false;
 		PrintWriter out = resp.getWriter();
 		resp.setContentType(formatter.getContentType());
@@ -184,24 +203,26 @@ public class GraphServlet extends AbstractHttpServlet {
 		int r = crdf.dropKeyspace(encoded_keyspace, force);
 		switch(r) { 
 			case 0: 
-				out.println("The entire of graph " + escapeHtml(a_id) + " has been deleted.");
 				//delete from ERS_graphs
 				crdf.deleteData("\""+encoded_keyspace+"\"","\"hashValue\"", "\""+a_id+"\"", Listener.GRAPHS_NAMES_KEYSPACE);
+				sendResponse(ctx, req, resp, HttpServletResponse.SC_OK, "The entire of graph " + graph + " has been deleted.");
 				break;
 			case 1: 	
-				out.println("The graph " + escapeHtml(a_id) + " does not exist. Nothing to delete.");
+				sendResponse(ctx, req, resp, HttpServletResponse.SC_OK, "The graph " + graph + " does not exist. Nothing to delete.");
 				break;
 			case 2: 
-				out.println("Deleting the graph has raised exceptions. Check tomcat log.");
+				sendError(ctx, req, resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Deleting the graph has raised exceptions. Check Tomcat log.");
 				break;
 			case 3:	
-				out.println("Cannot delete any graph (keyspace) whose name has the prefix 'system'.");
+				// since we are using the hashed graph name, this does not happen
+				sendError(ctx, req, resp, HttpServletResponse.SC_FORBIDDEN, "Cannot delete any graph (keyspace) whose name has the prefix 'system'.");
 				break;
 			case 4:
-				out.println("Cannot delete a not-empty graph.");
+				sendError(ctx, req, resp, HttpServletResponse.SC_METHOD_NOT_ALLOWED, "Cannot delete a not-empty graph.");
 				break;
 			default:	
-				out.println("UNKNOWN exit code of deleting the graph method.");
+				// ideally, this may never happen :)
+				sendError(ctx, req, resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "UNKNOWN exit code of deleting the graph method.");
 				break;
 		}	
 		_log.info("[dataset] DELETE keyspace(graph) " + (System.currentTimeMillis() - start) + "ms ");

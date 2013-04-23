@@ -71,6 +71,11 @@
   	<servlet-name>error</servlet-name>
   	<servlet-class>edu.kit.aifb.cumulus.webapp.ErrorServlet</servlet-class>
   </servlet>
+   <servlet>
+  	<servlet-name>response</servlet-name>
+  	<servlet-class>edu.kit.aifb.cumulus.webapp.ResponseServlet</servlet-class>
+  </servlet>
+
 
   <!--TM: C R U D operations --> 
   <servlet>

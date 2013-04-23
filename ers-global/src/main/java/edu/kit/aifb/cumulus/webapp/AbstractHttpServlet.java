@@ -40,4 +40,19 @@ public abstract class AbstractHttpServlet extends HttpServlet {
 			e.printStackTrace();
 		}
 	}
+
+	protected void sendResponse(ServletContext ctx, HttpServletRequest req, HttpServletResponse resp, int sc, String msg) {
+		resp.setStatus(sc);
+		req.setAttribute("javax.servlet.resp.status_code",sc);
+		req.setAttribute("javax.servlet.resp.message", msg);
+		try {
+			ctx.getNamedDispatcher("response").include(req, resp);
+		}
+		catch (ServletException e) {
+			e.printStackTrace();
+		}
+		catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
 }
