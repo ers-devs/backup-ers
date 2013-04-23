@@ -94,14 +94,14 @@ class GlobalServerInterface(object):
     def create(self, entity, prop, value, graph):
         self._do_request('create', {'e': entity, 'p': prop, 'v': value, 'g': graph}, 'POST')
 
+    def query_all_graphs(self, limit):
+        return self._do_quads_request('query_all_graphs', {'#limit': limit})
+
     def query_graph(self, graph):
         return self._do_quads_request('query_graph', {'g': graph})
 
     def query(self, **kwargs):
-        params = {}
-        for key in ['e', 'p', 'v', 'g']:
-            if key in kwargs:
-                params[key] = kwargs[key]
+        params = dict((k, v) for k, v in kwargs.items() if k in ['e', 'p', 'v', 'g'])
 
         try:
             tuples = self._do_quads_request('query', params)
@@ -114,15 +114,14 @@ class GlobalServerInterface(object):
                 raise e
 
     def exist(self, **kwargs):
-        params = {}
-        for key in ['e', 'p', 'v', 'g']:
-            if key in kwargs:
-                params[key] = kwargs[key]
+        params = dict((k, v) for k, v in kwargs.items() if k in ['e', 'p', 'v', 'g'])
 
         return self._do_bool_request('exist_entity', params)
 
-    def delete(self, entity, prop, value):
-        self._do_write_request('delete', {'e': entity, 'p': prop, 'v': value})
+    def delete(self, **kwargs):
+        params = dict((k, v) for k, v in kwargs.items() if k in ['e', 'p', 'v', 'g'])
+
+        self._do_request('delete', params, 'DELETE')
 
     def update(self, entity, prop, old_value, new_value):
         self._do_write_request('update', {'e': entity, 'p': prop, 'v_old': old_value, 'v_new': new_value})
@@ -194,7 +193,15 @@ class GlobalServerInterface(object):
 
     # TODO: Eventually we should distinguish internally between literal URLs and URIRefs. Till then...
     def _encode_params(self, params):
-        return urllib.urlencode([(k, encode_rdflib_term(v).n3()) for k, v in params.items()])
+        assignments = []
+
+        for k, v in params.items():
+            if k.startswith('#'):
+                assignments.append((k[1:], str(v)))
+            else:
+                assignments.append((k, encode_rdflib_term(v).n3()))
+
+        return urllib.urlencode(assignments)
 
     def _do_bool_request(self, operation, params):
         response = self._do_request(operation, params)
@@ -228,7 +235,7 @@ class GlobalServerInterface(object):
         for line in response.split('\n'):
             if line == "":
                 continue
-            if line.startswith('Total quads returned:'):
+            if line.startswith('Total quads returned:') or line.startswith('Total number of quads returned:'):
                 break
 
             match = re.match(PAT_QUADS_LINE, line, re.I)
@@ -277,6 +284,8 @@ class RequestEx(urllib2.Request):
 
 
 def test():
+    TEST_GRAPHS = ['ers:testGraph1', 'ers:testGraph2', 'ers:testGraph3', 'ers:testGraphBulk']
+
     TEST_QUADS = [
         ['ers:testEntity1', 'ers:testProp1', 'testValue1', 'ers:testGraph1'],
         ['ers:testEntity1', 'ers:testProp2', 'ers:testValue2', 'ers:testGraph1'],
@@ -320,22 +329,36 @@ def test():
 
         return tuples == result_tuples
 
-    def read_all(entities):
-        tuples = []
-        for e in entities:
-            result = server.read(e)
-            if result is not None:
-                tuples.extend(result)
+    def filter_by_query(quads, query, non_matching=False):
+        result = []
 
-        return tuples
+        for e, p, v, g in quads:
+            matches = ('e' not in query or e == query['e']) and \
+                      ('p' not in query or p == query['p']) and \
+                      ('v' not in query or v == query['v']) and \
+                      ('g' not in query or g == query['g'])
+
+            if matches ^ non_matching:
+                result.append([e, p, v, g])
+
+        return result
+
+    def test_delete(**kwargs):
+        deleted_quads = server.query(**kwargs)
+
+        server.delete(**kwargs)
+
+        assert same([quad for quad in server.query_all_graphs(1000) if quad[3] in TEST_GRAPHS],
+                    filter_by_query(TEST_QUADS, kwargs, True))
+
+        for e, p, v, g in deleted_quads:
+            server.create(e, p, v, g)
 
     def cleanup(expected=True):
-        graphs = ['ers:testGraph1', 'ers:testGraph2', 'ers:testGraph3', 'ers:testGraphBulk']
-
-        if any(server.graph_exists(g) for g in graphs) and not expected:
+        if any(server.graph_exists(g) for g in TEST_GRAPHS) and not expected:
             print "Performing cleanup of previous test..."
 
-        for g in graphs:
+        for g in TEST_GRAPHS:
             if server.graph_exists(g):
                 server.delete_graph(g, True)
 
@@ -393,6 +416,10 @@ def test():
     assert same(server.query(e='ers:testEntity1', g='ers:testGraph2'),
                 [quad for quad in TEST_QUADS if quad[0] == 'ers:testEntity1' and quad[3] == 'ers:testGraph2'])
 
+    # Query all graphs
+    assert same([quad for quad in server.query_all_graphs(1000) if quad[3] in TEST_GRAPHS],
+                TEST_QUADS)
+
     # Exist epvg (T)
     assert server.exist(e='ers:testEntity1', p='ers:testProp3', v='ers:testValue31', g='ers:testGraph2') is True
 
@@ -411,6 +438,24 @@ def test():
     # Exist e??g (F)
     assert server.exist(e='ers:testEntity4', g='ers:testGraph1') is False
 
+    # Delete epvg
+    test_delete(e='ers:testEntity1', p='ers:testProp3', v='ers:testValue31', g='ers:testGraph2')
+
+    # Delete epv?
+    test_delete(e='ers:testEntity1', p='ers:testProp3', v='ers:testValue31')
+
+    # Delete ep??
+    test_delete(e='ers:testEntity1', p='ers:testProp3')
+
+    # Delete e???
+    test_delete(e='ers:testEntity1')
+
+    # Delete e??g
+    test_delete(e='ers:testEntity1', g='ers:testGraph2')
+
+    # Delete non-existent e???
+    test_delete(e='ers:bogusEntity1234')
+
     # Cleanup
     cleanup()
 
@@ -423,21 +468,6 @@ def test():
     bulk_tuples = [[decode_rdflib_term(x) for x in tup]
                    for tup in rdflib.Graph().parse(test_file, format='nt')]
 
-
-
-    # Delete existent
-    server.delete('ers:testEntity1', 'ers:testProp2', 'ers:testValue2')
-    assert same(server.read('ers:testEntity1'),
-                [['ers:testEntity1', 'ers:testProp1', 'testValue1'],
-                 ['ers:testEntity1', 'ers:testProp3', 'ers:testValue31'],
-                 ['ers:testEntity1', 'ers:testProp3', 'ers:testValue32']])
-
-    # Delete non-existent
-    server.delete('ers:testEntity1', 'ers:testProp3', 'ers:testValueZZ')
-    assert same(server.read('ers:testEntity1'),
-                [['ers:testEntity1', 'ers:testProp1', 'testValue1'],
-                 ['ers:testEntity1', 'ers:testProp3', 'ers:testValue31'],
-                 ['ers:testEntity1', 'ers:testProp3', 'ers:testValue32']])
 
     # Update existent triple
     server.update('ers:testEntity1', 'ers:testProp3', 'ers:testValue31', 'ers:testValueXX')
