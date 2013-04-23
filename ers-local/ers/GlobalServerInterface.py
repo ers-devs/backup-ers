@@ -47,6 +47,18 @@ def decode_rdflib_term(term):
         else:
             return term
 
+def parse_rdflib_term(text):
+    # TODO: language tags and RDF types not supported yet
+    try:
+        if text[0] == '<' and text[-1] == '>':
+            return rdflib.URIRef(text[1:-1])
+        if text[0] == '"' and text[-1] == '"':
+            return rdflib.Literal(text[1:-1].decode('string_escape'))
+
+        raise RuntimeError()
+    except:
+        raise RuntimeError("Error parsing RDF term '{0}'".format(text))
+
 
 class GlobalServerInterface(object):
     """
@@ -74,19 +86,11 @@ class GlobalServerInterface(object):
     def delete_graph(self, graph, force=False):
         self._do_request('graph', {'g': graph, 'f': 'y' if force else 'n'}, 'DELETE')
 
-    def create(self, entity, prop, value):
-        self._do_write_request('create', {'e': entity, 'p': prop, 'v': value})
+    def create(self, entity, prop, value, graph):
+        self._do_request('create', {'e': entity, 'p': prop, 'v': value, 'g': graph}, 'POST')
 
-    def read(self, entity):
-        try:
-            tuples = self._do_read_request('read', {'e': entity})
-
-            return tuples
-        except GlobalServerOperationException as e:
-            if 'resource not found' in str(e):
-                return None
-            else:
-                raise e
+    def query_graph(self, graph):
+        return self._do_quads_request('query_graph', {'g': graph})
 
     def delete(self, entity, prop, value):
         self._do_write_request('delete', {'e': entity, 'p': prop, 'v': value})
@@ -179,16 +183,6 @@ class GlobalServerInterface(object):
     def _encode_params(self, params):
         return urllib.urlencode([(k, encode_rdflib_term(v).n3()) for k, v in params.items()])
 
-    def _read_tuples_response(self, response):
-        try:
-            match = re.match(r'<html><head></head><body>(.*)</body></html>', response, re.I | re.S)
-            response = html_entity_decode(match.group(1).replace('<br/>', "\n")).strip() + "\n"
-            graph = rdflib.Graph().parse(data=response, format='nt')
-
-            return [[decode_rdflib_term(x) for x in triple] for triple in graph]
-        except:
-            raise GlobalServerOperationException("Received malformed tuples data from server")
-
     def _do_bool_request(self, operation, params):
         response = self._do_request(operation, params)
 
@@ -199,6 +193,25 @@ class GlobalServerInterface(object):
         else:
             raise GlobalServerInternalException(
                 "Invalid response to {0}; expected TRUE or FALSE, got '{0}'".format(operation, response))
+
+    def _do_quads_request(self, operation, params):
+        PAT_N3_VALUE = r'(<[^>]+>|"[^"]*"[^ ]*|_[^ ]+)'
+        PAT_QUADS_LINE = '{0} {0} {0} . {0}'.format(PAT_N3_VALUE)
+
+        response = self._do_request(operation, params)
+        quads = []
+
+        for line in response.split('\n'):
+            if line == "" or line.startswith('Total quads returned:'):
+                continue
+
+            match = re.match(PAT_QUADS_LINE, line, re.I)
+            if match is None:
+                raise GlobalServerInternalException("Malformed line when receving quads response:\n" + line)
+
+            quads.append([decode_rdflib_term(parse_rdflib_term(match.group(i))) for i in xrange(1,5)])
+
+        return quads
 
 
 class GlobalServerAccessException(RuntimeError):
@@ -299,6 +312,36 @@ def test():
     assert server.graph_exists('ers:testGraph2') is True
     assert server.graph_exists('ers:testGraph3') is True
 
+    # Create
+    server.create('ers:testEntity1', 'ers:testProp1', 'testValue1', 'ers:testGraph1')
+    server.create('ers:testEntity1', 'ers:testProp2', 'ers:testValue2', 'ers:testGraph1')
+    server.create('ers:testEntity1', 'ers:testProp3', 'ers:testValue31', 'ers:testGraph1')
+    server.create('ers:testEntity1', 'ers:testProp3', 'ers:testValue32', 'ers:testGraph1')
+    server.create('ers:testEntity2', 'ers:testProp1', 'testValue1', 'ers:testGraph1')
+    server.create('ers:testEntity2', 'ers:testProp2', 'ers:testValue2', 'ers:testGraph1')
+    server.create('ers:testEntity2', 'ers:testProp3', 'ers:testValue31', 'ers:testGraph1')
+    server.create('ers:testEntity2', 'ers:testProp3', 'ers:testValue32', 'ers:testGraph1')
+
+    server.create('ers:testEntity1', 'ers:testProp1', 'testValue1', 'ers:testGraph2')
+    server.create('ers:testEntity1', 'ers:testProp4', 'ers:testValue2', 'ers:testGraph2')
+    server.create('ers:testEntity1', 'ers:testProp3', 'ers:testValue31', 'ers:testGraph2')
+    server.create('ers:testEntity1', 'ers:testProp3', 'ers:testValue34', 'ers:testGraph2')
+    server.create('ers:testEntity4', 'ers:testProp1', 'testValue5', 'ers:testGraph2')
+    server.create('ers:testEntity4', 'ers:testProp2', 'ers:testValue6', 'ers:testGraph2')
+    server.create('ers:testEntity4', 'ers:testProp4', 'ers:testValue31', 'ers:testGraph2')
+    server.create('ers:testEntity4', 'ers:testProp4', 'ers:testValue32', 'ers:testGraph2')
+
+    # Read entire graph
+    assert same(server.query_graph('ers:testGraph1'),
+                [['ers:testEntity1', 'ers:testProp1', 'testValue1', 'ers:testGraph1'],
+                 ['ers:testEntity1', 'ers:testProp2', 'ers:testValue2', 'ers:testGraph1'],
+                 ['ers:testEntity1', 'ers:testProp3', 'ers:testValue31', 'ers:testGraph1'],
+                 ['ers:testEntity1', 'ers:testProp3', 'ers:testValue32', 'ers:testGraph1'],
+                 ['ers:testEntity2', 'ers:testProp1', 'testValue1', 'ers:testGraph1'],
+                 ['ers:testEntity2', 'ers:testProp2', 'ers:testValue2', 'ers:testGraph1'],
+                 ['ers:testEntity2', 'ers:testProp3', 'ers:testValue31', 'ers:testGraph1'],
+                 ['ers:testEntity2', 'ers:testProp3', 'ers:testValue32', 'ers:testGraph1']])
+
     # Delete graph
     server.delete_graph('ers:testGraph3')
     assert server.graph_exists('ers:testGraph3') is False
@@ -315,22 +358,6 @@ def test():
     bulk_tuples = [[decode_rdflib_term(x) for x in tup]
                    for tup in rdflib.Graph().parse(test_file, format='nt')]
 
-    # Create
-    server.create('ers:testEntity1', 'ers:testProp1', 'testValue1')
-    server.create('ers:testEntity1', 'ers:testProp2', 'ers:testValue2')
-    server.create('ers:testEntity1', 'ers:testProp3', 'ers:testValue31')
-    server.create('ers:testEntity1', 'ers:testProp3', 'ers:testValue32')
-    server.create('ers:testEntity2', 'ers:testProp1', 'testValue1')
-    server.create('ers:testEntity2', 'ers:testProp2', 'ers:testValue2')
-    server.create('ers:testEntity2', 'ers:testProp3', 'ers:testValue31')
-    server.create('ers:testEntity2', 'ers:testProp3', 'ers:testValue32')
-
-    # Read existent
-    assert same(server.read('ers:testEntity1'),
-                [['ers:testEntity1', 'ers:testProp1', 'testValue1'],
-                 ['ers:testEntity1', 'ers:testProp2', 'ers:testValue2'],
-                 ['ers:testEntity1', 'ers:testProp3', 'ers:testValue31'],
-                 ['ers:testEntity1', 'ers:testProp3', 'ers:testValue32']])
 
     # Read non-existent
     assert same(server.read('ers:rubbish'),
