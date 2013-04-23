@@ -271,14 +271,15 @@ def test():
 
         return tuples
 
-    def cleanup():
-        for e, p, v in server.read('ers:testEntity1'):
-            server.delete(e, p, v)
-        for e, p, v in server.read('ers:testEntity2'):
-            server.delete(e, p, v)
-        for e, p, v in bulk_tuples:
-            server.delete(e, p, v)
+    def cleanup(expected=True):
+        graphs = ['ers:testGraph1', 'ers:testGraph2', 'ers:testGraph3', 'ers:testGraphBulk']
 
+        if any(server.graph_exists(g) for g in graphs) and not expected:
+            print "Performing cleanup of previous test..."
+
+        for g in graphs:
+            if server.graph_exists(g):
+                server.delete_graph(g, True)
 
     # Start of tests
     server = GlobalServerInterface('http://localhost:8888/')
@@ -286,6 +287,9 @@ def test():
 
     # Check graph exists
     assert server.graph_exists('ers:bogusGraph1234') is False
+
+    # Do cleanup of previous tests
+    cleanup(False)
 
     # Create graph (add graph info)
     server.add_graph_info('ers:testGraph1', URN_RDF_TYPE, URN_RDFG_GRAPH)
@@ -298,6 +302,9 @@ def test():
     # Delete graph
     server.delete_graph('ers:testGraph3')
     assert server.graph_exists('ers:testGraph3') is False
+
+    # Cleanup
+    cleanup()
 
     print "Tests OK so far"
     return
