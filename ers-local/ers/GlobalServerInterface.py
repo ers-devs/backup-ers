@@ -1,6 +1,13 @@
 import urllib, urllib2, rdflib, re, htmlentitydefs, mimetools
 
 
+URN_PREFIX_RDF = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#'
+URN_PREFIX_RDFG = 'http://www.w3.org/2004/03/trix/rdfg-1/'
+
+URN_RDF_TYPE = URN_PREFIX_RDF + 'type'
+URN_RDFG_GRAPH = URN_PREFIX_RDFG + 'Graph'
+
+
 def html_entity_decode(text):
     def replace_fn(m):
         text = m.group(0)
@@ -60,6 +67,9 @@ class GlobalServerInterface(object):
 
     def graph_exists(self, graph):
         return self._do_bool_request('exist_graph', {'g': graph})
+
+    def add_graph_info(self, graph, prop, value):
+        self._do_request('graph', {'g_id': graph, 'g_p': prop, 'g_v': value})
 
     def create(self, entity, prop, value):
         self._do_write_request('create', {'e': entity, 'p': prop, 'v': value})
@@ -254,7 +264,11 @@ def test():
     server = GlobalServerInterface('http://localhost:8888/')
     #server = GlobalServerInterface('http://cassandra2-ersdevs.rhcloud.com/')
 
-    assert server.graph_exists('ers:bogusGraph1234') == False
+    assert server.graph_exists('ers:bogusGraph1234') is False
+
+    server.add_graph_info('ers:testGraph1', URN_RDF_TYPE, URN_RDFG_GRAPH)
+
+    assert server.graph_exists('ers:testGraph1') is True
 
     print "Tests OK so far"
     return
