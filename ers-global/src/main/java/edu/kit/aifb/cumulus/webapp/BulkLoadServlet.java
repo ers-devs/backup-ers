@@ -35,6 +35,8 @@ import org.apache.commons.fileupload.FileUploadException;
 import org.apache.commons.fileupload.disk.DiskFileItemFactory;
 import org.apache.commons.fileupload.FileItem;
 
+import static org.apache.commons.lang.StringEscapeUtils.escapeHtml;
+
 /** 
  * @author tmacicas
  */
@@ -113,7 +115,7 @@ public class BulkLoadServlet extends AbstractHttpServlet {
 				   uploadedStream.close();
 				   out.flush();
 			  	   out.close();
-				   resp_msg += "[dataset] POST bulk load " + fileName + " for author " + a + ", size " + sizeInBytes;
+				   resp_msg += "Bulkload " + fileName + " for graph " + a + ", size " + sizeInBytes;
 				}
 			}
 			if( ! a_exists || a == null || a.isEmpty() ) { 

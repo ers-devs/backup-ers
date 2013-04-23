@@ -171,17 +171,42 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		} */
 		return false;
 	}
-	
-	// create a keyspace if it does not exist yet
-	public int createKeyspace(String keyspaceName) {
-		if( keyspaceName.startsWith("system") )
-			return 2;
-		if (! existsKeyspace(keyspaceName)) 
-			_cluster.addKeyspace(createKeyspaceDefinition(keyspaceName));
+
+	// don't use the encoded keyspace; this is used by Listener for initialization
+	public int createKeyspaceInit(String keyspaceName) {
+		if (! existsKeyspace(keyspaceName))  {
+			try { 
+				_cluster.addKeyspace(createKeyspaceDefinition(keyspaceName));	
+			} catch( HectorException ex ) { 
+				ex.printStackTrace(); 	
+				return 3;
+			}	
+		}
 		else 
 			return 1;
-		
 		HFactory.createKeyspace(keyspaceName, _cluster, Listener.DEFAULT_CONSISTENCY_POLICY);
+		return 0;
+	}
+
+	// create a keyspace if it does not exist yet
+	public int createKeyspace(String keyspaceName) {
+		String encoded_keyspaceName = Store.encodeKeyspace(keyspaceName);
+		if( keyspaceName.startsWith("system") )
+			return 2;
+		if (! existsKeyspace(encoded_keyspaceName)) 
+			try { 
+				_cluster.addKeyspace(createKeyspaceDefinition(encoded_keyspaceName));	
+			} catch( HectorException ex ) { 
+				ex.printStackTrace(); 	
+				_log.severe("ERS exception: "+ex.getMessage() );
+				return 3;
+			}	
+		else 
+			return 1;
+		HFactory.createKeyspace(encoded_keyspaceName, _cluster, Listener.DEFAULT_CONSISTENCY_POLICY);
+		// also add an entry into Listener.GRAPHS_NAMES_KEYSPACE to keep a mapping of hashed keyspace name and the real one 
+		this.addData("\""+encoded_keyspaceName+"\"", "\"hashValue\"", "\""+keyspaceName+"\"", Listener.GRAPHS_NAMES_KEYSPACE);	
+		
 /*		HFactory.createKeyspace(keyspaceName, _cluster, new ConsistencyLevelPolicy() {
 			@Override
 			public HConsistencyLevel get(OperationType arg0, String cf) {

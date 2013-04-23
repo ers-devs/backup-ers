@@ -25,7 +25,7 @@ public class HTMLFormat implements SerializationFormat {
 		while (it.hasNext()) {
 			Node[] nx = it.next();
 			if (nx[0] != null && nx[1] != null && nx[2] != null) { // don't ask
-				pw.println(NxUtil.escapeForMarkup(Nodes.toN3(nx))+ " " + author);
+				pw.println(NxUtil.escapeForMarkup(Nodes.toN3(nx))+ " " + NxUtil.escapeForMarkup(author));
 				pw.println("<br/>");
 				triples++;
 			}

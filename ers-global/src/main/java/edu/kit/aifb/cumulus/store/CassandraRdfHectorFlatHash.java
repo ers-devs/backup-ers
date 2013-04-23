@@ -280,17 +280,18 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 	}
 
 	//TM: added for supporting (?,?,?,g) queries
+	//NOTE: do not pass the hashed keyspace !! 
 	public int queryEntireKeyspace(String keyspace, PrintWriter out, int limit) { 
 		int row_count = ( limit > 100) ? 100 : limit;
 		int total_row_count=0;
 
 		// String(row), String(column_name), String(column_value)
-		Keyspace k = getExistingKeyspace(keyspace); 
+		Keyspace k = getExistingKeyspace(this.encodeKeyspace(keyspace)); 
         	RangeSlicesQuery<String, String, String> rangeSlicesQuery = HFactory
 	            .createRangeSlicesQuery(k, StringSerializer.get(), StringSerializer.get(), StringSerializer.get())
         	    .setColumnFamily("SPO")
 		    .setRange(null, null, false, 10)
-	            .setRowCount(row_count);
+	            .setRowCount((row_count==1)?2:row_count);		//do this trick because if row_count=1 and only one "null" record, then stucks in a loop
          	String last_key = null;
 
 	        while (true) {
@@ -307,16 +308,17 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 			    while (rowsIterator.hasNext()) {
 				    Row<String, String, String> row = rowsIterator.next();
 				    last_key = row.getKey();
-			 	    // print even if we just have row_key but none columns ?! yes ... 
+			 	    // print even if we just have row_key but none columns ?! 
 				    if (row.getColumnSlice().getColumns().isEmpty()) {
-				    	StringBuffer buf = new StringBuffer(); 
+				    	/*StringBuffer buf = new StringBuffer(); 
 		   		        buf.append(row.getKey()); 
 					buf.append(" NULL NULL . "); 
-				        buf.append(Store.decodeKeyspace(keyspace) + "\n");
+				        buf.append(keyspace + "\n");
   				    	out.println(buf.toString());
 					++total_row_count; 
 				        if( total_row_count >= limit ) 
-						return total_row_count;
+						return total_row_count;*/
+					continue;
 				    }
 				    for(Iterator it = row.getColumnSlice().getColumns().iterator(); it.hasNext(); ) { 		
 				        HColumn c = (HColumn)it.next(); 
@@ -326,7 +328,7 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 					buf.append(c.getName()); 
 				        buf.append(" "); 
 					buf.append(c.getValue());
-				        buf.append(Store.decodeKeyspace(keyspace) + "\n");
+				        buf.append(keyspace + "\n");
   				    	out.println(buf.toString());
 					// because the same row key can contain multiple column records, we consider a row each of them rather than the entire row :) 
 					// (see how cumulusrdf flat storage works)
@@ -351,13 +353,18 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 	public int queryAllKeyspaces(int limit, PrintWriter out) { 
 		int total_rows = 0;
 		for (KeyspaceDefinition ksDef : _cluster.describeKeyspaces()) {
-			String keyspace = ksDef.getName(); 
+			String keyspace = ksDef.getName();
 			// only keyspaces that uses as prefix our pre-defined one
 			if( ! keyspace.startsWith(Listener.DEFAULT_ERS_KEYSPACES_PREFIX) || 
-     			      keyspace.equals(Listener.AUTHOR_KEYSPACE) ) 
+     			      keyspace.equals(Listener.AUTHOR_KEYSPACE) || 
+			      keyspace.equals(Listener.GRAPHS_NAMES_KEYSPACE) ) 
+				continue;
+			//decode it here (use ERS_graphs to get the un-hashed name)
+			String decoded_keyspace = this.decodeKeyspace(keyspace); 
+			if (decoded_keyspace == null) 
 				continue;
 			// query this keyspace
-			total_rows += queryEntireKeyspace(keyspace, out, limit);
+			total_rows += queryEntireKeyspace(decoded_keyspace, out, limit);
 		}
 		return total_rows;
 	}

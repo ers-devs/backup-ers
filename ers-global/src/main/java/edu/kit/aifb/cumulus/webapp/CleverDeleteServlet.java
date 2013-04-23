@@ -124,8 +124,8 @@ public class CleverDeleteServlet extends AbstractHttpServlet {
 				resp.sendError(500, ex.getMessage());
 			}
 		}
-		out.print("Total " + total_deletion + " quads have been deleted.");
-		_log.info("[dataset] DELETE " + (System.currentTimeMillis() - start) + "ms " + total_deletion + " quads");
+		out.print("Total " + total_deletion + " quad(s) deleted.");
+		_log.info("[dataset] DELETE " + (System.currentTimeMillis() - start) + "ms " + total_deletion + " quad(s)");
 	}
 
 	private Node getNode(String value, String varName) throws ParseException {

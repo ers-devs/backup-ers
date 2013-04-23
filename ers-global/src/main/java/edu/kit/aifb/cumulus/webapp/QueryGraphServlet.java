@@ -52,12 +52,17 @@ public class QueryGraphServlet extends AbstractHttpServlet {
 		PrintWriter out = resp.getWriter();
 		AbstractCassandraRdfHector crdf = (AbstractCassandraRdfHector)ctx.getAttribute(Listener.STORE);
 
+		// do not allow querying of system keyspaces, authors or graphs
+		if( g.startsWith("system") || g.equals(Listener.GRAPHS_NAMES_KEYSPACE) || g.equals(Listener.AUTHOR_KEYSPACE) ) { 
+			out.println("It is forbidden to query this keyspace " + g);
+			return;
+		}
 		// check if graph exists 
 		if( ! crdf.existsKeyspace(Store.encodeKeyspace(g)) ) { 
 			out.println("The graph " + g + " passed as input does not exist. No data returned.");
 			return;
 		}
-		int triples = crdf.queryEntireKeyspace(Store.encodeKeyspace(g), out, Integer.MAX_VALUE); // do not enfore the limite here, get all entities of a graph
+		int triples = crdf.queryEntireKeyspace(g, out, Integer.MAX_VALUE); // do not enfore the limite here, get all entities of a graph
 		if( triples == 0 ) 
 			out.println("The graph " + g + " is empty. No data returned.");
 		 else

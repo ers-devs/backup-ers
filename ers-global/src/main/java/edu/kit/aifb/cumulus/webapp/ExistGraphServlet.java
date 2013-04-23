@@ -23,6 +23,7 @@ import edu.kit.aifb.cumulus.store.AbstractCassandraRdfHector;
 import edu.kit.aifb.cumulus.store.StoreException;
 import edu.kit.aifb.cumulus.webapp.formatter.SerializationFormat;
 
+import static org.apache.commons.lang.StringEscapeUtils.escapeHtml;
 /** 
  * 
  * @author tmacicas
@@ -66,11 +67,11 @@ public class ExistGraphServlet extends AbstractHttpServlet {
 		boolean r = crdf.existsKeyspace(Store.encodeKeyspace(g));
 		if ( r ) {
 			out.println("TRUE");
-			out.println("Graph " + g + " exists.");
+			out.println("Graph " + escapeHtml(g) + " exists.");
 		}
 		else {		
 			out.println("FALSE");
-			out.println("Graph " + g + " does not exist.");
+			out.println("Graph " + escapeHtml(g) + " does not exist.");
 		}
 		_log.info("[dataset] GET exist keyspace " + (System.currentTimeMillis() - start) + "ms ");
 	}
