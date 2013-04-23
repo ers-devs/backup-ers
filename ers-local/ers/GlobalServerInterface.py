@@ -1,4 +1,9 @@
-import urllib, urllib2, rdflib, re, htmlentitydefs, mimetools
+import urllib
+import urllib2
+import rdflib
+import re
+import htmlentitydefs
+import mimetools
 
 
 URN_PREFIX_RDF = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#'
@@ -92,20 +97,14 @@ class GlobalServerInterface(object):
     def query_graph(self, graph):
         return self._do_quads_request('query_graph', {'g': graph})
 
-    def delete(self, entity, prop, value):
-        self._do_write_request('delete', {'e': entity, 'p': prop, 'v': value})
-
-    def update(self, entity, prop, old_value, new_value):
-        self._do_write_request('update', {'e': entity, 'p': prop, 'v_old': old_value, 'v_new': new_value})
-
     def query(self, **kwargs):
         params = {}
-        for key in ['e', 'p', 'v']:
+        for key in ['e', 'p', 'v', 'g']:
             if key in kwargs:
                 params[key] = kwargs[key]
 
         try:
-            tuples = self._do_read_request('query', params)
+            tuples = self._do_quads_request('query', params)
 
             return tuples
         except GlobalServerOperationException as e:
@@ -113,6 +112,12 @@ class GlobalServerInterface(object):
                 return []
             else:
                 raise e
+
+    def delete(self, entity, prop, value):
+        self._do_write_request('delete', {'e': entity, 'p': prop, 'v': value})
+
+    def update(self, entity, prop, old_value, new_value):
+        self._do_write_request('update', {'e': entity, 'p': prop, 'v_old': old_value, 'v_new': new_value})
 
     def bulk_load(self, **kwargs):
         data = None
@@ -194,16 +199,29 @@ class GlobalServerInterface(object):
             raise GlobalServerInternalException(
                 "Invalid response to {0}; expected TRUE or FALSE, got '{0}'".format(operation, response))
 
+    def _temp_filter_html_response(self, response):
+        if response.startswith('<html'):
+            response = response.replace('<br/>', '\n')
+            response = re.sub(r'<[^>]*>', '', response)
+            response = html_entity_decode(response)
+
+        return response
+
     def _do_quads_request(self, operation, params):
         PAT_N3_VALUE = r'(<[^>]+>|"[^"]*"[^ ]*|_[^ ]+)'
         PAT_QUADS_LINE = '{0} {0} {0} . {0}'.format(PAT_N3_VALUE)
 
         response = self._do_request(operation, params)
-        quads = []
 
+        # TODO: remove this when it is no longer necessary
+        response = self._temp_filter_html_response(response)
+
+        quads = []
         for line in response.split('\n'):
-            if line == "" or line.startswith('Total quads returned:'):
+            if line == "":
                 continue
+            if line.startswith('Total quads returned:'):
+                break
 
             match = re.match(PAT_QUADS_LINE, line, re.I)
             if match is None:
@@ -251,6 +269,25 @@ class RequestEx(urllib2.Request):
 
 
 def test():
+    TEST_QUADS = [
+        ['ers:testEntity1', 'ers:testProp1', 'testValue1', 'ers:testGraph1'],
+        ['ers:testEntity1', 'ers:testProp2', 'ers:testValue2', 'ers:testGraph1'],
+        ['ers:testEntity1', 'ers:testProp3', 'ers:testValue31', 'ers:testGraph1'],
+        ['ers:testEntity1', 'ers:testProp3', 'ers:testValue32', 'ers:testGraph1'],
+        ['ers:testEntity2', 'ers:testProp1', 'testValue1', 'ers:testGraph1'],
+        ['ers:testEntity2', 'ers:testProp2', 'ers:testValue2', 'ers:testGraph1'],
+        ['ers:testEntity2', 'ers:testProp3', 'ers:testValue31', 'ers:testGraph1'],
+        ['ers:testEntity2', 'ers:testProp3', 'ers:testValue32', 'ers:testGraph1'],
+        ['ers:testEntity1', 'ers:testProp1', 'testValue1', 'ers:testGraph2'],
+        ['ers:testEntity1', 'ers:testProp4', 'ers:testValue2', 'ers:testGraph2'],
+        ['ers:testEntity1', 'ers:testProp3', 'ers:testValue31', 'ers:testGraph2'],
+        ['ers:testEntity1', 'ers:testProp3', 'ers:testValue34', 'ers:testGraph2'],
+        ['ers:testEntity4', 'ers:testProp1', 'testValue5', 'ers:testGraph2'],
+        ['ers:testEntity4', 'ers:testProp2', 'ers:testValue6', 'ers:testGraph2'],
+        ['ers:testEntity4', 'ers:testProp4', 'ers:testValue31', 'ers:testGraph2'],
+        ['ers:testEntity4', 'ers:testProp4', 'ers:testValue32', 'ers:testGraph2']
+    ]
+
     def unique(l):
         if l is None:
             return None
@@ -312,39 +349,41 @@ def test():
     assert server.graph_exists('ers:testGraph2') is True
     assert server.graph_exists('ers:testGraph3') is True
 
-    # Create
-    server.create('ers:testEntity1', 'ers:testProp1', 'testValue1', 'ers:testGraph1')
-    server.create('ers:testEntity1', 'ers:testProp2', 'ers:testValue2', 'ers:testGraph1')
-    server.create('ers:testEntity1', 'ers:testProp3', 'ers:testValue31', 'ers:testGraph1')
-    server.create('ers:testEntity1', 'ers:testProp3', 'ers:testValue32', 'ers:testGraph1')
-    server.create('ers:testEntity2', 'ers:testProp1', 'testValue1', 'ers:testGraph1')
-    server.create('ers:testEntity2', 'ers:testProp2', 'ers:testValue2', 'ers:testGraph1')
-    server.create('ers:testEntity2', 'ers:testProp3', 'ers:testValue31', 'ers:testGraph1')
-    server.create('ers:testEntity2', 'ers:testProp3', 'ers:testValue32', 'ers:testGraph1')
-
-    server.create('ers:testEntity1', 'ers:testProp1', 'testValue1', 'ers:testGraph2')
-    server.create('ers:testEntity1', 'ers:testProp4', 'ers:testValue2', 'ers:testGraph2')
-    server.create('ers:testEntity1', 'ers:testProp3', 'ers:testValue31', 'ers:testGraph2')
-    server.create('ers:testEntity1', 'ers:testProp3', 'ers:testValue34', 'ers:testGraph2')
-    server.create('ers:testEntity4', 'ers:testProp1', 'testValue5', 'ers:testGraph2')
-    server.create('ers:testEntity4', 'ers:testProp2', 'ers:testValue6', 'ers:testGraph2')
-    server.create('ers:testEntity4', 'ers:testProp4', 'ers:testValue31', 'ers:testGraph2')
-    server.create('ers:testEntity4', 'ers:testProp4', 'ers:testValue32', 'ers:testGraph2')
-
-    # Read entire graph
-    assert same(server.query_graph('ers:testGraph1'),
-                [['ers:testEntity1', 'ers:testProp1', 'testValue1', 'ers:testGraph1'],
-                 ['ers:testEntity1', 'ers:testProp2', 'ers:testValue2', 'ers:testGraph1'],
-                 ['ers:testEntity1', 'ers:testProp3', 'ers:testValue31', 'ers:testGraph1'],
-                 ['ers:testEntity1', 'ers:testProp3', 'ers:testValue32', 'ers:testGraph1'],
-                 ['ers:testEntity2', 'ers:testProp1', 'testValue1', 'ers:testGraph1'],
-                 ['ers:testEntity2', 'ers:testProp2', 'ers:testValue2', 'ers:testGraph1'],
-                 ['ers:testEntity2', 'ers:testProp3', 'ers:testValue31', 'ers:testGraph1'],
-                 ['ers:testEntity2', 'ers:testProp3', 'ers:testValue32', 'ers:testGraph1']])
-
     # Delete graph
     server.delete_graph('ers:testGraph3')
     assert server.graph_exists('ers:testGraph3') is False
+
+    # Create
+    for quad in TEST_QUADS:
+        server.create(*quad)
+
+    # Read entire graph
+    assert same(server.query_graph('ers:testGraph1'),
+                [quad for quad in TEST_QUADS if quad[3] == 'ers:testGraph1'])
+
+    # Query e???
+    assert same(server.query(e='ers:testEntity1'),
+                [quad for quad in TEST_QUADS if quad[0] == 'ers:testEntity1'])
+
+    # Query non-existing
+    assert same(server.query(e='ers:bogusEntity5432'),
+                [])
+
+    # Query ?p??
+    assert same(server.query(p='ers:testProp3'),
+                [quad for quad in TEST_QUADS if quad[1] == 'ers:testProp3'])
+
+    # Query ??v?
+    assert same(server.query(e='ers:testValue1'),
+                [quad for quad in TEST_QUADS if quad[2] == 'ers:testValue1'])
+
+    # Query ep??
+    assert same(server.query(e='ers:testEntity2', p='ers:testProp3'),
+                [quad for quad in TEST_QUADS if quad[0] == 'ers:testEntity2' and quad[1] == 'ers:testProp3'])
+
+    # Query e??g
+    assert same(server.query(e='ers:testEntity1', g='ers:testGraph2'),
+                [quad for quad in TEST_QUADS if quad[0] == 'ers:testEntity1' and quad[3] == 'ers:testGraph2'])
 
     # Cleanup
     cleanup()
@@ -359,9 +398,6 @@ def test():
                    for tup in rdflib.Graph().parse(test_file, format='nt')]
 
 
-    # Read non-existent
-    assert same(server.read('ers:rubbish'),
-                None)
 
     # Delete existent
     server.delete('ers:testEntity1', 'ers:testProp2', 'ers:testValue2')
@@ -398,32 +434,6 @@ def test():
                 [['ers:testEntity1', 'ers:testProp1', 'testValue1'],
                  ['ers:testEntity1', 'ers:testProp3', 'ers:testValue32'],
                  ['ers:testEntity1', 'ers:testProp5', 'ers:testValue7']])
-
-    # Query existing e??
-    assert same(server.query(e='ers:testEntity1'),
-                [['ers:testEntity1', 'ers:testProp1', 'testValue1'],
-                 ['ers:testEntity1', 'ers:testProp3', 'ers:testValue32'],
-                 ['ers:testEntity1', 'ers:testProp5', 'ers:testValue7']])
-
-    # Query non-existing e??
-    assert same(server.query(e='ers:testEntityXX'),
-                [])
-
-    # Query ep?
-    assert same(server.query(e='ers:testEntity2', p='ers:testProp3'),
-                [['ers:testEntity2', 'ers:testProp3', 'ers:testValue31'],
-                 ['ers:testEntity2', 'ers:testProp3', 'ers:testValue32']])
-
-    # Query ?p?
-    assert same(server.query(p='ers:testProp3'),
-                [['ers:testEntity1', 'ers:testProp3', 'ers:testValue32'],
-                 ['ers:testEntity2', 'ers:testProp3', 'ers:testValue31'],
-                 ['ers:testEntity2', 'ers:testProp3', 'ers:testValue32']])
-
-    # Query ??v
-    assert same(server.query(v='testValue1'),
-                [['ers:testEntity1', 'ers:testProp1', 'testValue1'],
-                 ['ers:testEntity2', 'ers:testProp1', 'testValue1']])
 
     # Bulk load
     bulk_entities = set(e for e, _, _ in bulk_tuples)
