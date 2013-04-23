@@ -94,6 +94,14 @@ class GlobalServerInterface(object):
     def create(self, entity, prop, value, graph):
         self._do_request('create', {'e': entity, 'p': prop, 'v': value, 'g': graph}, 'POST')
 
+    def update(self, entity, prop, old_value, new_value, graph):
+        self._do_request('update', {'e': entity, 'p': prop, 'v_old': old_value, 'v_new': new_value, 'g': graph}, 'POST')
+
+    def delete(self, **kwargs):
+        params = dict((k, v) for k, v in kwargs.items() if k in ['e', 'p', 'v', 'g'])
+
+        self._do_request('delete', params, 'DELETE')
+
     def query_all_graphs(self, limit):
         return self._do_quads_request('query_all_graphs', {'#limit': limit})
 
@@ -117,14 +125,6 @@ class GlobalServerInterface(object):
         params = dict((k, v) for k, v in kwargs.items() if k in ['e', 'p', 'v', 'g'])
 
         return self._do_bool_request('exist_entity', params)
-
-    def delete(self, **kwargs):
-        params = dict((k, v) for k, v in kwargs.items() if k in ['e', 'p', 'v', 'g'])
-
-        self._do_request('delete', params, 'DELETE')
-
-    def update(self, entity, prop, old_value, new_value):
-        self._do_write_request('update', {'e': entity, 'p': prop, 'v_old': old_value, 'v_new': new_value})
 
     def bulk_load(self, **kwargs):
         data = None
@@ -240,7 +240,7 @@ class GlobalServerInterface(object):
 
             match = re.match(PAT_QUADS_LINE, line, re.I)
             if match is None:
-                raise GlobalServerInternalException("Malformed line when receving quads response:\n" + line)
+                raise GlobalServerInternalException("Malformed line when receiving quads response:\n" + line)
 
             quads.append([decode_rdflib_term(parse_rdflib_term(match.group(i))) for i in xrange(1,5)])
 
@@ -456,6 +456,21 @@ def test():
     # Delete non-existent e???
     test_delete(e='ers:bogusEntity1234')
 
+    # Update existing value
+    server.update('ers:testEntity1', 'ers:testProp3', 'ers:testValue31', 'ers:testValueNew', 'ers:testGraph1')
+    assert server.exist(e='ers:testEntity1', p='ers:testProp3', v='ers:testValue31', g='ers:testGraph1') is False
+    assert server.exist(e='ers:testEntity1', p='ers:testProp3', v='ers:testValueNew', g='ers:testGraph1') is True
+
+    # Update non-existing value
+    server.update('ers:testEntity1', 'ers:testProp5', 'ers:testValue6', 'ers:testValue7', 'ers:testGraph1')
+    assert server.exist(e='ers:testEntity1', p='ers:testProp5', v='ers:testValue6', g='ers:testGraph1') is False
+    assert server.exist(e='ers:testEntity1', p='ers:testProp5', v='ers:testValue7', g='ers:testGraph1') is True
+
+    # Update existing value with collision
+    server.update('ers:testEntity1', 'ers:testProp3', 'ers:testValueNew', 'ers:testValue32', 'ers:testGraph1')
+    assert server.exist(e='ers:testEntity1', p='ers:testProp3', v='ers:testValueNew', g='ers:testGraph1') is False
+    assert server.exist(e='ers:testEntity1', p='ers:testProp3', v='ers:testValue32', g='ers:testGraph1') is True
+
     # Cleanup
     cleanup()
 
@@ -467,29 +482,6 @@ def test():
     test_file = '../../tests/data/timbl.nt'
     bulk_tuples = [[decode_rdflib_term(x) for x in tup]
                    for tup in rdflib.Graph().parse(test_file, format='nt')]
-
-
-    # Update existent triple
-    server.update('ers:testEntity1', 'ers:testProp3', 'ers:testValue31', 'ers:testValueXX')
-    assert same(server.read('ers:testEntity1'),
-                [['ers:testEntity1', 'ers:testProp1', 'testValue1'],
-                 ['ers:testEntity1', 'ers:testProp3', 'ers:testValue32'],
-                 ['ers:testEntity1', 'ers:testProp3', 'ers:testValueXX']])
-
-    # Update non-existent triple
-    server.update('ers:testEntity1', 'ers:testProp5', 'ers:testValue6', 'ers:testValue7')
-    assert same(server.read('ers:testEntity1'),
-                [['ers:testEntity1', 'ers:testProp1', 'testValue1'],
-                 ['ers:testEntity1', 'ers:testProp3', 'ers:testValue32'],
-                 ['ers:testEntity1', 'ers:testProp3', 'ers:testValueXX'],
-                 ['ers:testEntity1', 'ers:testProp5', 'ers:testValue7']])
-
-    # Update existent triple w/ collision
-    server.update('ers:testEntity1','ers:testProp3', 'ers:testValueXX', 'ers:testValue32')
-    assert same(server.read('ers:testEntity1'),
-                [['ers:testEntity1', 'ers:testProp1', 'testValue1'],
-                 ['ers:testEntity1', 'ers:testProp3', 'ers:testValue32'],
-                 ['ers:testEntity1', 'ers:testProp5', 'ers:testValue7']])
 
     # Bulk load
     bulk_entities = set(e for e, _, _ in bulk_tuples)
