@@ -126,25 +126,29 @@ class GlobalServerInterface(object):
 
         return self._do_bool_request('exist_entity', params)
 
-    def bulk_load(self, **kwargs):
+    def bulk_load(self, graph, **kwargs):
         data = None
         if 'file' in kwargs:
             with open(kwargs['file'], 'r') as f:
                 data = f.read()
-        elif 'tuples' in kwargs:
+        elif 'triples' in kwargs:
             data = ''.join(' '.join(encode_rdflib_term(x).n3() for x in tup) + '.\n'
-                           for tup in kwargs['tuples'])
+                           for tup in kwargs['triples'])
         elif 'data' in kwargs:
             data = kwargs['data']
 
         if data is None:
-            raise GlobalServerOperationException("You must specify file=, data= or tuples= with bulk_load()")
+            raise GlobalServerOperationException("You must specify file=, data= or triples= with bulk_load()")
 
         boundary = mimetools.choose_boundary()
 
         req_url = self._server_url + 'bulkload'
 
         req_data = '\r\n'.join([
+            '--' + boundary,
+            'Content-Disposition: form-data; name="g"',
+            '',
+            encode_rdflib_term(graph).n3(),
             '--' + boundary,
             'Content-Disposition: form-data; name="filedata"; filename="tuples.nt"',
             'Content-Type: application/octet-stream',
@@ -154,12 +158,16 @@ class GlobalServerInterface(object):
             ''
         ])
 
-        request = urllib2.Request(req_url, req_data)
+        request = RequestEx(req_url, req_data)
+        request.set_method('POST')
         request.add_header('Accept', 'text/html')
         request.add_header('Content-Type', 'multipart/form-data; boundary=' + boundary)
         request.add_header('Content-Length', len(req_data))
 
-        self._do_request(request)
+        response = self._do_http_request(request)
+
+        if not response.startswith('Bulkload '):
+            raise GlobalServerOperationException(response)
 
     def _do_request(self, operation, params, method='GET'):
         req_url = self._server_url + urllib.quote_plus(operation)
@@ -173,6 +181,9 @@ class GlobalServerInterface(object):
         request = RequestEx(req_url, req_data, method=method)
         request.add_header('Accept', 'text/html')
 
+        return self._do_http_request(request)
+
+    def _do_http_request(self, request):
         try:
             response = urllib2.urlopen(request, None, self.timeout_sec)
 
@@ -471,23 +482,16 @@ def test():
     assert server.exist(e='ers:testEntity1', p='ers:testProp3', v='ers:testValueNew', g='ers:testGraph1') is False
     assert server.exist(e='ers:testEntity1', p='ers:testProp3', v='ers:testValue32', g='ers:testGraph1') is True
 
-    # Cleanup
-    cleanup()
-
-    print "Tests OK so far"
-    return
-
-
-
-    test_file = '../../tests/data/timbl.nt'
-    bulk_tuples = [[decode_rdflib_term(x) for x in tup]
-                   for tup in rdflib.Graph().parse(test_file, format='nt')]
-
     # Bulk load
-    bulk_entities = set(e for e, _, _ in bulk_tuples)
+    test_file = '../../tests/data/timbl.nt'
+    bulk_quads = [[decode_rdflib_term(x) for x in tup] + ['ers:testGraphBulk']
+                  for tup in rdflib.Graph().parse(test_file, format='nt')]
 
-    server.bulk_load(file='../../tests/data/timbl.nt')
-    assert same(read_all(bulk_entities), bulk_tuples)
+    server.add_graph_info('ers:testGraphBulk', URN_RDF_TYPE, URN_RDFG_GRAPH)
+    server.bulk_load('ers:testGraphBulk', file=test_file)
+
+    assert same(server.query_graph('ers:testGraphBulk'),
+                bulk_quads)
 
     # Cleanup
     cleanup()
