@@ -113,6 +113,14 @@ class GlobalServerInterface(object):
             else:
                 raise e
 
+    def exist(self, **kwargs):
+        params = {}
+        for key in ['e', 'p', 'v', 'g']:
+            if key in kwargs:
+                params[key] = kwargs[key]
+
+        return self._do_bool_request('exist_entity', params)
+
     def delete(self, entity, prop, value):
         self._do_write_request('delete', {'e': entity, 'p': prop, 'v': value})
 
@@ -158,7 +166,7 @@ class GlobalServerInterface(object):
         req_url = self._server_url + urllib.quote_plus(operation)
         req_data = None
 
-        if method=='POST':
+        if method == 'POST':
             req_data = self._encode_params(params)
         else:
             req_url = req_url + '?' + self._encode_params(params)
@@ -384,6 +392,24 @@ def test():
     # Query e??g
     assert same(server.query(e='ers:testEntity1', g='ers:testGraph2'),
                 [quad for quad in TEST_QUADS if quad[0] == 'ers:testEntity1' and quad[3] == 'ers:testGraph2'])
+
+    # Exist epvg (T)
+    assert server.exist(e='ers:testEntity1', p='ers:testProp3', v='ers:testValue31', g='ers:testGraph2') is True
+
+    # Exist epvg (F)
+    assert server.exist(e='ers:bogusEntity100', p='ers:testProp3', v='ers:testValue31', g='ers:testGraph2') is False
+
+    # Exist epv? (T)
+    assert server.exist(e='ers:testEntity1', p='ers:testProp3', v='ers:testValue31') is True
+
+    # Exist e??? (T)
+    assert server.exist(e='ers:testEntity1') is True
+
+    # Exist e??? (F)
+    assert server.exist(e='ers:bogusEntity200') is False
+
+    # Exist e??g (F)
+    assert server.exist(e='ers:testEntity4', g='ers:testGraph1') is False
 
     # Cleanup
     cleanup()
