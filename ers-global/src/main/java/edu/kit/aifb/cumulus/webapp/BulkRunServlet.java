@@ -39,9 +39,14 @@ import static org.apache.commons.lang.StringEscapeUtils.escapeHtml;
 
 /** 
  * @author tmacicas
+ * Use this to bulk load/run a file with operations using this pattern: 
+ * 	G E P V query_type .  or 
+ * 	G E P V_old query_type v_new . 
+ * where query_type_number can be 0(query), 1(create), 2(delete), 3(update)
+ * e.g.: <e1> <p2> <v3> "0" .
  */
 @SuppressWarnings("serial")
-public class BulkLoadServlet extends AbstractHttpServlet {
+public class BulkRunServlet extends AbstractHttpServlet {
 	private final Logger _log = Logger.getLogger(this.getClass().getName());
 
 	@Override
@@ -120,20 +125,25 @@ public class BulkLoadServlet extends AbstractHttpServlet {
 				   uploadedStream.close();
 				   out.flush();
 			  	   out.close();
-				   resp_msg += "Bulkload " + fileName + ", size " + sizeInBytes;
+				   resp_msg += "Bulkrun" + fileName + ", size " + sizeInBytes;
+			           out_r.println(resp_msg); 
 				}
 			}
 			if( ! a_exists || a == null || a.isEmpty() ) { 
 				sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please pass also the graph name as 'g' parameter");
 			}
 			else { 
-	   		        // load here 
-				// note: if threads==-1, it will be then set to the number of hosts
-				if( crdf.bulkLoad(new File(file), format, threads, Store.encodeKeyspace(a)) == 1 ) 
-					sendError(ctx, req, resp, HttpServletResponse.SC_CONFLICT, "Graph " + graph + " does not exist yet. Please create it before bulk loading."); 
+				//TODO: to complete this!
+				// load here 
+				// note: if threads==1, then it will be set to the number of hosts
+				// note2: one thread would parse the date and on a round-robin manner, the worker threads would run the batches 
+				// note3: if there are NOY ONLY inserts, then the results may not be deterministic (as concurrent threads are applying 
+				// note4: ONLY INSERTS, DELETES AND UPDATES ARE RUN !! QUERIES, GET ARE IGNORED
+				if( crdf.bulkRun(new File(file), format, threads, Store.encodeKeyspace(a)) == 1 ) 
+					sendError(ctx, req, resp, HttpServletResponse.SC_CONFLICT, "Graph " + graph + " does not exist yet. Please create it before bulk running operations."); 
 				else {
-					resp_msg = "Graph " + graph + " time " + (System.currentTimeMillis() - start) + "ms";
-					sendResponse(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, resp_msg); 
+					resp_msg = "Bulkrun execution time: " + (System.currentTimeMillis() - start) + "ms";
+					sendResponse(ctx, req, resp, HttpServletResponse.SC_OK, resp_msg); 
 					_log.info(resp_msg);
 				}
 			}
@@ -161,4 +171,4 @@ public class BulkLoadServlet extends AbstractHttpServlet {
 	public void doPut(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
 		throw new UnsupportedOperationException("PUT currently not supported, sorry.");
 	}
-}
+

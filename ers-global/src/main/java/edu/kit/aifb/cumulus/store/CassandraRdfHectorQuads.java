@@ -213,4 +213,9 @@ public class CassandraRdfHectorQuads extends AbstractCassandraRdfHector {
 			m.execute();
 		}
 	}
+
+	@Override 
+	protected void batchRun(String cf, List<Node[]> list, String keyspace){
+		//_log.severe("CassandraRdfHectorQuads does not implement batchRun() method");
+	}
 }

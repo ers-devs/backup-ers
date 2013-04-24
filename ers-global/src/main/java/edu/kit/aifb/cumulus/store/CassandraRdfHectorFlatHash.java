@@ -50,6 +50,15 @@ public class CassandraRdfHectorFlatHash extends CassandraRdfHectorQuads {
 		_maps.put(CF_S_PO, new int[] { 0, 1, 2 });
 		_maps.put(CF_O_SP, new int[] { 2, 0, 1 });
 		_maps.put(CF_PO_S, new int[] { 1, 2, 0 });
+		_maps_br.put(CF_S_PO, new int[] { 0, 1, 2, 3, 4 });
+		_maps_br.put(CF_O_SP, new int[] { 2, 0, 1, 3, 4 });
+		_maps_br.put(CF_PO_S, new int[] { 1, 2, 0, 3, 4 });
+		_maps_br_update_d.put(CF_S_PO, new int[] { 0, 1, 2, 3, 4, 5 });
+		_maps_br_update_d.put(CF_O_SP, new int[] { 2, 0, 1, 3, 4, 5 });
+		_maps_br_update_d.put(CF_PO_S, new int[] { 1, 2, 0, 3, 4, 5 });
+		_maps_br_update_i.put(CF_S_PO, new int[] { 0, 1, 5, 3, 4, 2 });
+		_maps_br_update_i.put(CF_O_SP, new int[] { 5, 0, 1, 3, 4, 2 });
+		_maps_br_update_i.put(CF_PO_S, new int[] { 1, 5, 0, 3, 4, 2 });
 	}
 		
 	@Override
@@ -116,7 +125,6 @@ public class CassandraRdfHectorFlatHash extends CassandraRdfHectorQuads {
 			for (Node[] nx : li) {
 				// reorder for the key
 				Node[] reordered = Util.reorder(nx, _maps.get(cf));
-				
 				ByteBuffer rowKey = createKey(new Node[] { reordered[0], reordered[1] });
 				String colKey = reordered[2].toN3();
 				// delete the full row 
@@ -163,6 +171,116 @@ public class CassandraRdfHectorFlatHash extends CassandraRdfHectorQuads {
 				String rowKey = reordered[0].toN3();
 				m.addDeletion(rowKey, cf);
 _log.info("Delete full row for " + rowKey + " cf= " + cf);
+			}
+			m.execute();
+		}
+	}
+
+
+	// create a batch of different operations and execute them all together
+	@Override
+	protected void batchRun(String cf, List<Node[]> li, String keyspace) { 
+		if (cf.equals(CF_C_SPO)) {
+			// this is not implemented, we don't care about CSPO CF 
+			super.batchRun(cf, li, keyspace);
+		}
+		else if (cf.equals(CF_PO_S)) {
+			Mutator<byte[]> m = HFactory.createMutator(getExistingKeyspace(keyspace), _bs);
+			for (Node[] nx : li) {
+				Node[] reordered;
+				ByteBuffer rowKey;
+				String colKey;
+				switch( Integer.parseInt(nx[4].toString()) ) { 
+					case 0:
+						//ignore query
+						continue; 
+					case 1: 
+						//insertion
+						// reorder for the key
+						reordered = Util.reorder(nx, _maps_br.get(cf));
+						rowKey = createKey(new Node[] { reordered[0], reordered[1] });
+						colKey = reordered[2].toN3();
+						m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn(colKey, ""));
+						m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn("!p", reordered[0].toN3()));
+						m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn("!o", reordered[1].toN3()));
+						break;
+					case 2: 
+						//deletion 
+	 					// reorder for the key
+						reordered = Util.reorder(nx, _maps_br.get(cf));
+						rowKey = createKey(new Node[] { reordered[0], reordered[1] });
+						colKey = reordered[2].toN3();
+						// delete the full row 
+						m.addDeletion(rowKey.array(), cf);
+						break;
+					case 3: 
+						//update, run a delete and an insert 
+						//deletion 
+	 					// reorder for the key
+						reordered = Util.reorder(nx, _maps_br_update_d.get(cf));
+						rowKey = createKey(new Node[] { reordered[0], reordered[1] });
+						colKey = reordered[2].toN3();
+						// delete the full row 
+						m.addDeletion(rowKey.array(), cf);
+						//insertion
+						// reorder for the key
+						reordered = Util.reorder(nx, _maps_br_update_i.get(cf));
+						rowKey = createKey(new Node[] { reordered[0], reordered[1] });
+						colKey = reordered[2].toN3();
+						m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn(colKey, ""));
+						m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn("!p", reordered[0].toN3()));
+						m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn("!o", reordered[1].toN3()));
+						break;
+					default:	
+						_log.info("OPERATION UNKNOWN, moving to next quad");
+						break;
+				}
+			}
+			m.execute();
+		}
+		else {
+			Mutator<String> m = HFactory.createMutator(getExistingKeyspace(keyspace), _ss);
+			for (Node[] nx : li) {
+				Node[] reordered;
+				String rowKey;
+				String colKey;
+				switch( Integer.parseInt(nx[4].toString()) ) { 
+					case 0:
+						//ignore query
+						continue; 
+					case 1: 
+						// insertion 
+						// reorder for the key
+						reordered = Util.reorder(nx, _maps_br.get(cf));
+						rowKey = reordered[0].toN3();
+						colKey = Nodes.toN3(new Node[] { reordered[1], reordered[2] });
+						m.addInsertion(rowKey, cf, HFactory.createStringColumn(colKey, ""));
+						break;
+					case 2: 
+						// deletion
+						// reorder for the key
+						reordered = Util.reorder(nx, _maps_br.get(cf));
+						rowKey = reordered[0].toN3();
+						colKey = Nodes.toN3(new Node[] { reordered[1], reordered[2] });
+						m.addDeletion(rowKey, cf, colKey, _ss);
+						break;
+					case 3: 
+						// update = delete+insert 
+						// reorder for the key
+						reordered = Util.reorder(nx, _maps_br_update_d.get(cf));
+						rowKey = reordered[0].toN3();
+						colKey = Nodes.toN3(new Node[] { reordered[1], reordered[2] });
+						m.addDeletion(rowKey, cf, colKey, _ss);
+						// reorder for the key
+						reordered = Util.reorder(nx, _maps_br_update_i.get(cf));
+						rowKey = reordered[0].toN3();
+						colKey = Nodes.toN3(new Node[] { reordered[1], reordered[2] });
+						m.addInsertion(rowKey, cf, HFactory.createStringColumn(colKey, ""));
+						break;
+					default:
+						_log.info("OPERATION UNKNOWN, moving to next quad");
+						break;
+				}
 			}
 			m.execute();
 		}

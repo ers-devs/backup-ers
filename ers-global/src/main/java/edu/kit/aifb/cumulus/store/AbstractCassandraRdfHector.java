@@ -22,6 +22,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 import java.io.FileNotFoundException;
 
+import me.prettyprint.cassandra.service.CassandraHost;
 import me.prettyprint.cassandra.connection.LeastActiveBalancingPolicy;
 import me.prettyprint.cassandra.model.BasicColumnDefinition;
 import me.prettyprint.cassandra.model.BasicColumnFamilyDefinition;
@@ -110,6 +111,61 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		
 	}
 
+	// this is not used only for loading data, but for running a batch of operations
+	protected class RunThread extends Thread {
+		private BlockingQueue<List<Node[]>> m_queue;
+		private String m_cf;
+		private boolean m_finished;
+		private int m_id;
+		private String m_keyspace;
+		
+		public RunThread(String columnFamily, int id, String keyspace) {
+			m_cf = columnFamily;
+			m_queue = new ArrayBlockingQueue<List<Node[]>>(5);
+			m_id = id;
+			m_keyspace = keyspace;
+		}
+		
+		public void enqueue(List<Node[]> list) throws InterruptedException {
+			m_queue.put(list);
+		}
+		
+		public void setFinished(boolean finished) {
+			m_finished = finished;
+		}
+		
+		@Override
+		public void run() {
+			while (!m_finished || !m_queue.isEmpty()) {
+				List<Node[]> list = null;
+				try {
+					list = m_queue.take();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+//				long start = System.currentTimeMillis();
+				int tries = 10;
+				while (tries >= 0) {
+					try {
+						batchRun(m_cf, list, m_keyspace);
+						tries = -1;
+					}
+					catch (Exception e) {
+						_log.severe("caught " + e + " while running a batch into " + m_cf + " " + list.size() + " [" + m_id + ", tries left: " + tries + "]" + e.getMessage());
+						e.printStackTrace();
+						tries--;
+						try {
+							Thread.sleep(1000);
+						} catch (InterruptedException e1) {
+							e1.printStackTrace();
+						}
+					}
+				}
+//				_log.debug("[" + m_id + "] inserted " + list.size() + " in " + (System.currentTimeMillis() - start));
+			}
+		}
+		
+	}
 	protected static final String COL_S = "s";
 	protected static final String COL_P = "p";
 	protected static final String COL_O = "o";
@@ -119,6 +175,12 @@ public abstract class AbstractCassandraRdfHector extends Store {
 	protected List<String> _cfs;
 	protected Set<String> _cols;
 	protected Map<String,int[]> _maps;
+	// used by BulkRun (br)
+	protected Map<String,int[]> _maps_br;
+	// updte is composed of delete+insert, thus we need different ordering for the two ops
+	protected Map<String,int[]> _maps_br_update_d;
+	protected Map<String,int[]> _maps_br_update_i;
+
 	protected String _hosts;
 	protected Cluster _cluster;
 	protected int _batchSizeMB = 1;
@@ -132,6 +194,9 @@ public abstract class AbstractCassandraRdfHector extends Store {
 	protected AbstractCassandraRdfHector(String hosts) {
 		_hosts = hosts;
 		_maps = new HashMap<String,int[]>();
+		_maps_br = new HashMap<String,int[]>();
+		_maps_br_update_d = new HashMap<String,int[]>();
+		_maps_br_update_i = new HashMap<String,int[]>();
 		_cfs = new ArrayList<String>();
 		_cols = new HashSet<String>();
 		_cols.add(COL_S);
@@ -522,7 +587,6 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		_batchSizeMB = batchSizeMB;
 	}
 	
-	//TODO: accept as parameter consistency level and/or strategy !
 	protected KeyspaceDefinition createKeyspaceDefinition(String keyspaceName) {
 		return HFactory.createKeyspaceDefinition(keyspaceName, "org.apache.cassandra.locator.SimpleStrategy", 
 			Listener.DEFAULT_REPLICATION_FACTOR, createColumnFamiliyDefinitions(keyspaceName));
@@ -565,6 +629,7 @@ public abstract class AbstractCassandraRdfHector extends Store {
 	protected abstract void batchInsert(String cf, List<Node[]> li, String keyspace);
 	protected abstract void batchDelete(String cf, List<Node[]> li, String keyspace);
 	protected abstract void batchDeleteRow(String cf, List<Node[]> li, String keyspace);
+	protected abstract void batchRun(String cf, List<Node[]> li, String keyspace);
 
 	protected boolean isVariable(Node n) {
 		return n instanceof Variable;
@@ -691,11 +756,95 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		return n;
 	}
 
+	public void bulkRun(InputStream fis, String format, String columnFamily, int threadCount, String keyspace) throws IOException, InterruptedException {
+		_log.info("run batch for CF " + columnFamily);
+		List<RunThread> threads = new ArrayList<RunThread>();
+		if (threadCount < 0) {
+			//threadCount = Math.max(1, (int)(_cluster.getConnectionManager().getHosts().size() / 1.5));
+			threadCount = Math.max(1, (int)(_cluster.getConnectionManager().getHosts().size() / 1.0));
+		}
+		// start here the RunThread which will do the batches 
+		for (int i = 0; i < threadCount; i++) {
+			RunThread t = new RunThread(columnFamily, i, keyspace);
+			threads.add(t);
+			t.start();
+		}
+		_log.info("created " + threads.size() + " running batch threads");
+		int curThread = 0;
+		
+		Iterator<Node[]> nxp = null;
+		nxp = new NxParser(fis);
+		List<Node[]> operations = new ArrayList<Node[]>();
+		
+		long start = System.currentTimeMillis();
+		int i = 0;
+		int batchSize = 0;
+		long data = 0;
+		while (nxp.hasNext()) {
+			Node[] nx = nxp.next();
+			if (nx[2].toN3().length() + nx[1].toN3().length() > 64000) {
+				_log.info("skipping too large row (max row size: 64k");
+				continue;
+			}
+			operations.add(nx);
+			i++;
+					 //do not count 'graph' and 'query_type'
+			for (int k=0; k < nx.length-2; k++) {
+				batchSize += nx[k].toN3().getBytes().length; // + nx[1].toN3().getBytes().length + nx[2].toN3().getBytes().length;
+			}
+			if (batchSize >= _batchSizeMB * 1048576) {
+				_log.finer("batch ready: " + operations.size() + " triples, size: " + batchSize + ", thread: " + curThread);
+				data += batchSize;
+				threads.get(curThread).enqueue(operations);
+				operations = new ArrayList<Node[]>();
+				batchSize = 0;
+				curThread = (curThread + 1) % threads.size();
+			}
+			if (i % 200000 == 0)
+				_log.info(i + " into " + columnFamily + " in " +  (System.currentTimeMillis() - start) + " ms (" + ((double)i / (System.currentTimeMillis() - start) * 1000) + " quads/s) (" + ((double)data / 1000 / (System.currentTimeMillis() - start) * 1000) + " kbytes/s)");
+		}
+		if (operations.size() > 0) {
+			threads.get(curThread).enqueue(operations);
+		}
+
+		_log.info("waiting for threads to finish....");
+		for (RunThread t : threads) {
+			t.setFinished(true);
+			t.enqueue(new ArrayList<Node[]>());
+			t.join();
+		}
+		long time = (System.currentTimeMillis() - start);
+		_log.info(i + " triples inserted into " + columnFamily + " in " + time + " ms (" + ((double)i / time * 1000) + " triples/s)");
+	}
+
+	// used by BatchRun servlet to load a given file of operations (not only inserts)
+	public int bulkRun(File file, String format, int threads, String keyspace) throws StoreException, IOException {
+		try {
+			// check firstly if keyspace exists, if not, return error 
+			if( !existsKeyspace(keyspace) ) { 
+				return 1;
+			} 
+			// run the batch for each column family
+			for (String cf : _cfs) {
+				FileInputStream fis = new FileInputStream(file);
+				bulkRun(fis, format, cf, threads, keyspace);
+				fis.close();
+			}			
+		} catch (InterruptedException e) {
+			throw new StoreException(e);
+		} catch (IOException e) {
+			throw new StoreException(e);
+		}
+		return 0;
+	}
+
 	public void batchBulkLoad(InputStream fis, String format, String columnFamily, int threadCount, String keyspace) throws IOException, InterruptedException {
 		_log.info("bulk loading " + columnFamily);
 		List<LoadThread> threads = new ArrayList<LoadThread>();
-		if (threadCount < 0)
-			threadCount = Math.max(1, (int)(_cluster.getConnectionManager().getHosts().size() / 1.5));
+		if (threadCount < 0) {
+			//threadCount = Math.max(1, (int)(_cluster.getConnectionManager().getHosts().size() / 1.5));
+			threadCount = Math.max(1, (int)(_cluster.getConnectionManager().getHosts().size() / 1.0));
+		}
 
 		for (int i = 0; i < threadCount; i++) {
 			LoadThread t = new LoadThread(columnFamily, i, keyspace);

@@ -8,9 +8,11 @@
   </context-param>
 -->
 	<!-- this value is used whenever neither Embedded nor Openshift is chosen -->
+	<!-- add here a list with all cassandra hosts for a better load balance (RoundRobin or LeastBalancing*now) -->
+	<!-- bulkloading: 1thread per host is created, be aware that this requires more memory on client-side -->
   	<context-param> 
  		<param-name>cassandra-hosts</param-name>
-  		<param-value>134.21.73.204:9160</param-value>  
+  		<param-value>134.21.73.204:9160,134.21.73.205:9160,134.21.73.206:9160,134.21.73.207:9160,134.21.73.208:9160</param-value>  
 	</context-param>
 
 	<!-- NOTE: just one of the two following parameters can be set true !! not both in the same time -->
@@ -103,6 +105,10 @@
 	<servlet-class>edu.kit.aifb.cumulus.webapp.BulkLoadServlet</servlet-class>
   </servlet>
   <servlet>
+	<servlet-name>bulkrun</servlet-name>
+	<servlet-class>edu.kit.aifb.cumulus.webapp.BulkRunServlet</servlet-class>
+  </servlet>
+  <servlet>
 	<servlet-name>transaction</servlet-name>
 	<servlet-class>edu.kit.aifb.cumulus.webapp.TransactionServlet</servlet-class>
   </servlet>
@@ -190,6 +196,10 @@
   <servlet-mapping>
     <servlet-name>bulkload</servlet-name>
     <url-pattern>/bulkload</url-pattern>
+  </servlet-mapping>
+  <servlet-mapping>
+    <servlet-name>bulkrun</servlet-name>
+    <url-pattern>/bulkrun</url-pattern>
   </servlet-mapping>
   <servlet-mapping>
     <servlet-name>transaction</servlet-name>
