@@ -4,7 +4,8 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.logging.Logger;
-import java.io.PrintWriter;
+import java.io.Writer;
+import java.io.IOException;
 
 import org.semanticweb.yars.nx.Literal;
 import org.semanticweb.yars.nx.Node;
@@ -197,11 +198,11 @@ public abstract class Store {
                  } */
 	}
 	
-	public int queryEntireKeyspace(String keyspace, PrintWriter out, int limit) { 
+	public int queryEntireKeyspace(String keyspace, Writer out, int limit) throws IOException { 
 		return -1;
 	}
 	
-	public int queryAllKeyspaces(int limit, PrintWriter out) { 
+	public int queryAllKeyspaces(int limit, Writer out) throws IOException { 
 		return -1;
 	}
 	

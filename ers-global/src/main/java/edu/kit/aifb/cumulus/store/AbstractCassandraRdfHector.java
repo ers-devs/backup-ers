@@ -539,9 +539,10 @@ public abstract class AbstractCassandraRdfHector extends Store {
 				// not even one record, thus we assume it is emtpy 
 				return true;
 		}
-		catch( FileNotFoundException ex ) { 
+		catch( Exception ex ) { 
 			ex.printStackTrace(); 
-			return false;
+			// if an exception rise, better to consider the keyspace empty
+			return true;
 		}
 		return false;
 		

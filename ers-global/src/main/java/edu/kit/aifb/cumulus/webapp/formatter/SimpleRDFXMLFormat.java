@@ -2,7 +2,7 @@ package edu.kit.aifb.cumulus.webapp.formatter;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.PrintWriter;
+import java.io.Writer;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -22,9 +22,9 @@ public class SimpleRDFXMLFormat implements SerializationFormat {
 	}
 	
 	@Override
-	public int print(Iterator<Node[]> it, PrintWriter out, String author) {
-		out.println("<?xml version='1.0'?>");
-		out.println("<rdf:RDF xmlns:rdf='http://www.w3.org/1999/02/22-rdf-syntax-ns#'>");
+	public int print(Iterator<Node[]> it, Writer out, String author) throws IOException {
+		out.write("<?xml version='1.0'?>");
+		out.write("<rdf:RDF xmlns:rdf='http://www.w3.org/1999/02/22-rdf-syntax-ns#'>");
 
 		int triples = 0;
 		Node oldsubj = null;
@@ -53,23 +53,23 @@ public class SimpleRDFXMLFormat implements SerializationFormat {
 			printRDFXML(list, out);
 		}
 
-		out.println("</rdf:RDF>");
+		out.write("</rdf:RDF>");
 		
 		return triples;
 	}
 
-	private void printRDFXML(List<Node[]> list, PrintWriter out) {
+	private void printRDFXML(List<Node[]> list, Writer out) throws IOException {
 		if (list.isEmpty()) {
 			return;
 		}
 
 		Node subj = list.get(0)[0];
-		out.print("<rdf:Description");
+		out.write("<rdf:Description");
 
 		if (subj instanceof Resource) {
-			out.println(" rdf:about='" + escape(subj.toString()) + "'>");
+			out.write(" rdf:about='" + escape(subj.toString()) + "'>");
 		} else if (subj instanceof BNode) {
-			out.println(" rdf:nodeID='" + subj.toString() + "'>");
+			out.write(" rdf:nodeID='" + subj.toString() + "'>");
 		}
 
 		for (Node[] ns: list) {
@@ -92,23 +92,23 @@ public class SimpleRDFXMLFormat implements SerializationFormat {
 				break;
 			}
 
-			out.print("\t<" + localname + " xmlns='" + namespace + "'");
+			out.write("\t<" + localname + " xmlns='" + namespace + "'");
 			if (ns[2] instanceof BNode) {
-				out.println(" rdf:nodeID='" + ns[2].toString() + "'/>");
+				out.write(" rdf:nodeID='" + ns[2].toString() + "'/>");
 			} else if (ns[2] instanceof Resource) {
-				out.println(" rdf:resource='" + escape(ns[2].toString()) + "'/>");				
+				out.write(" rdf:resource='" + escape(ns[2].toString()) + "'/>");				
 			} else if (ns[2] instanceof Literal) {
 				Literal l = (Literal)ns[2];
 				if (l.getLanguageTag() != null) {
-					out.print(" xml:lang='" + l.getLanguageTag() + "'");
+					out.write(" xml:lang='" + l.getLanguageTag() + "'");
 				} else if (l.getDatatype() != null) {
-					out.print(" rdf:datatype='" + l.getDatatype().toString() + "'");					
+					out.write(" rdf:datatype='" + l.getDatatype().toString() + "'");					
 				}
-				out.println(">" + escape(ns[2].toString()) + "</" + localname + ">");
+				out.write(">" + escape(ns[2].toString()) + "</" + localname + ">");
 			}
 		}
 
-		out.println("</rdf:Description>");
+		out.write("</rdf:Description>");
 	}
 
 	private String escape(String s){

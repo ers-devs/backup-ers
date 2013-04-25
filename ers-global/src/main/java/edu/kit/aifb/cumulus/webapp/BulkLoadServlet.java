@@ -95,7 +95,7 @@ public class BulkLoadServlet extends AbstractHttpServlet {
 				String value = item.getString();
 				if( name.equals("g") ) { 
 					a_exists = true; 
-					a = new String("<"+value+">"); 
+					a = new String(value); 
 					// escape if the accept header is not text/plain
 					graph = new String(a);
 					if ( formatter.getContentType().equals("text/html") ) 
@@ -127,6 +127,9 @@ public class BulkLoadServlet extends AbstractHttpServlet {
 				sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please pass also the graph name as 'g' parameter");
 			}
 			else { 
+				if( !a.startsWith("<") || !a.endsWith(">") ) 
+					sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please pass a resource as the graph name.");
+
 	   		        // load here 
 				// note: if threads==-1, it will be then set to the number of hosts
 				if( crdf.bulkLoad(new File(file), format, threads, Store.encodeKeyspace(a)) == 1 ) 

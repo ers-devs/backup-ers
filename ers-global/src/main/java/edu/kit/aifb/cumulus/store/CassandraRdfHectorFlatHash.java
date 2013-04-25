@@ -1,7 +1,8 @@
 package edu.kit.aifb.cumulus.store;
 
 import java.nio.ByteBuffer;
-import java.io.PrintWriter;
+import java.io.Writer;
+import java.io.IOException;
 import java.lang.StringBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -399,7 +400,7 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 
 	//TM: added for supporting (?,?,?,g) queries
 	//NOTE: do not pass the hashed keyspace !! 
-	public int queryEntireKeyspace(String keyspace, PrintWriter out, int limit) { 
+	public int queryEntireKeyspace(String keyspace, Writer out, int limit) throws IOException { 
 		int row_count = ( limit > 100) ? 100 : limit;
 		int total_row_count=0;
 
@@ -447,7 +448,7 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 				        buf.append(" "); 
 					buf.append(c.getValue());
 				        buf.append(keyspace + "\n");
-  				    	out.println(buf.toString());
+  				    	out.write(buf.toString());
 					// because the same row key can contain multiple column records, we consider a row each of them rather than the entire row :) 
 					// (see how cumulusrdf flat storage works)
 					++total_row_count; 
@@ -459,16 +460,16 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
         	             	break;
 			} catch(Exception e){ 
 				e.printStackTrace(); 
-				out.println("Exception message: " + e.getMessage());
-				out.println("Exception: " + e.toString());
-				return 0;
+				out.write("Exception message: " + e.getMessage() + "\n");
+				out.write("Exception: " + e.toString());
+				return -1;
 			}
         	}
 		return total_row_count;
 	}
 	
 	// iterate the keyspaces and query each one of them 
-	public int queryAllKeyspaces(int limit, PrintWriter out) { 
+	public int queryAllKeyspaces(int limit, Writer out) throws IOException { 
 		int total_rows = 0;
 		for (KeyspaceDefinition ksDef : _cluster.describeKeyspaces()) {
 			String keyspace = ksDef.getName();

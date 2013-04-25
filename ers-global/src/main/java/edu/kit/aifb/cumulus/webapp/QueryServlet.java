@@ -2,6 +2,8 @@ package edu.kit.aifb.cumulus.webapp;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.io.BufferedWriter;
+import java.io.CharArrayWriter;
 import java.util.Iterator;
 import java.util.logging.Logger;
 import java.util.List; 
@@ -36,18 +38,13 @@ public class QueryServlet extends AbstractHttpServlet {
 	public void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
 		long start = System.currentTimeMillis();
 		ServletContext ctx = getServletContext();
-
-		String accept = req.getHeader("Accept");
-		SerializationFormat formatter = Listener.getSerializationFormat(accept);
+		// force only text/plain for output in this case
+		SerializationFormat formatter = Listener.getSerializationFormat("text/plain");
 		if (formatter == null) {
 			sendError(ctx, req, resp, HttpServletResponse.SC_NOT_ACCEPTABLE, "no known mime type in Accept header");
 			return;
 		}
-		// escape if the accept header is html
 		String resource = "<resource>";
-		if ( formatter.getContentType().equals("text/html") )
-			resource = escapeHtml(resource); 
-
 		int queryLimit = (Integer)ctx.getAttribute(Listener.QUERY_LIMIT);
 		resp.setCharacterEncoding("UTF-8");
 
@@ -55,6 +52,7 @@ public class QueryServlet extends AbstractHttpServlet {
 		String p = req.getParameter("p");
 		String v = req.getParameter("v");
 		String a = req.getParameter("g");
+		String l = req.getParameter("limit");
 		// some checks
 		if( e != null && !e.isEmpty() && (!e.startsWith("<") || !e.endsWith(">")) ) {
 			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please pass a resource (e.g. "+resource+") as entity");
@@ -72,6 +70,15 @@ public class QueryServlet extends AbstractHttpServlet {
 			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please pass a resource (e.g. "+resource+") as graph name.");
 			return;
 		}
+		Integer limit=Integer.MAX_VALUE;
+		if( l!=null && !l.isEmpty() ) { 
+			try{
+				limit = Integer.parseInt(l);
+			} catch( NumberFormatException ex ) { 
+				_log.severe("Exception: " + ex.getMessage() );
+				sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please pass a number as limit or nothing at all.");
+			}
+		}
 		Node[] query = new Node[3];
 		try {
 			query[0] = getNode(e, "s");
@@ -88,12 +95,9 @@ public class QueryServlet extends AbstractHttpServlet {
 			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Query must contain at least one constant.");
 			return;
 		}
-		// escape if the accept header is not text/plain
 		String graph = a;
-		if ( a!=null && formatter.getContentType().equals("text/html") ) 
-			graph = escapeHtml(a);
-
-		PrintWriter out = resp.getWriter();
+		CharArrayWriter buffer = new CharArrayWriter();
+		BufferedWriter out = new BufferedWriter(buffer);
 		AbstractCassandraRdfHector crdf = (AbstractCassandraRdfHector)ctx.getAttribute(Listener.STORE);
 		int triples = 0;
 
@@ -108,6 +112,8 @@ public class QueryServlet extends AbstractHttpServlet {
 			keyspaces = crdf.getAllKeyspaces(); 
 
 		boolean found = false;
+		int total_triples=0;
+		BufferedWriter bw = new BufferedWriter(out);
 		for(Iterator it_k = keyspaces.iterator(); it_k.hasNext(); ) { 
 			String k = (String)it_k.next();
 			// skip keyspaces that do not use our pre-defined prefix or the authors one
@@ -115,11 +121,15 @@ public class QueryServlet extends AbstractHttpServlet {
 			      k.equals(Listener.AUTHOR_KEYSPACE) )
 				continue;
 			try {
-				Iterator<Node[]> it = crdf.query(query, queryLimit, k);
+				Iterator<Node[]> it = crdf.query(query, limit, k);
 				if (it.hasNext()) {
 					resp.setContentType(formatter.getContentType());
 					triples = formatter.print(it, out, crdf.decodeKeyspace(k));
 					found = true;
+					total_triples += triples;
+					limit -= triples;
+					if( limit == 0 ) 
+						break;
 				}
 			} catch (StoreException ex) {
 				_log.severe(ex.getMessage());
@@ -128,6 +138,13 @@ public class QueryServlet extends AbstractHttpServlet {
 		}
 		if( !found ) 
 			sendResponse(ctx, req, resp, HttpServletResponse.SC_OK, "None quads found.");
+		else {
+			String msg = "OK " + req.getRequestURI() + " " + String.valueOf(HttpServletResponse.SC_OK) + ": " + total_triples + " quad(s) found. All of them are listed below.";
+			resp.getWriter().println(msg);
+			out.close();
+			resp.getWriter().print(buffer.toString());
+		}
+			
 		_log.info("[dataset] QUERY " + Nodes.toN3(query) + " " + (System.currentTimeMillis() - start) + "ms " + triples + "t");
 	}
 

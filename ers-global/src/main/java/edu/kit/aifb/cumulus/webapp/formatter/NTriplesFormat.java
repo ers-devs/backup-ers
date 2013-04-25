@@ -2,7 +2,7 @@ package edu.kit.aifb.cumulus.webapp.formatter;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.PrintWriter;
+import java.io.Writer;
 import java.util.Iterator;
 
 import org.semanticweb.yars.nx.Node;
@@ -18,12 +18,12 @@ public class NTriplesFormat implements SerializationFormat {
 	}
 	
 	@Override
-	public int print(Iterator<Node[]> it, PrintWriter pw, String author) {
+	public int print(Iterator<Node[]> it, Writer pw, String author) throws IOException {
 		int triples = 0;
 		while (it.hasNext()) {
 			Node[] nx = it.next();
 			if (nx[0] != null && nx[1] != null && nx[2] != null) { // don't ask
-				pw.println(Nodes.toN3(nx) + " " + author);
+				pw.write(Nodes.toN3(nx) + " " + author + "\n");
 				triples++;
 			}
 		}

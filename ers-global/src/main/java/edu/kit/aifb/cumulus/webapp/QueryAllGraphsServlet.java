@@ -2,6 +2,8 @@ package edu.kit.aifb.cumulus.webapp;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.io.BufferedWriter;
+import java.io.CharArrayWriter;
 import java.util.Iterator;
 import java.util.logging.Logger;
 import java.util.List; 
@@ -59,13 +61,20 @@ public class QueryAllGraphsServlet extends AbstractHttpServlet {
 			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please pass the limit as integer parameter");
 			return;
 		}
-		PrintWriter out = resp.getWriter();
+		CharArrayWriter buffer = new CharArrayWriter();
+		BufferedWriter out = new BufferedWriter(buffer);
 		AbstractCassandraRdfHector crdf = (AbstractCassandraRdfHector)ctx.getAttribute(Listener.STORE);
 
 		int quads = crdf.queryAllKeyspaces(limit, out);
-		sendResponse(ctx, req, resp, HttpServletResponse.SC_OK, "Total number of quads returned: " + quads);
-
-		_log.info("[dataset] QUERY THE WHOLE GRAPH " + (System.currentTimeMillis() - start) + "ms " + quads + " quads");
+		if( quads == 0 ) 
+			sendResponse(ctx, req, resp, HttpServletResponse.SC_OK, "The data store empty. No data returned.");
+		else { 
+			String msg = "OK " + req.getRequestURI() + " " + String.valueOf(HttpServletResponse.SC_OK) + ": " + quads + " quad(s) found. All of them are listed below.";
+			resp.getWriter().println(msg);
+			out.close();
+			resp.getWriter().print(buffer.toString());
+		 }
+		_log.info("[dataset] QUERY THE WHOLE DATASET "+ (System.currentTimeMillis() - start) + "ms " + quads + " quads");
 		return;
 	}
 
