@@ -2,7 +2,7 @@ package edu.kit.aifb.cumulus.webapp.formatter;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.PrintWriter;
+import java.io.Writer;
 import java.util.Iterator;
 
 import org.semanticweb.yars.nx.Node;
@@ -18,20 +18,20 @@ public class HTMLFormat implements SerializationFormat {
 	}
 
 	@Override
-	public int print(Iterator<Node[]> it, PrintWriter pw, String author) {
-		pw.println("<html><head></head><body>");
+	public int print(Iterator<Node[]> it, Writer pw, String author) throws IOException {
+		pw.write("<html><head></head><body>");
 		
 		int triples = 0;
 		while (it.hasNext()) {
 			Node[] nx = it.next();
 			if (nx[0] != null && nx[1] != null && nx[2] != null) { // don't ask
-				pw.println(NxUtil.escapeForMarkup(Nodes.toN3(nx))+ " " + NxUtil.escapeForMarkup(author));
-				pw.println("<br/>");
+				pw.write(NxUtil.escapeForMarkup(Nodes.toN3(nx))+ " " + NxUtil.escapeForMarkup(author));
+				pw.write("<br/>");
 				triples++;
 			}
 		}
 		
-		pw.println("</body></html>");
+		pw.write("</body></html>");
 		
 		return triples;
 	}

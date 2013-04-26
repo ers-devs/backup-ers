@@ -2,7 +2,7 @@ package edu.kit.aifb.cumulus.webapp.formatter;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.PrintWriter;
+import java.io.Writer;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -26,7 +26,7 @@ public class StaxRDFXMLFormat implements SerializationFormat {
 	}
 	
 	@Override
-	public int print(Iterator<Node[]> it, PrintWriter pw, String author) {
+	public int print(Iterator<Node[]> it, Writer pw, String author) throws IOException  {
 		XMLOutputFactory factory = XMLOutputFactory.newInstance();
 		factory.setProperty(XMLOutputFactory.IS_REPAIRING_NAMESPACES, Boolean.TRUE);
 
@@ -60,7 +60,7 @@ public class StaxRDFXMLFormat implements SerializationFormat {
 				printRDFXML(list, ch);
 			}
 	
-			pw.println("</rdf:RDF>");
+			pw.write("</rdf:RDF>");
 		}
 		catch (XMLStreamException e) {
 			e.printStackTrace();

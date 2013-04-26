@@ -12,8 +12,6 @@ def test():
         if dbname in server:
             server.delete_db(dbname)           
         ers_new = ERSLocal(dbname=dbname, model=model)
-        view = ers_new.model.views_doc.copy()  # avoid writing _rev to the view_doc
-        ers_new.db.save_doc(view)
         return ers_new
  
     def test_ers():
