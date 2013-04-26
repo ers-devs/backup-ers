@@ -136,8 +136,8 @@ public class GraphServlet extends AbstractHttpServlet {
 		if( r == 2 ) 
 			sendError(ctx, req, resp, HttpServletResponse.SC_FORBIDDEN, "Graph " + graph + " cannot be created. Do not use 'system' as prefix.");
 		else {
-			// now insert the triple into Authors keyspace 
-			int r2 = crdf.addData(a_id, a_p, a_v, Listener.AUTHOR_KEYSPACE);
+			// now insert the triple into Graphs keyspace 
+			int r2 = crdf.addData("\""+Store.encodeKeyspace(a_id)+"\"", a_p, a_v, Listener.GRAPHS_NAMES_KEYSPACE);
 			if( r2 != -1 ) { 
 				if (r == 1) 
 					sendResponse(ctx, req, resp, HttpServletResponse.SC_OK, "Graph " + graph + " already exists. New data has been added.");
@@ -197,14 +197,14 @@ public class GraphServlet extends AbstractHttpServlet {
 		PrintWriter out = resp.getWriter();
 		resp.setContentType(formatter.getContentType());
 		Store crdf = (Store)ctx.getAttribute(Listener.STORE);
+
 		// do the deletion of entities associated with this graph  
-		// delete also the record from AUTHORS keyspace ?! for the moment, NO
 		String encoded_keyspace = Store.encodeKeyspace(a_id);
 		int r = crdf.dropKeyspace(encoded_keyspace, force);
 		switch(r) { 
 			case 0: 
 				//delete from ERS_graphs
-				crdf.deleteData("\""+encoded_keyspace+"\"","\"hashValue\"", "\""+a_id+"\"", Listener.GRAPHS_NAMES_KEYSPACE);
+				crdf.deleteByRowKey("\""+encoded_keyspace+"\"", Listener.GRAPHS_NAMES_KEYSPACE);
 				sendResponse(ctx, req, resp, HttpServletResponse.SC_OK, "The entire of graph " + graph + " has been deleted.");
 				break;
 			case 1: 	

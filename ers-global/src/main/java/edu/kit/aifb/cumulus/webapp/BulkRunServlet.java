@@ -100,7 +100,7 @@ public class BulkRunServlet extends AbstractHttpServlet {
 				String value = item.getString();
 				if( name.equals("g") ) { 
 					a_exists = true; 
-					a = new String("<"+value+">"); 
+					a = new String(value); 
 					// escape if the accept header is not text/plain
 					graph = new String(a);
 					if ( formatter.getContentType().equals("text/html") ) 
@@ -133,7 +133,11 @@ public class BulkRunServlet extends AbstractHttpServlet {
 				sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please pass also the graph name as 'g' parameter");
 			}
 			else { 
-				//TODO: to complete this!
+				if( !a.startsWith("<") || !a.endsWith(">") ) {
+					sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please pass a resource as the graph name.");
+					return;
+				}
+
 				// load here 
 				// note: if threads==1, then it will be set to the number of hosts
 				// note2: one thread would parse the date and on a round-robin manner, the worker threads would run the batches 

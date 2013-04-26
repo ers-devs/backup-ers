@@ -118,7 +118,7 @@ public class QueryServlet extends AbstractHttpServlet {
 			String k = (String)it_k.next();
 			// skip keyspaces that do not use our pre-defined prefix or the authors one
 			if( ! k.startsWith(Listener.DEFAULT_ERS_KEYSPACES_PREFIX) || 
-			      k.equals(Listener.AUTHOR_KEYSPACE) )
+			      k.equals(Listener.GRAPHS_NAMES_KEYSPACE) )
 				continue;
 			try {
 				Iterator<Node[]> it = crdf.query(query, limit, k);

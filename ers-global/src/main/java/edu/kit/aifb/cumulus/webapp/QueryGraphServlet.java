@@ -71,7 +71,7 @@ public class QueryGraphServlet extends AbstractHttpServlet {
 		AbstractCassandraRdfHector crdf = (AbstractCassandraRdfHector)ctx.getAttribute(Listener.STORE);
 
 		// do not allow querying of system keyspaces, authors or graphs
-		if( g.startsWith("system") || g.equals(Listener.GRAPHS_NAMES_KEYSPACE) || g.equals(Listener.AUTHOR_KEYSPACE) ) { 
+		if( g.startsWith("system") || g.equals(Listener.GRAPHS_NAMES_KEYSPACE) || g.equals(Listener.GRAPHS_NAMES_KEYSPACE) ) { 
 			sendError(ctx, req, resp, HttpServletResponse.SC_FORBIDDEN, "It is forbidden to query this keyspace " + g);
 			return;
 		}
@@ -80,7 +80,7 @@ public class QueryGraphServlet extends AbstractHttpServlet {
 			sendError(ctx, req, resp, HttpServletResponse.SC_CONFLICT, "The graph " + g + " passed as input does not exist. No data returned.");
 			return;
 		}
-		int triples = crdf.queryEntireKeyspace(g, out, limit);
+		int triples = crdf.queryEntireKeyspace(Store.encodeKeyspace(g), out, limit);
 		if( triples == 0 ) 
 			sendResponse(ctx, req, resp, HttpServletResponse.SC_OK, "The graph " + g + " is empty. No data returned.");
 		 else if( triples == -1 ) 

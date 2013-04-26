@@ -70,7 +70,7 @@ public class ReadServlet extends AbstractHttpServlet {
 		List<String> keyspaces = new ArrayList<String>(); 
 		if( a != null && !a.isEmpty() )
 			keyspaces.add(Store.encodeKeyspace(a)); 
-		else {
+		else  {
 			// add all keyspaces
 			keyspaces = crdf.getAllKeyspaces();
 		}	 

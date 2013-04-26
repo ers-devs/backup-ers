@@ -101,10 +101,8 @@ public abstract class Store {
 				
 				return next;
 			}
-			
 			if (m_oit != null && m_oit.hasNext())
 				return m_oit.next();
-			
 			return null;
 		}
 
@@ -129,6 +127,8 @@ public abstract class Store {
 	public abstract int deleteData(String e, String p, String v, String keyspace);
 	// this is called by deleteData(...) and for the "clever" delete() that uses query()
 	public abstract void deleteData(Node[] nx, String keyspace);
+	public abstract int deleteByRowKey(String e, String keyspace);
+	public abstract Iterator<Node[]> getRowIterator(String e, String keyspace);
 
 	// delete all data (if force is true, then delete even if it is not empty) 
 	public int dropKeyspace(String keyspace) { 
@@ -216,7 +216,7 @@ public abstract class Store {
 		return new DescribeIterator(resource, include2Hop, subjects, objects, keyspace);
 	}
 	
-	private Node[] pattern(Node s, Node p, Node o) {
+	protected Node[] pattern(Node s, Node p, Node o) {
 		return new Node[] { s == null ? new Variable("s") : s, p == null ? new Variable("p") : p, o == null ? new Variable("o") : o }; 
 	}
 }

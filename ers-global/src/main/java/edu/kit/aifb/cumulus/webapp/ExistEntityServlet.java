@@ -109,7 +109,7 @@ public class ExistEntityServlet extends AbstractHttpServlet {
 		for(Iterator it_k = keyspaces.iterator(); it_k.hasNext(); ) { 
 			String k = (String)it_k.next();
 			// skip system and authors keyspaces
-			if( k.startsWith("system") || k.equals(Listener.AUTHOR_KEYSPACE) )
+			if( k.startsWith("system") || k.equals(Listener.GRAPHS_NAMES_KEYSPACE) )
 				continue;
 			try {
 				// the querylimit is set to 1, just to find out if such a queried entity exists	

@@ -191,6 +191,9 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 				Node[] reordered;
 				ByteBuffer rowKey;
 				String colKey;
+
+//				_log.info("$$$ " + nx[0].toString() + " " + nx[1].toString() + " " + nx[2].toString() + " " + nx[3].toString());
+
 				switch( Integer.parseInt(nx[4].toString()) ) { 
 					case 0:
 						//ignore query
@@ -245,6 +248,9 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 				Node[] reordered;
 				String rowKey;
 				String colKey;
+
+//				_log.info("$$$ " + nx[0].toString() + " " + nx[1].toString() + " " + nx[2].toString() + " " + nx[3].toString());
+
 				switch( Integer.parseInt(nx[4].toString()) ) { 
 					case 0:
 						//ignore query
@@ -399,13 +405,14 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 	}
 
 	//TM: added for supporting (?,?,?,g) queries
-	//NOTE: do not pass the hashed keyspace !! 
+	//NOTE: pass the actual name of the keyspace (hashed value in case of graphs) 
 	public int queryEntireKeyspace(String keyspace, Writer out, int limit) throws IOException { 
 		int row_count = ( limit > 100) ? 100 : limit;
 		int total_row_count=0;
 
+		String decoded_keyspace = this.decodeKeyspace(keyspace);
 		// String(row), String(column_name), String(column_value)
-		Keyspace k = getExistingKeyspace(this.encodeKeyspace(keyspace)); 
+		Keyspace k = getExistingKeyspace(keyspace); 
         	RangeSlicesQuery<String, String, String> rangeSlicesQuery = HFactory
 	            .createRangeSlicesQuery(k, StringSerializer.get(), StringSerializer.get(), StringSerializer.get())
         	    .setColumnFamily("SPO")
@@ -447,7 +454,7 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 					buf.append(c.getName()); 
 				        buf.append(" "); 
 					buf.append(c.getValue());
-				        buf.append(keyspace + "\n");
+				        buf.append(decoded_keyspace + "\n");
   				    	out.write(buf.toString());
 					// because the same row key can contain multiple column records, we consider a row each of them rather than the entire row :) 
 					// (see how cumulusrdf flat storage works)
@@ -474,16 +481,11 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 		for (KeyspaceDefinition ksDef : _cluster.describeKeyspaces()) {
 			String keyspace = ksDef.getName();
 			// only keyspaces that uses as prefix our pre-defined one
-			if( ! keyspace.startsWith(Listener.DEFAULT_ERS_KEYSPACES_PREFIX) || 
-     			      keyspace.equals(Listener.AUTHOR_KEYSPACE) || 
+			if( ! keyspace.startsWith(Listener.DEFAULT_ERS_KEYSPACES_PREFIX) ||
 			      keyspace.equals(Listener.GRAPHS_NAMES_KEYSPACE) ) 
 				continue;
-			//decode it here (use ERS_graphs to get the un-hashed name)
-			String decoded_keyspace = this.decodeKeyspace(keyspace); 
-			if (decoded_keyspace == null) 
-				continue;
 			// query this keyspace
-			total_rows += queryEntireKeyspace(decoded_keyspace, out, limit);
+			total_rows += queryEntireKeyspace(keyspace, out, limit);
 		}
 		return total_rows;
 	}

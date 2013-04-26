@@ -37,6 +37,7 @@ import org.cassandraunit.utils.EmbeddedCassandraServerHelper;
 /** 
  * 
  * @author aharth
+ * @author tmacicas
  */
 public class Listener implements ServletContextListener {
 
@@ -77,7 +78,7 @@ public class Listener implements ServletContextListener {
 	private static final String LAYOUT_FLAT = "flat";
 	
 	public static String DEFAULT_ERS_KEYSPACES_PREFIX = "ERS_";
-	public static final String AUTHOR_KEYSPACE = "ERS_authors";
+	//public static final String AUTHOR_KEYSPACE = "ERS_authors";
 	public static final String GRAPHS_NAMES_KEYSPACE = "ERS_graphs";
 	private static String DEFAULT_RUN_ON_OPENSHIFT = "no";
 
@@ -245,7 +246,7 @@ public class Listener implements ServletContextListener {
 			// set some cluster wide parameters 
 			_crdf.open();
    			// create the Authors keyspace
-			_crdf.createKeyspaceInit(AUTHOR_KEYSPACE);
+			//_crdf.createKeyspaceInit(AUTHOR_KEYSPACE);
 			// create the Graph names keyspace
 			_crdf.createKeyspaceInit(GRAPHS_NAMES_KEYSPACE);
 			ctx.setAttribute(STORE, _crdf);

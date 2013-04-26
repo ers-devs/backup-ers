@@ -47,6 +47,7 @@ import me.prettyprint.hector.api.exceptions.HectorException;
 import org.semanticweb.yars.nx.Node;
 import org.semanticweb.yars.nx.Resource;
 import org.semanticweb.yars.nx.Variable;
+import org.semanticweb.yars.nx.Literal;
 import org.semanticweb.yars.nx.parser.NxParser;
 import org.semanticweb.yars.nx.parser.ParseException;
 import org.semanticweb.yars2.rdfxml.RDFXMLParser;
@@ -151,7 +152,7 @@ public abstract class AbstractCassandraRdfHector extends Store {
 						tries = -1;
 					}
 					catch (Exception e) {
-						_log.severe("caught " + e + " while running a batch into " + m_cf + " " + list.size() + " [" + m_id + ", tries left: " + tries + "]" + e.getMessage());
+						_log.severe("caught " + e + " while running a batch into " + m_cf + " " + list.size() + " [" + m_id + ", tries left: " + tries + "]" + e.getMessage()+ " " + e.getStackTrace()[0].toString() );
 						e.printStackTrace();
 						tries--;
 						try {
@@ -226,14 +227,10 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		_log.finer("connected to " + _hosts);
 	}
 
+	// pass the exact name of the keyspace created previously
 	public boolean existsKeyspace(String keyspaceName) { 
 		if( _cluster.describeKeyspace(keyspaceName) != null ) 
 			return true;
-/*		for (KeyspaceDefinition ksDef : _cluster.describeKeyspaces()) {
-			if (ksDef.getName().equals(keyspaceName)) {
-				return true;
-			}
-		} */
 		return false;
 	}
 
@@ -253,11 +250,10 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		return 0;
 	}
 
-	// create a keyspace if it does not exist yet
+	// create a keyspace if it does not exist yet and add 
+	//NOTE: pass NON-encoded keyspace
 	public int createKeyspace(String keyspaceName) {
 		String encoded_keyspaceName = Store.encodeKeyspace(keyspaceName);
-		if( keyspaceName.startsWith("system") )
-			return 2;
 		if (! existsKeyspace(encoded_keyspaceName)) 
 			try { 
 				_cluster.addKeyspace(createKeyspaceDefinition(encoded_keyspaceName));	
@@ -271,21 +267,6 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		HFactory.createKeyspace(encoded_keyspaceName, _cluster, Listener.DEFAULT_CONSISTENCY_POLICY);
 		// also add an entry into Listener.GRAPHS_NAMES_KEYSPACE to keep a mapping of hashed keyspace name and the real one 
 		this.addData("\""+encoded_keyspaceName+"\"", "\"hashValue\"", "\""+keyspaceName+"\"", Listener.GRAPHS_NAMES_KEYSPACE);	
-		
-/*		HFactory.createKeyspace(keyspaceName, _cluster, new ConsistencyLevelPolicy() {
-			@Override
-			public HConsistencyLevel get(OperationType arg0, String cf) {
-				/*NOTE: based on operation type and/or column family, the 
-				   consistency level is tunable
-				   However, we just use for the moment the given parameter 
-				return HConsistencyLevel.ONE;
-			}
-			
-			@Override
-			public HConsistencyLevel get(OperationType arg0) {
-				return HConsistencyLevel.ONE;
-			}
-		}; */
 		return 0;
 	}
 
@@ -532,6 +513,7 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		return HFactory.createKeyspace(keyspace, _cluster);
 	}
 
+	// pass the actual name of the keyspace as it was created before
 	public boolean emptyKeyspace(String keyspace) { 
 		try { 
 			int r = queryEntireKeyspace(keyspace, new PrintWriter("/dev/null"), 1);
@@ -720,6 +702,39 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		}
 	}
 
+	// return one row iterator over all its columns  
+	public Iterator<Node[]> getRowIterator(String e, String keyspace) { 
+		 Resource resource = new Resource(e);
+		try {
+			Node[] query = new Node[3];
+			query[0] = new Literal(e);
+			query[1] = new Variable("p");
+			query[2] = new Variable("o");	
+		
+       	        	return this.query(query, Integer.MAX_VALUE, keyspace); 
+		}
+                catch (StoreException ex) {
+			ex.printStackTrace();
+			_log.severe("ERS exception: " + ex.getMessage());
+                        return null; 
+		}
+	}
+
+	// it queries to get the whole data and then it uses it to delete (of course, it would be easier to directly delete it by using the row key, but for POS and OSP column families it is not that easy)
+	public int deleteByRowKey(String e, String keyspace) { 
+	 	// check if keyspace exists	
+		if( !existsKeyspace(keyspace)) { 
+			return -2; 
+		}
+		Iterator<Node[]> it = getRowIterator(e, keyspace);		
+		for( ; it.hasNext(); ) {
+			Node[] n = (Node[])it.next();
+			this.deleteData(n, keyspace);
+		} 
+		return 1;
+	}
+
+
 	/* TM: update just one record
          * NOTE: this has a bit of overhead since the value is stored as column name; thus 
          * for updating it needs 1 deletion and 1 insertion 
@@ -757,6 +772,7 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		return n;
 	}
 
+	// parses input file, creates the RunThread/s and waits for them to finish
 	public void bulkRun(InputStream fis, String format, String columnFamily, int threadCount, String keyspace) throws IOException, InterruptedException {
 		_log.info("run batch for CF " + columnFamily);
 		List<RunThread> threads = new ArrayList<RunThread>();
