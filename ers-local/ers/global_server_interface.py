@@ -89,7 +89,7 @@ class GlobalServerInterface(object):
         self._do_request('graph', {'g_id': graph, 'g_p': prop, 'g_v': value}, 'POST')
 
     def delete_graph(self, graph, force=False):
-        self._do_request('graph', {'g': graph, 'f': 'y' if force else 'n'}, 'DELETE')
+        self._do_request('graph', {'g': graph, '#f': 'y' if force else 'n'}, 'DELETE')
 
     def create(self, entity, prop, value, graph):
         self._do_request('create', {'e': entity, 'p': prop, 'v': value, 'g': graph}, 'POST')
@@ -160,14 +160,11 @@ class GlobalServerInterface(object):
 
         request = RequestEx(req_url, req_data)
         request.set_method('POST')
-        request.add_header('Accept', 'text/html')
+        request.add_header('Accept', 'text/plain')
         request.add_header('Content-Type', 'multipart/form-data; boundary=' + boundary)
         request.add_header('Content-Length', len(req_data))
 
         response = self._do_http_request(request)
-
-        if not response.startswith('Bulkload '):
-            raise GlobalServerOperationException(response)
 
     def _do_request(self, operation, params, method='GET'):
         req_url = self._server_url + urllib.quote_plus(operation)
@@ -179,28 +176,41 @@ class GlobalServerInterface(object):
             req_url = req_url + '?' + self._encode_params(params)
 
         request = RequestEx(req_url, req_data, method=method)
-        request.add_header('Accept', 'text/html')
+        request.add_header('Accept', 'text/plain')
 
         return self._do_http_request(request)
 
     def _do_http_request(self, request):
+        http_exception = None
+
         try:
-            response = urllib2.urlopen(request, None, self.timeout_sec)
-
-            return response.read()
+            response = urllib2.urlopen(request, None, self.timeout_sec).read()
         except urllib2.HTTPError as e:
-            err_body = e.read()
-
-            match = re.match(r'<html><body><h1>Error</h1><p>Status code \d+</p><p>(.*)</p><p>(.*)</p>\s*</body><html>',
-                             err_body, re.I | re.S)
-            if match and match.group(1) != match.group(2):
-                raise GlobalServerOperationException('Error in global server operation: ' + match.group(2))
-            else:
-                raise GlobalServerAccessException('Cannot access global server: ' + str(e))
+            response = e.read()
+            http_exception = e
         except urllib2.URLError as e:
-            raise GlobalServerAccessException('Cannot access global server: ' + str(e))
+            raise GlobalServerAccessException(str(e))
         except Exception as e:
-            raise GlobalServerAccessException('Cannot access global server: ' + str(e))
+            raise GlobalServerAccessException(str(e))
+
+        match = re.match('(OK|ERROR) /[^ ]* \d+: ([^\n]*)\n?', response, re.S)
+        if match is None:
+            if http_exception is not None:
+                raise GlobalServerAccessException(str(http_exception))
+            else:
+                raise GlobalServerInternalException("Received malformed response from server:\n" + response)
+
+        status = match.group(1)
+        message = match.group(2)
+        data = response[match.end():]
+
+        if status == 'ERROR':
+            raise GlobalServerOperationException(message)
+
+        if data != "":
+            return message + '\n' + data
+        else:
+            return message
 
     # TODO: Eventually we should distinguish internally between literal URLs and URIRefs. Till then...
     def _encode_params(self, params):
@@ -225,29 +235,16 @@ class GlobalServerInterface(object):
             raise GlobalServerInternalException(
                 "Invalid response to {0}; expected TRUE or FALSE, got '{0}'".format(operation, response))
 
-    def _temp_filter_html_response(self, response):
-        if response.startswith('<html'):
-            response = response.replace('<br/>', '\n')
-            response = re.sub(r'<[^>]*>', '', response)
-            response = html_entity_decode(response)
-
-        return response
-
     def _do_quads_request(self, operation, params):
         PAT_N3_VALUE = r'(<[^>]+>|"[^"]*"[^ ]*|_[^ ]+)'
         PAT_QUADS_LINE = '{0} {0} {0} . {0}'.format(PAT_N3_VALUE)
 
         response = self._do_request(operation, params)
 
-        # TODO: remove this when it is no longer necessary
-        response = self._temp_filter_html_response(response)
-
         quads = []
-        for line in response.split('\n'):
+        for line in response.split('\n')[1:]:
             if line == "":
                 continue
-            if line.startswith('Total quads returned:') or line.startswith('Total number of quads returned:'):
-                break
 
             match = re.match(PAT_QUADS_LINE, line, re.I)
             if match is None:
