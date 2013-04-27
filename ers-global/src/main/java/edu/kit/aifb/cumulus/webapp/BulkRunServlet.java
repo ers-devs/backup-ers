@@ -143,6 +143,7 @@ public class BulkRunServlet extends AbstractHttpServlet {
 				// note2: one thread would parse the date and on a round-robin manner, the worker threads would run the batches 
 				// note3: if there are NOY ONLY inserts, then the results may not be deterministic (as concurrent threads are applying 
 				// note4: ONLY INSERTS, DELETES AND UPDATES ARE RUN !! QUERIES, GET ARE IGNORED
+
 				if( crdf.bulkRun(new File(file), format, threads, Store.encodeKeyspace(a)) == 1 ) 
 					sendError(ctx, req, resp, HttpServletResponse.SC_CONFLICT, "Graph " + graph + " does not exist yet. Please create it before bulk running operations."); 
 				else {

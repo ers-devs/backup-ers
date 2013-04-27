@@ -65,6 +65,7 @@ public class TransactionServlet extends AbstractHttpServlet {
 			sendError(ctx, req, resp, HttpServletResponse.SC_NOT_ACCEPTABLE, "no known mime type in Accept header");
 			return;
 		}
+
 		PrintWriter out_r = resp.getWriter();
 		StringBuffer resp_msg = new StringBuffer();
 		// check that we have a file upload request

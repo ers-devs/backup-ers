@@ -710,7 +710,6 @@ public abstract class AbstractCassandraRdfHector extends Store {
 			query[0] = new Literal(e);
 			query[1] = new Variable("p");
 			query[2] = new Variable("o");	
-		
        	        	return this.query(query, Integer.MAX_VALUE, keyspace); 
 		}
                 catch (StoreException ex) {
@@ -772,6 +771,10 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		return n;
 	}
 
+public static String getLN() {
+    return String.valueOf(Thread.currentThread().getStackTrace()[2].getLineNumber());
+}
+
 	// parses input file, creates the RunThread/s and waits for them to finish
 	public void bulkRun(InputStream fis, String format, String columnFamily, int threadCount, String keyspace) throws IOException, InterruptedException {
 		_log.info("run batch for CF " + columnFamily);
@@ -784,7 +787,7 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		for (int i = 0; i < threadCount; i++) {
 			RunThread t = new RunThread(columnFamily, i, keyspace);
 			threads.add(t);
-			t.start();
+			t.start(); 
 		}
 		_log.info("created " + threads.size() + " running batch threads");
 		int curThread = 0;
@@ -797,8 +800,13 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		int i = 0;
 		int batchSize = 0;
 		long data = 0;
+		int cnt=0;
 		while (nxp.hasNext()) {
 			Node[] nx = nxp.next();
+			if( nx.length != 5 ) {
+				++cnt;
+				continue;
+			}
 			if (nx[2].toN3().length() + nx[1].toN3().length() > 64000) {
 				_log.info("skipping too large row (max row size: 64k");
 				continue;
@@ -810,7 +818,7 @@ public abstract class AbstractCassandraRdfHector extends Store {
 				batchSize += nx[k].toN3().getBytes().length; // + nx[1].toN3().getBytes().length + nx[2].toN3().getBytes().length;
 			}
 			if (batchSize >= _batchSizeMB * 1048576) {
-				_log.finer("batch ready: " + operations.size() + " triples, size: " + batchSize + ", thread: " + curThread);
+				_log.info("batch ready: " + operations.size() + " triples, size: " + batchSize + ", thread: " + curThread);
 				data += batchSize;
 				threads.get(curThread).enqueue(operations);
 				operations = new ArrayList<Node[]>();
@@ -818,12 +826,12 @@ public abstract class AbstractCassandraRdfHector extends Store {
 				curThread = (curThread + 1) % threads.size();
 			}
 			if (i % 200000 == 0)
-				_log.info(i + " into " + columnFamily + " in " +  (System.currentTimeMillis() - start) + " ms (" + ((double)i / (System.currentTimeMillis() - start) * 1000) + " quads/s) (" + ((double)data / 1000 / (System.currentTimeMillis() - start) * 1000) + " kbytes/s)");
+				_log.info(i + " into " + columnFamily + " in " +  (System.currentTimeMillis() - start) + " ms (" + ((double)i / (System.currentTimeMillis() - start) * 1000) + " quads/s) (" + ((double)data / 1000 / (System.currentTimeMillis() - start) * 1000) + " kbytes/s)"); 
 		}
+		_log.info("NO OF NOT LOADED QUADS DUE TO PARSING ERROR: " + cnt);
 		if (operations.size() > 0) {
 			threads.get(curThread).enqueue(operations);
 		}
-
 		_log.info("waiting for threads to finish....");
 		for (RunThread t : threads) {
 			t.setFinished(true);
