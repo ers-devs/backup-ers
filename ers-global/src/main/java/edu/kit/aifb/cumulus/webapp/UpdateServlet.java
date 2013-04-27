@@ -71,11 +71,11 @@ public class UpdateServlet extends AbstractHttpServlet {
 		String v_new = req.getParameter("v_new");
 		// some checks
 		if( e == null || p == null || v_old == null || v_new == null || a == null ) { 
-			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please pass data like 'e=_&p=_&v_old=_&v_new=_&a=_'");
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please pass data like 'e=_&p=_&v_old=_&v_new=_&g=_'");
 			return;
 		}
 		if( e.isEmpty() || p.isEmpty() || v_old.isEmpty() || v_new.isEmpty() || a.isEmpty()  ) { 
-			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please pass non empty data 'e=_&p=_&v_old=_&v_new=_&a=_'");
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please pass non empty data 'e=_&p=_&v_old=_&v_new=_&g=_'");
 			return;
 		}
 		if( !e.startsWith("<") || !e.endsWith(">") ) {

@@ -60,15 +60,15 @@ public class CleverDeleteServlet extends AbstractHttpServlet {
 			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please pass a resource (e.g."+resource+") as entity");
 			return;
 		}	
-		if( p!=null && (!p.startsWith("<") || !p.endsWith(">")) && (!p.startsWith("\"") || !p.endsWith("\"")) ) {
+		if( p!=null && !p.isEmpty() && (!p.startsWith("<") || !p.endsWith(">")) && (!p.startsWith("\"") || !p.endsWith("\"")) ) {
 			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please pass either a resource (e.g."+resource+") or a literal (e.g. \"literal\") as property");
 			return;
 		}
-		if( v!=null && (!v.startsWith("<") || !v.endsWith(">")) && (!v.startsWith("\"") || !v.endsWith("\"")) ) {
+		if( v!=null && !p.isEmpty() && (!v.startsWith("<") || !v.endsWith(">")) && (!v.startsWith("\"") || !v.endsWith("\"")) ) {
 			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please pass either a resource (e.g. "+resource+") or a literal (e.g. \"literal\") as value");
 			return;
 		}
-		if( g!=null && (!g.startsWith("<") || !g.endsWith(">")) ) {
+		if( g!=null && !g.isEmpty() && (!g.startsWith("<") || !g.endsWith(">")) ) {
 			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please either resources (e.g. "+resource+") as graph");
 			return;
 		}
@@ -92,11 +92,11 @@ public class CleverDeleteServlet extends AbstractHttpServlet {
 		AbstractCassandraRdfHector crdf = (AbstractCassandraRdfHector)ctx.getAttribute(Listener.STORE);
 		int triples = 0;
 	
+		// run "clasical" delete if we have all information 
 		if( e != null && !e.isEmpty() && 
                     p != null && !p.isEmpty() &&
                     v != null && !v.isEmpty() && 
                     g != null && !g.isEmpty() ) { 
-			// run "clasical" delete as we have all information 
 			if( crdf.deleteData(e,p,v,Store.encodeKeyspace(g)) == -2 ) 
 				sendResponse(ctx, req, resp, HttpServletResponse.SC_CONFLICT, "Graph " + g + " does not exists.");
 			else { 
@@ -139,7 +139,7 @@ public class CleverDeleteServlet extends AbstractHttpServlet {
 				resp.sendError(500, ex.getMessage());
 			}
 		}
-		out.print("Total " + total_deletion + " quad(s) deleted.");
+		sendResponse(ctx, req, resp, HttpServletResponse.SC_OK, "Total " + total_deletion + " quad(s) deleted.");
 		_log.info("[dataset] DELETE " + (System.currentTimeMillis() - start) + "ms " + total_deletion + " quad(s)");
 	}
 

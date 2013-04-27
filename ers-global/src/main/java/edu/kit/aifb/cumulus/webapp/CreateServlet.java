@@ -68,11 +68,11 @@ public class CreateServlet extends AbstractHttpServlet {
 		String a = req.getParameter("g");  	//author = keyspace_name 
 		// some checks
 		if( e == null || p == null || v == null || a == null ) { 
-			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please pass data like 'e=_&p=_&v=_&a=_'");
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please pass data like 'e=_&p=_&v=_&g=_'");
 			return;
 		}
 		if( e.isEmpty() || p.isEmpty() || v.isEmpty() || a.isEmpty() ) { 
-			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please pass non empty data 'e=_&p=_&v=_&a=_'");
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please pass non empty data 'e=_&p=_&v=_&g=_'");
 			return;
 		}
 		if( !e.startsWith("<") || !e.endsWith(">") ) {
