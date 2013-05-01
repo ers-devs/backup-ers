@@ -16,6 +16,7 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.File;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
@@ -47,8 +48,78 @@ import org.apache.commons.fileupload.FileItem;
 public class TransactionServlet extends AbstractHttpServlet {
 	private final Logger _log = Logger.getLogger(this.getClass().getName());
 
+	public static AtomicInteger tx_counter= new AtomicInteger(0);
+
 	public String getLN() {
 	    return Thread.currentThread().getStackTrace()[2].getLineNumber()+"";
+	}
+	
+	private void doPostWithoutFile(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException { 
+		long start = System.currentTimeMillis();
+		ServletContext ctx = getServletContext();
+		if (req.getCharacterEncoding() == null)
+			req.setCharacterEncoding("UTF-8");
+		resp.setCharacterEncoding("UTF-8");
+
+		String accept = req.getHeader("Accept");
+		SerializationFormat formatter = Listener.getSerializationFormat(accept);
+		if (formatter == null) {
+			sendError(ctx, req, resp, HttpServletResponse.SC_NOT_ACCEPTABLE, "no known mime type in Accept header");
+			return;
+		}
+		PrintWriter out_r = resp.getWriter();
+	
+		//get the transaction
+		String t = req.getParameter("t"); 
+		if( t == null || t.isEmpty() ) { 
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please pass the transaction as 't' parameter");
+			return;
+		}
+		StringTokenizer st = new StringTokenizer(t, ";");
+		String n;
+		Transaction tr = null;
+		//_log.info("Process following transaction:");
+		if( st.countTokens() < 3 ) {
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "A transaction composed of less than 2 lines it is not possible" +
+				" (at least BEGIN, COMMIT/ROLLBACK must exist) ");
+			return;
+		}
+			
+		int r;
+		StringBuffer resp_msg = new StringBuffer();
+		AbstractCassandraRdfHector crdf = (AbstractCassandraRdfHector)ctx.getAttribute(Listener.STORE);
+		while(st.hasMoreTokens()) { 
+			n = st.nextToken();
+			//_log.info(n);
+			if( n.equals("BEGIN") ) { 
+				// new T starts here 
+				tr = new Transaction(new String("BY_REQ_"+TransactionServlet.tx_counter.incrementAndGet()));
+			}
+			// commit or rollback must end the transaction
+			else if( n.equals("COMMIT") || n.equals("ROLLBACK") ) { 
+				// T ends here
+				r = crdf.runTransaction(tr); 
+				if ( r != 0 ) {
+					_log.info("Error running transaction " + tr.ID + " error: " + r);
+					resp_msg.append("\nERROR running transaction " + tr.ID + " error: " + r);
+				}
+				else 		
+					resp_msg.append("\nTransaction " + tr.ID + " ran successfully.");
+				tr = null;
+			}
+			else if ( n.length() > 10 ) { 
+				// this must contain a line with an operation (insert, update, etc) 
+				r = tr.addOp(n);
+				if( r != 0 ) { 
+					_log.info("Adding operation to transaction " + tr.ID + " failed!");
+					_log.info("Returning value: " + r);
+					out_r.println("Adding operation to transwaction " + tr.ID + " failed!" + "(line: " + n);
+					break;
+				}
+			}
+		}
+		sendResponse(ctx, req, resp, HttpServletResponse.SC_OK, resp_msg.toString());
+		return;
 	}
 
 	@Override
@@ -71,7 +142,8 @@ public class TransactionServlet extends AbstractHttpServlet {
 		// check that we have a file upload request
 		boolean isMultipart = ServletFileUpload.isMultipartContent(req);
 		if( ! isMultipart ) { 
-			sendError(ctx, req, resp, HttpServletResponse.SC_NOT_ACCEPTABLE, "no file upload");
+			this.doPostWithoutFile(req, resp); 
+			//sendError(ctx, req, resp, HttpServletResponse.SC_NOT_ACCEPTABLE, "no file upload");
 			return;
 		}
 		// Create a factory for disk-based file items
@@ -132,6 +204,7 @@ public class TransactionServlet extends AbstractHttpServlet {
 					++counter;
 					t = new Transaction(random_n+"_"+counter);
 				}
+				// commit or rollback must end the transaction
 				else if( line.equals("COMMIT") || line.equals("ROLLBACK") ) { 
 					// T ends here
 					r = crdf.runTransaction(t); 
