@@ -5,6 +5,7 @@ import rdflib
 import peer_monitor
 from collections import defaultdict
 from models import ModelS, ModelT
+from global_server_interface import GlobalServerInterface
                                                         
 # Document model is used to store data in CouchDB. The API is independent from the choice of model.
 DEFAULT_MODEL = ModelS()
@@ -175,6 +176,37 @@ class ERSLocal(ERSReadWrite):
             result.append(peer_ers)
 
         return result
+
+
+class ERSGlobal(object):
+    server = None
+
+    def __init__(self, server_url=r'http://localhost:8888/'):
+        self.server = GlobalServerInterface(server_url)
+
+    def get_annotation(self, entity):
+        pass
+
+    def get_values(self, entity, prop, graph=None):
+        pass
+
+    def exist(self, subject, graph):
+        pass
+
+    def add_data(self, s, p, o, g):
+        pass
+
+    def delete_entity(self, entity, graph=None):
+        pass
+
+    def delete_value(self, entity, prop, graph=None):
+        pass
+
+    def import_nt(self, file_name, target_graph):
+        pass
+
+    def update_value(self, entity, prop, new_value, graph=None):
+        pass
 
 
 def test():
