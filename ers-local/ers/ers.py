@@ -8,7 +8,7 @@ from StringIO import StringIO
 from collections import defaultdict
 from models import ModelS, ModelT
 from global_server_interface import GlobalServerInterface
-                                                        
+
 # Document model is used to store data in CouchDB. The API is independent from the choice of model.
 DEFAULT_MODEL = ModelS()
 
@@ -23,9 +23,15 @@ class EntityCache(defaultdict):
     def __init__(self):
         super(EntityCache, self).__init__(lambda: defaultdict(set))
 
-    def add(self, s, p, o):
-        """Add <s, p, o> to cache."""
-        self[s][p].add(o)
+    def add(self, e, p, v):
+        """Add <e, p, v> to cache."""
+        self[e][p].add(v)
+
+    def iter_triples(self):
+        for e, pv in self.items():
+            for p, values in pv.items():
+                for v in values:
+                    yield e, p, v
 
     def parse_nt(self, **kwargs):
         if 'filename' in kwargs:
@@ -83,12 +89,13 @@ class ERSReadOnly(object):
             docs = [self.get_doc(subject, graph)]
         for doc in docs:
             merge_annotations(result, self.model.get_data(doc, subject, graph))
+
         return result
 
     def get_doc(self, subject, graph):
         try:
             return self.db.get(self.model.couch_key(subject, graph))
-        except couchdbkit.exceptions.ResourceNotFound: 
+        except couchdbkit.exceptions.ResourceNotFound:
             return None
 
     def get_values(self, subject, predicate, graph=None):
@@ -96,7 +103,8 @@ class ERSReadOnly(object):
             Return a list of values or an empty list
         """
         data = self.get_data(subject, graph)
-        return data.get(predicate, [])        
+
+        return data.get(predicate, [])
 
     def exist(self, subject, graph):
         return self.db.doc_exist(self.model.couch_key(subject, graph))
@@ -121,12 +129,13 @@ class ERSReadWrite(ERSReadOnly):
         """Deletes the entity."""
         # Assumes there is only one entity per doc.
         if graph is None:
-            docs = [{'_id': r['id'], '_rev': r['value']['rev'], "_deleted": True} 
+            docs = [{'_id': r['id'], '_rev': r['value']['rev'], "_deleted": True}
                     for r in self.db.view('index/by_entity', key=entity)]
         else:
-            docs = [{'_id': r['id'], '_rev': r['value']['rev'], "_deleted": True} 
+            docs = [{'_id': r['id'], '_rev': r['value']['rev'], "_deleted": True}
                     for r in self.db.view('index/by_entity', key=entity)
                     if r['value']['g'] == graph]
+
         return self.db.save_docs(docs)
 
     def delete_value(self, entity, prop, graph=None):
@@ -138,7 +147,8 @@ class ERSReadWrite(ERSReadOnly):
                              if r['value']['g'] == graph]
         for doc in docs:
             self.model.delete_property(doc, prop)
-        return self.db.save_docs(docs)        
+
+        return self.db.save_docs(docs)
 
     def import_nt(self, file_name, target_graph):
         """Import N-Triples file."""
@@ -179,10 +189,12 @@ class ERSLocal(ERSReadWrite):
         result = self.get_data(entity)
         for remote in self.get_peer_ers_interfaces():
             merge_annotations(result, remote.get_data(entity))
+
         return result
 
     def get_values(self, entity, prop):
         entity_data = self.get_annotation(entity)
+
         return entity_data.get(prop, [])
 
     def get_peer_ers_interfaces(self):
@@ -210,29 +222,93 @@ class ERSGlobal(object):
     def __init__(self, server_url=r'http://localhost:8888/'):
         self.server = GlobalServerInterface(server_url)
 
-    def get_annotation(self, entity):
-        pass
+    def get_annotation(self, entity, graph=None):
+        return self.get_data(entity, graph)
+
+    def get_data(self, entity, graph=None):
+        if graph is not None and not self.server.graph_exists(graph):
+            return {}
+
+        args = {'e': entity}
+        if graph is not None:
+            args['g'] = graph
+
+        annotation = {}
+        for e, p, v, g in self.server.query(**args):
+            if e != entity or (graph is not None and g != graph):
+                continue
+
+            if p not in annotation:
+                annotation[p] = list()
+
+            annotation[p].append(v)
+
+        return annotation
 
     def get_values(self, entity, prop, graph=None):
-        pass
+        if graph is not None and not self.server.graph_exists(graph):
+            return []
 
-    def exist(self, subject, graph):
-        pass
+        args = {'e': entity, 'p': prop}
+        if graph is not None:
+            args['g'] = graph
 
-    def add_data(self, s, p, o, g):
-        pass
+        values = []
+        for e, p, v, g in self.server.query(**args):
+            if e != entity or p != prop or (graph is not None and g != graph):
+                continue
+
+            values.append(v)
+
+        return values
+
+    def exist(self, entity, graph):
+        if not self.server.graph_exists(graph):
+            return False
+
+        return self.server.exist(e=entity, g=graph)
+
+    def add_data(self, entity, prop, value, graph):
+        if not self.server.graph_exists(graph):
+            self.server.create_empty_graph(graph)
+
+        self.server.create(entity, prop, value, graph)
 
     def delete_entity(self, entity, graph=None):
-        pass
+        if graph is not None and not self.server.graph_exists(graph):
+            return
+
+        args = {'e': entity}
+        if graph is not None:
+            args['g'] = graph
+
+        self.server.delete(**args)
 
     def delete_value(self, entity, prop, graph=None):
-        pass
+        if graph is not None and not self.server.graph_exists(graph):
+            return
+
+        args = {'e': entity, 'p': prop}
+        if graph is not None:
+            args['g'] = graph
+
+        self.server.delete(**args)
 
     def import_nt(self, file_name, target_graph):
-        pass
+        cache = EntityCache().parse_nt(filename=file_name)
 
-    def update_value(self, entity, prop, new_value, graph=None):
-        pass
+        self.write_cache(cache, target_graph)
+
+    def update_value(self, entity, prop, new_value, graph):
+        self.server.delete(e=entity, p=prop, g=graph)
+        self.server.create(entity, prop, new_value, graph)
+
+    def write_cache(self, cache, graph):
+        if not self.server.graph_exists(graph):
+            self.server.create_empty_graph(graph)
+
+        for e, p, v in cache.iter_triples():
+            self.server.create(e, p, v, graph)
 
 
 def test():

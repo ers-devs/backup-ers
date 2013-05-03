@@ -88,6 +88,9 @@ class GlobalServerInterface(object):
     def add_graph_info(self, graph, prop, value):
         self._do_request('graph', {'g_id': graph, 'g_p': prop, 'g_v': value}, 'POST')
 
+    def create_empty_graph(self, graph):
+        self.add_graph_info(graph, URN_RDF_TYPE, URN_RDFG_GRAPH)
+
     def delete_graph(self, graph, force=False):
         self._do_request('graph', {'g': graph, '#f': 'y' if force else 'n'}, 'DELETE')
 
@@ -381,9 +384,9 @@ def test():
     cleanup(False)
 
     # Create graph (add graph info)
-    server.add_graph_info('ers:testGraph1', URN_RDF_TYPE, URN_RDFG_GRAPH)
-    server.add_graph_info('ers:testGraph2', URN_RDF_TYPE, URN_RDFG_GRAPH)
-    server.add_graph_info('ers:testGraph3', URN_RDF_TYPE, URN_RDFG_GRAPH)
+    server.create_empty_graph('ers:testGraph1')
+    server.create_empty_graph('ers:testGraph2')
+    server.create_empty_graph('ers:testGraph3')
     assert server.graph_exists('ers:testGraph1') is True
     assert server.graph_exists('ers:testGraph2') is True
     assert server.graph_exists('ers:testGraph3') is True
@@ -484,7 +487,7 @@ def test():
     bulk_quads = [[decode_rdflib_term(x) for x in tup] + ['ers:testGraphBulk']
                   for tup in rdflib.Graph().parse(test_file, format='nt')]
 
-    server.add_graph_info('ers:testGraphBulk', URN_RDF_TYPE, URN_RDFG_GRAPH)
+    server.create_empty_graph('ers:testGraphBulk')
     server.bulk_load('ers:testGraphBulk', file=test_file)
 
     assert same(server.query_graph('ers:testGraphBulk'),

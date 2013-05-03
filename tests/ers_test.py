@@ -1,9 +1,10 @@
 import os
 import couchdbkit
-from ers import ERSLocal, ModelS, ModelT
+from ers import ERSLocal, ERSGlobal, ModelS, ModelT
 
 DEFAULT_MODEL = ModelS()
 nt_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'timbl.nt')
+
 
 def test():
     server = couchdbkit.Server(r'http://admin:admin@127.0.0.1:5984/')
@@ -14,14 +15,14 @@ def test():
         ers_new = ERSLocal(dbname=dbname, model=model)
         return ers_new
  
-    def test_ers():
+    def test_ers(ers):
         """Model independent tests"""
-        ers.import_nt(nt_file, 'timbl')
-        assert ers.db.doc_exist('_design/index')
-        assert ers.exist('http://www4.wiwiss.fu-berlin.de/booksMeshup/books/006251587X', 'bad_graph') == False
-        assert ers.exist('http://www4.wiwiss.fu-berlin.de/booksMeshup/books/006251587X', 'timbl') == True
-        ers.delete_entity('http://www4.wiwiss.fu-berlin.de/booksMeshup/books/006251587X', 'timbl')
-        assert ers.exist('http://www4.wiwiss.fu-berlin.de/booksMeshup/books/006251587X', 'timbl') == False
+        G = 'urn:ers:meta:testGraphTimBL'
+        ers.import_nt(nt_file, G)
+        assert ers.exist('http://www4.wiwiss.fu-berlin.de/booksMeshup/books/006251587X', 'urn:ers:meta:bogusGraph') == False
+        assert ers.exist('http://www4.wiwiss.fu-berlin.de/booksMeshup/books/006251587X', G) == True
+        ers.delete_entity('http://www4.wiwiss.fu-berlin.de/booksMeshup/books/006251587X', G)
+        assert ers.exist('http://www4.wiwiss.fu-berlin.de/booksMeshup/books/006251587X', G) == False
         for o in objects:
             ers.add_data(s, p, o, g)
             ers.add_data(s, p2, o, g)
@@ -53,7 +54,7 @@ def test():
     for model in [ModelS(), ModelT()]:
         dbname = 'ers_' + model.__class__.__name__.lower()
         ers = create_ers(dbname, model)
-        test_ers()
+        test_ers(ers)
 
     # Prepare remote ers
     ers_remote = create_ers('ers_remote')
@@ -67,6 +68,10 @@ def test():
     assert set(ers_local.get_values(entity, p)) == all_objects
     ers_local.delete_entity(entity)
     assert set(ers_local.get_annotation(entity)[p]) == remote_objects
+
+    # Test global ERS
+    ers_global = ERSGlobal('http://localhost:8888/')
+    test_ers(ers_global)
 
     print "Tests pass"
 
