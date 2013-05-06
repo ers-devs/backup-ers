@@ -17,6 +17,7 @@ import java.io.FileReader;
 import java.io.File;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.lang.NumberFormatException;
 
 import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
@@ -61,12 +62,7 @@ public class TransactionServlet extends AbstractHttpServlet {
 			req.setCharacterEncoding("UTF-8");
 		resp.setCharacterEncoding("UTF-8");
 
-		String accept = req.getHeader("Accept");
-		SerializationFormat formatter = Listener.getSerializationFormat(accept);
-		if (formatter == null) {
-			sendError(ctx, req, resp, HttpServletResponse.SC_NOT_ACCEPTABLE, "no known mime type in Accept header");
-			return;
-		}
+		SerializationFormat formatter = Listener.getSerializationFormat("text/plain");
 		PrintWriter out_r = resp.getWriter();
 	
 		//get the transaction
@@ -75,6 +71,21 @@ public class TransactionServlet extends AbstractHttpServlet {
 			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please pass the transaction as 't' parameter");
 			return;
 		}
+		// number of retrials in case of a conflict, by default set to 10
+		String no_retrials = req.getParameter("retries");
+		if( no_retrials == null || no_retrials.isEmpty() ) {
+			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please pass the desired number of retrials in"+
+				" case the T fails as 'retries' parameter ");
+			return;
+		}
+		int no_retrials_int;
+		try { 
+			no_retrials_int = Integer.parseInt(no_retrials);
+		} catch( NumberFormatException ex ) { 
+			// set to default 
+			no_retrials_int = 10; 
+		}
+
 		StringTokenizer st = new StringTokenizer(t, ";");
 		String n;
 		Transaction tr = null;
@@ -86,7 +97,7 @@ public class TransactionServlet extends AbstractHttpServlet {
 		}
 			
 		int r;
-		StringBuffer resp_msg = new StringBuffer();
+		Integer resp_msg=0; 
 		AbstractCassandraRdfHector crdf = (AbstractCassandraRdfHector)ctx.getAttribute(Listener.STORE);
 		while(st.hasMoreTokens()) { 
 			n = st.nextToken();
@@ -98,13 +109,24 @@ public class TransactionServlet extends AbstractHttpServlet {
 			// commit or rollback must end the transaction
 			else if( n.equals("COMMIT") || n.equals("ROLLBACK") ) { 
 				// T ends here
-				r = crdf.runTransaction(tr); 
-				if ( r != 0 ) {
-					_log.info("Error running transaction " + tr.ID + " error: " + r);
-					resp_msg.append("\nERROR running transaction " + tr.ID + " error: " + r);
+				while( true ) { 
+					if( --no_retrials_int < 0 ) {
+						resp_msg = -1;
+						break;
+					}
+					r = crdf.runTransaction(tr); 
+					if ( r != 0 ) {
+						_log.info("Error running transaction " + tr.ID + " error: " + r);
+						//resp_msg.append("\nERROR running transaction " + tr.ID + " error: " + r);
+						//resp_msg = "1";
+						resp_msg++;
+					}
+					else {	
+						//resp_msg.append("\nTransaction " + tr.ID + " ran successfully.")
+						//resp_msg = "0";
+						break;
+					}
 				}
-				else 		
-					resp_msg.append("\nTransaction " + tr.ID + " ran successfully.");
 				tr = null;
 			}
 			else if ( n.length() > 10 ) { 
@@ -118,7 +140,9 @@ public class TransactionServlet extends AbstractHttpServlet {
 				}
 			}
 		}
-		sendResponse(ctx, req, resp, HttpServletResponse.SC_OK, resp_msg.toString());
+		// write 0 if successful, -1 if aborted, otherwise the number of retrials
+		//sendResponse(ctx, req, resp, HttpServletResponse.SC_OK, resp_msg.toString());
+		out_r.println(String.valueOf(resp_msg));
 		return;
 	}
 
