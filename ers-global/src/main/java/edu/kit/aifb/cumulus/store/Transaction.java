@@ -1,6 +1,6 @@
 package edu.kit.aifb.cumulus.store;
 
-import java.lang.String;
+import edu.kit.aifb.cumulus.webapp.Listener;
 import java.util.ArrayList;
 import java.util.StringTokenizer;
 import java.util.Iterator;
@@ -53,6 +53,11 @@ public class Transaction
 			return 3;
 		// add this operation part of the transaction 
 		this.ops.add(oper);
+                if( Listener.DEFAULT_ERS_CREATE_LINKS.equals("yes") ) {
+                    // add to the same list as before the operation for managing the links
+                    this.addLinkOp(oper);
+                }
+                // add the reversed op for being able to Rollback
 		this.addReverseOp(oper);
 		return 0;
 	}
@@ -63,12 +68,23 @@ public class Transaction
 	  	oper.copyParam(op);
 		// invert v_old with v_new if was an update 
 		if( oper.getType() == Operation.Type.UPDATE ) { 
-			oper.invertVParam();		
+			oper.swapValuesParam();
 		}
 		// now add it to the ArrayList 
-		reverse_ops.add(oper);
+		this.reverse_ops.add(oper);
 	}
 	
+        // depending on the operation type, add another one for estabilishing the link
+        private void addLinkOp(Operation op) {
+            Operation oper = new Operation(Operation.map.get(Operation.LINK_OP_NAME));
+            oper.copyParam(op);
+            if( oper.getType() == Operation.Type.UPDATE ) {
+                oper.swapValuesParam();
+            }
+            oper.prepareForLinks();
+            this.ops.add(oper);
+        }
+
 	public Operation getReverseOp(int index) { 
 		return this.reverse_ops.get(index);
 	}

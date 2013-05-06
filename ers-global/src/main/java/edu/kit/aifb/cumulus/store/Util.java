@@ -2,8 +2,14 @@ package edu.kit.aifb.cumulus.store;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
+import edu.kit.aifb.cumulus.webapp.Listener;
 
 import org.semanticweb.yars.nx.Node;
+import org.semanticweb.yars.nx.BNode;
+import org.semanticweb.yars.nx.Resource;
+import org.semanticweb.yars.nx.Literal;
+import org.semanticweb.yars.nx.Variable;
+import org.semanticweb.yars.nx.parser.NxParser;
 
 public class Util {
 	public static final Charset CHARSET = Charset.forName("UTF-8");
@@ -22,6 +28,30 @@ public class Util {
 			reordered[i] = nodes[map[i]];
 		return reordered;
 	}
+
+	/**
+	 * Reorders <i>nodes</i>, an array in SPO order, to the target order
+	 * specified by <i>map</i> + adds the prefix for the inverted property.
+	 * 
+	 * @param nodes
+	 * @param map
+	 * @return
+	 */
+	public static Node[] reorderForLink(Node[] nodes, int[] map) {
+		Node[] reordered = new Node[map.length];
+		for (int i = 0; i < map.length; i++)
+			reordered[i] = nodes[map[i]];
+      if( reordered[1] instanceof Resource ) 
+         reordered[1] = new Resource(Listener.DEFAULT_ERS_LINKS_PREFIX+reordered[1].toString());
+      else if ( reordered[1] instanceof BNode ) 
+         reordered[1] = new BNode(Listener.DEFAULT_ERS_LINKS_PREFIX+reordered[1].toString());
+      else if ( reordered[1] instanceof Literal ) 
+         reordered[1] = new Literal(Listener.DEFAULT_ERS_LINKS_PREFIX+reordered[1].toString());
+      else if ( reordered[1] instanceof Variable ) 
+         reordered[1] = new Variable(Listener.DEFAULT_ERS_LINKS_PREFIX+reordered[1].toString());
+		return reordered;
+	}
+
 
 	/**
 	 * Reorders <i>nodes</i> from the order specified by <i>map</i> to SPO

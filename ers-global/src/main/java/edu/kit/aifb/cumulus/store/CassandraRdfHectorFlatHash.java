@@ -3,13 +3,11 @@ package edu.kit.aifb.cumulus.store;
 import java.nio.ByteBuffer;
 import java.io.Writer;
 import java.io.IOException;
-import java.lang.StringBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.logging.Logger;
-import java.util.UUID;
 
 import me.prettyprint.cassandra.model.IndexedSlicesQuery;
 import me.prettyprint.hector.api.beans.ColumnSlice;
@@ -20,7 +18,6 @@ import me.prettyprint.hector.api.mutation.Mutator;
 import me.prettyprint.hector.api.query.QueryResult;
 import me.prettyprint.hector.api.query.SliceQuery;
 import me.prettyprint.hector.api.query.RangeSlicesQuery;
-import me.prettyprint.cassandra.serializers.UUIDSerializer; 
 import me.prettyprint.cassandra.serializers.StringSerializer;
 import me.prettyprint.hector.api.beans.OrderedRows;
 import me.prettyprint.hector.api.beans.Row;
@@ -30,6 +27,7 @@ import me.prettyprint.hector.api.ddl.KeyspaceDefinition;
 
 import org.semanticweb.yars.nx.Node;
 import org.semanticweb.yars.nx.Nodes;
+import org.semanticweb.yars.nx.Resource;
 import org.semanticweb.yars.nx.parser.NxParser;
 import org.semanticweb.yars.nx.parser.ParseException;
 
@@ -51,15 +49,20 @@ public class CassandraRdfHectorFlatHash extends CassandraRdfHectorQuads {
 		_maps.put(CF_S_PO, new int[] { 0, 1, 2 });
 		_maps.put(CF_O_SP, new int[] { 2, 0, 1 });
 		_maps.put(CF_PO_S, new int[] { 1, 2, 0 });
+                 // used to create another triple before loading into different CF for expressing the link
+                _maps.put("link", new int[] { 2, 1, 0});
 		_maps_br.put(CF_S_PO, new int[] { 0, 1, 2, 3, 4 });
 		_maps_br.put(CF_O_SP, new int[] { 2, 0, 1, 3, 4 });
 		_maps_br.put(CF_PO_S, new int[] { 1, 2, 0, 3, 4 });
+                _maps_br.put("link", new int[] { 2, 1, 0, 3, 4 });
 		_maps_br_update_d.put(CF_S_PO, new int[] { 0, 1, 2, 3, 4, 5 });
 		_maps_br_update_d.put(CF_O_SP, new int[] { 2, 0, 1, 3, 4, 5 });
 		_maps_br_update_d.put(CF_PO_S, new int[] { 1, 2, 0, 3, 4, 5 });
+                _maps_br_update_d.put("link", new int[] { 2, 1, 0, 3, 4, 5 });
 		_maps_br_update_i.put(CF_S_PO, new int[] { 0, 1, 5, 3, 4, 2 });
 		_maps_br_update_i.put(CF_O_SP, new int[] { 5, 0, 1, 3, 4, 2 });
 		_maps_br_update_i.put(CF_PO_S, new int[] { 1, 5, 0, 3, 4, 2 });
+                _maps_br_update_i.put("link", new int[] { 5, 1, 0, 3, 4, 2 });
 	}
 		
 	@Override
@@ -207,6 +210,16 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 						m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn(colKey, ""));
 						m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn("!p", reordered[0].toN3()));
 						m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn("!o", reordered[1].toN3()));
+
+                                                // add the back link as well
+                                                if( Listener.DEFAULT_ERS_CREATE_LINKS.equals("yes") && nx[2] instanceof Resource ) {
+                                                    reordered = Util.reorder(nx, _maps_br.get("link"));
+                                                    rowKey = createKey(new Node[] { reordered[0], reordered[1] });
+                                                    colKey = reordered[2].toN3();
+                                                    m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn(colKey, ""));
+                                                    m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn("!p", reordered[0].toN3()));
+                                                    m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn("!o", reordered[1].toN3()));
+                                                }
 						break;
 					case 2: 
 						//deletion 
@@ -216,6 +229,16 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 						colKey = reordered[2].toN3();
 						// delete the full row 
 						m.addDeletion(rowKey.array(), cf);
+
+                                                // delete the back link as well
+                                                if( Listener.DEFAULT_ERS_CREATE_LINKS.equals("yes") && nx[2] instanceof Resource ) {
+                                                    reordered = Util.reorder(nx, _maps_br.get("link") );
+                                                    rowKey = createKey(new Node[] { reordered[0], reordered[1] });
+                                                    colKey = reordered[2].toN3();
+                                                    // delete the full row containing the back link
+                                                    m.addDeletion(rowKey.array(), cf);
+                                                }
+
 						break;
 					case 3: 
 						//update, run a delete and an insert 
@@ -226,6 +249,16 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 						colKey = reordered[2].toN3();
 						// delete the full row 
 						m.addDeletion(rowKey.array(), cf);
+
+                                                // delete the back link as well
+                                                if( Listener.DEFAULT_ERS_CREATE_LINKS.equals("yes") && nx[2] instanceof Resource ) {
+                                                    reordered = Util.reorder(nx, _maps_br_update_d.get("link"));
+                                                    rowKey = createKey(new Node[] { reordered[0], reordered[1] });
+                                                    colKey = reordered[2].toN3();
+                                                    // delete the full row containing the back link
+                                                    m.addDeletion(rowKey.array(), cf);
+                                                }
+
 						//insertion
 						// reorder for the key
 						reordered = Util.reorder(nx, _maps_br_update_i.get(cf));
@@ -234,6 +267,16 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 						m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn(colKey, ""));
 						m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn("!p", reordered[0].toN3()));
 						m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn("!o", reordered[1].toN3()));
+
+                                                // insert also the new back link
+                                                if( Listener.DEFAULT_ERS_CREATE_LINKS.equals("yes") && nx[5] instanceof Resource ) {
+                                                    reordered = Util.reorder(nx, _maps_br_update_i.get("link"));
+                                                    rowKey = createKey(new Node[] { reordered[0], reordered[1] });
+                                                    colKey = reordered[2].toN3();
+                                                    m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn(colKey, ""));
+                                                    m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn("!p", reordered[0].toN3()));
+                                                    m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn("!o", reordered[1].toN3()));
+                                                }
 						break;
 					default:	
 						_log.info("OPERATION UNKNOWN, moving to next quad");

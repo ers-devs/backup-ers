@@ -9,7 +9,6 @@ import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Hashtable;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -17,23 +16,16 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
-import java.io.FileNotFoundException;
 
-import me.prettyprint.cassandra.service.CassandraHost;
 import me.prettyprint.cassandra.connection.LeastActiveBalancingPolicy;
 import me.prettyprint.cassandra.model.BasicColumnDefinition;
 import me.prettyprint.cassandra.model.BasicColumnFamilyDefinition;
 import me.prettyprint.cassandra.serializers.BytesArraySerializer;
 import me.prettyprint.cassandra.serializers.StringSerializer;
 import me.prettyprint.cassandra.service.CassandraHostConfigurator;
-import me.prettyprint.cassandra.service.OperationType;
 import me.prettyprint.cassandra.service.ThriftCfDef;
 import me.prettyprint.hector.api.Cluster;
-import me.prettyprint.hector.api.ConsistencyLevelPolicy;
-import me.prettyprint.hector.api.HConsistencyLevel;
 import me.prettyprint.hector.api.Keyspace;
 import me.prettyprint.hector.api.ddl.ColumnDefinition;
 import me.prettyprint.hector.api.ddl.ColumnFamilyDefinition;
@@ -178,10 +170,10 @@ public abstract class AbstractCassandraRdfHector extends Store {
 	protected Map<String,int[]> _maps;
 	// used by BulkRun (br)
 	protected Map<String,int[]> _maps_br;
-	// updte is composed of delete+insert, thus we need different ordering for the two ops
+	// update is composed of delete+insert, thus we need different ordering for the two ops
 	protected Map<String,int[]> _maps_br_update_d;
 	protected Map<String,int[]> _maps_br_update_i;
-
+   
 	protected String _hosts;
 	protected Cluster _cluster;
 	protected int _batchSizeMB = 1;
@@ -411,9 +403,12 @@ public abstract class AbstractCassandraRdfHector extends Store {
 			Node[] nx = it.next();
 			//_log.info("addData  " + nx[0].toString() + " " + nx[1].toString() + " " + nx[2].toString());
 			batch.add(nx);
+         // add the back link as well 
+         if( Listener.DEFAULT_ERS_CREATE_LINKS.equals("yes") && nx[2] instanceof Resource ) 
+            batch.add(Util.reorderForLink(nx, _maps.get("link")));
+
 			batchSize += nx[0].toN3().getBytes().length + nx[1].toN3().getBytes().length + nx[2].toN3().getBytes().length;
 			count++;
-			
 			if (batchSize >= _batchSizeMB * 1048576) {
 				_log.finer("insert batch of size " + batchSize + " (" + batch.size() + " tuples)");
 				for (String cf : _cfs)
@@ -438,6 +433,9 @@ public abstract class AbstractCassandraRdfHector extends Store {
 			Node[] nx = NxParser.parseNodes(triple);	
 	 		List<Node[]> batch = new ArrayList<Node[]>();
 			batch.add(nx);
+                        // add the back link as well
+                        if( Listener.DEFAULT_ERS_CREATE_LINKS.equals("yes") && nx[2] instanceof Resource )
+                            batch.add(Util.reorderForLink(nx, _maps.get("link")));
 			for (String cf : _cfs) {
 				batchInsert(cf, batch, keyspace);
 			}
@@ -459,7 +457,12 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		String triple = e + " " + p + " " + v + " ."; 
 		try { 
 			Node[] nx = NxParser.parseNodes(triple);
-			this.deleteData(nx, keyspace);
+                        this.deleteData(nx, keyspace);
+                        // add the back link as well
+                        if( Listener.DEFAULT_ERS_CREATE_LINKS.equals("yes")
+                                && nx[2] instanceof Resource )
+                            this.deleteData(Util.reorderForLink(nx, _maps.get("link")),
+                                    keyspace);
 			return 0;
 		} 
 		catch( ParseException ex ) { 
@@ -472,6 +475,10 @@ public abstract class AbstractCassandraRdfHector extends Store {
 	public void deleteData(Node[] nx, String keyspace) { 
 	 	List<Node[]> batch = new ArrayList<Node[]>();
 		batch.add(nx);
+                // add the back link as well
+                if( Listener.DEFAULT_ERS_CREATE_LINKS.equals("yes")
+                        && nx[2] instanceof Resource )
+                    batch.add(Util.reorderForLink(nx, _maps.get("link")));
 		for (String cf : _cfs) {
 			batchDelete(cf, batch, keyspace);
 		}
@@ -546,7 +553,7 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		return n;
 	}
 
-public static String getLN() {
+        public static String getLN() {
     return String.valueOf(Thread.currentThread().getStackTrace()[2].getLineNumber());
 }
 
@@ -680,13 +687,10 @@ public static String getLN() {
 				_log.info("skipping too large row (max row size: 64k");
 				continue;
 			}
-//			if (nx.length > 3)
-//				nx = new Node[] { nx[0], nx[1], nx[2] };
-//			nx[0] = urlDecode(nx[0]);
-//			nx[1] = urlDecode(nx[1]);
-//			nx[2] = urlDecode(nx[2]);
-//			triples.add(Util.reorder(nx, map));
 			triples.add(nx);
+         // add the back link as well 
+         if( Listener.DEFAULT_ERS_CREATE_LINKS.equals("yes") && nx[2] instanceof Resource ) 
+            triples.add(Util.reorderForLink(nx, _maps.get("link")));
 			i++;
 			for (int k=0; k < nx.length; k++) {
 				batchSize += nx[k].toN3().getBytes().length; // + nx[1].toN3().getBytes().length + nx[2].toN3().getBytes().length;

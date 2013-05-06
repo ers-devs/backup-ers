@@ -1,12 +1,10 @@
 package edu.kit.aifb.cumulus.webapp;
 
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.util.Iterator;
 import java.util.logging.Logger;
 import java.util.StringTokenizer;
 import java.lang.StringBuffer;
-import java.util.HashMap;
 import java.util.List;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -24,14 +22,8 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.semanticweb.yars.nx.Node;
-import org.semanticweb.yars.nx.Resource;
-import org.semanticweb.yars.nx.parser.NxParser;
-import org.semanticweb.yars.nx.parser.ParseException;
 
-import edu.kit.aifb.cumulus.store.Store;
 import edu.kit.aifb.cumulus.store.AbstractCassandraRdfHector;
-import edu.kit.aifb.cumulus.store.StoreException;
 import edu.kit.aifb.cumulus.webapp.formatter.SerializationFormat;
 import edu.kit.aifb.cumulus.store.Transaction;
 
@@ -39,7 +31,6 @@ import org.apache.commons.fileupload.servlet.ServletFileUpload;
 import org.apache.commons.fileupload.FileItemFactory; 
 import org.apache.commons.fileupload.DefaultFileItemFactory;
 import org.apache.commons.fileupload.FileUploadException;
-import org.apache.commons.fileupload.disk.DiskFileItemFactory;
 import org.apache.commons.fileupload.FileItem;
 
 /** 
@@ -136,6 +127,8 @@ public class TransactionServlet extends AbstractHttpServlet {
 					_log.info("Adding operation to transaction " + tr.ID + " failed!");
 					_log.info("Returning value: " + r);
 					out_r.println("Adding operation to transwaction " + tr.ID + " failed!" + "(line: " + n);
+                                        out_r.println("Please check the operation type to be one of the supported ones: insert," +
+                                                        "update, delete");
 					break;
 				}
 			}
@@ -247,6 +240,8 @@ public class TransactionServlet extends AbstractHttpServlet {
 						_log.info("Adding operation to transaction " + t.ID + " failed!");
 						_log.info("Returning value: " + r);
 						out_r.println("Adding operation to transwaction " + t.ID + " failed!" + "(line: " + line);
+                                                out_r.println("Please check the operation type to be one of the supported ones: insert," +
+                                                        "update, delete");
 						break;
 					}
 				}

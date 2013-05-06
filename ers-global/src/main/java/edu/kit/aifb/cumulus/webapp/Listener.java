@@ -57,6 +57,8 @@ public class Listener implements ServletContextListener {
 	private static final String PARAM_TUPLE_LENGTH = "tuple_length";
 	private static final String PARAM_DEFAULT_REPLICATION_FACTOR = "default-replication-factor";
 	private static final String PARAM_START_EMBEDDED = "start-embedded";
+        private static final String PARAM_TRANS_LOCKING_GRANULARITY = "ers-transactional-locking-granularity";
+        private static final String PARAM_ERS_CREATE_LINKS = "ers-create-links";
 	
 	// add here the params stored in web.xml
 	private static final String[] CONFIG_PARAMS = new String[] {
@@ -65,7 +67,8 @@ public class Listener implements ServletContextListener {
 		//PARAM_RESOURCE_PREFIX, PARAM_DATA_PREFIX,
 		PARAM_TRIPLES_OBJECT,
 		PARAM_TRIPLES_SUBJECT, PARAM_QUERY_LIMIT,
-		PARAM_DEFAULT_REPLICATION_FACTOR, PARAM_START_EMBEDDED
+		PARAM_DEFAULT_REPLICATION_FACTOR, PARAM_START_EMBEDDED,
+                PARAM_TRANS_LOCKING_GRANULARITY, PARAM_ERS_CREATE_LINKS
 		};
 	
 //	private static final String DEFAULT_RESOURCE_PREFIX = "resource";
@@ -73,6 +76,7 @@ public class Listener implements ServletContextListener {
 	private static final int DEFAULT_TRIPLES_SUBJECT = -1;
 	private static final int DEFAULT_TRIPLES_OBJECT = 5000;
 	private static final int DEFAULT_QUERY_LIMIT = -1;
+        public static final String DEFAULT_ERS_LINKS_PREFIX = "INVERTED_";
 	
 	private static final String LAYOUT_SUPER = "super";
 	private static final String LAYOUT_FLAT = "flat";
@@ -81,6 +85,8 @@ public class Listener implements ServletContextListener {
 	//public static final String AUTHOR_KEYSPACE = "ERS_authors";
 	public static final String GRAPHS_NAMES_KEYSPACE = "ERS_graphs";
 	private static String DEFAULT_RUN_ON_OPENSHIFT = "no";
+        public static String DEFAULT_TRANS_LOCKING_GRANULARITY = "3";
+        public static String DEFAULT_ERS_CREATE_LINKS = "yes";
 
 	// NOTE: consistency level is tunable per keyspace, per CF, per operation type 
         // for the moment all keyspaces use this default policy 
@@ -204,6 +210,16 @@ public class Listener implements ServletContextListener {
 			// this parameter must be set if intended to run the project on Openshift platform
 			Listener.DEFAULT_RUN_ON_OPENSHIFT = config.containsKey(PARAM_RUN_ON_OPENSHIFT) ? 
 				config.get(PARAM_RUN_ON_OPENSHIFT) : Listener.DEFAULT_RUN_ON_OPENSHIFT;
+        
+         // if it set and has value from {1,2,3}, then choose one, otherwise use default
+         if( config.containsKey(PARAM_TRANS_LOCKING_GRANULARITY) && ( config.get(PARAM_TRANS_LOCKING_GRANULARITY).equals("1") ||
+               config.get(PARAM_TRANS_LOCKING_GRANULARITY).equals("2") || config.get(PARAM_TRANS_LOCKING_GRANULARITY).equals("3"))) 
+               Listener.DEFAULT_TRANS_LOCKING_GRANULARITY = config.get(PARAM_TRANS_LOCKING_GRANULARITY); 
+         
+         // if it set and is either 'yes' or 'no', then choose the intended value, otherwise use default value
+         if( config.containsKey(PARAM_ERS_CREATE_LINKS) && ( config.get(PARAM_ERS_KEYSPACES_PREFIX).equals("yes") || 
+               config.get(PARAM_ERS_KEYSPACES_PREFIX).equals("no") ))    
+               Listener.DEFAULT_ERS_CREATE_LINKS = config.get(PARAM_TRANS_LOCKING_GRANULARITY);
 
 			String hosts="";
 			// embedded ?!
@@ -236,6 +252,8 @@ public class Listener implements ServletContextListener {
 			
 			_log.info("ers keyspaces prefix: " + Listener.DEFAULT_ERS_KEYSPACES_PREFIX );
 			_log.info("storage layout: " + layout);
+         _log.info("transactional locking granularity level: " + Listener.DEFAULT_TRANS_LOCKING_GRANULARITY); 
+         _log.info("ers create links: " + Listener.DEFAULT_ERS_CREATE_LINKS);
 			
 			if (LAYOUT_SUPER.equals(layout))
 				_crdf = new CassandraRdfHectorHierHash(hosts);

@@ -1,5 +1,6 @@
 package edu.kit.aifb.cumulus.store;
 
+import edu.kit.aifb.cumulus.webapp.Listener;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.Iterator;
 import java.util.Hashtable;
@@ -14,9 +15,13 @@ public class ExecuteTransactions
 
 	// returns the key used in the lock table
 	// just one record with this key can exist in the table at same time
-	private String getKey(Operation op) { 
+	private String getKey(Operation op) {
+                if( Listener.DEFAULT_TRANS_LOCKING_GRANULARITY.equals("1") )
+                    return op.getParam(0);
+                else if( Listener.DEFAULT_TRANS_LOCKING_GRANULARITY.equals("2") )
+                    return op.getParam(0)+op.getParam(1);
+                // default case
 		return op.getParam(0)+op.getParam(1)+op.getParam(2); // (e,p,v)
-		//return op.getParam(0); // e
 	}
 
        /**
@@ -57,6 +62,9 @@ public class ExecuteTransactions
 
 		try { 	
 			// first of all lock all entities involved in this transaction; then execute
+                        //note: for assuring the lock for managing links, some 'dummy' operations were added
+                        //just for this purpose; however, they are not run as the actions themselves are
+                        //integrated into addData, insertData and so on
 			for(Iterator it = t.getOps().iterator(); it.hasNext(); ) { 
 				Operation op = (Operation) it.next(); 
 				String key = this.getKey(op);
@@ -221,6 +229,10 @@ public class ExecuteTransactions
 						if ( r != 0 ) 
 							_log.info("COMMIT DELETE " + c_op.params[0] + " FAILED with exit code " + r);
 						break;
+                                        case LINK:
+                                                // do nothing here, this operation was used only for locking purposes;
+                                                // the operation has already been run under either updateData, addData ...
+                                                break;
 					default:
 						break;	
 				}
@@ -254,6 +266,11 @@ public class ExecuteTransactions
 								if ( r != 0 ) 
 									_log.info("ROLLBACK DELETE " + p_op.params[0] + " FAILED with exit code " + r);
 								break;
+                                                        case LINK:
+                                                                // again, do nothing here, the operation concerning links has alreayd been
+                                                                // run under previous reverse operations
+                                                                // this dummy operation is used only for locking purposes
+                                                                break;
 							default:
 								break;	
 
