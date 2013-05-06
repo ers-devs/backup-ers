@@ -3,11 +3,13 @@
 import couchdbkit
 import rdflib
 import peer_monitor
+import threading
+import time
 
 from StringIO import StringIO
 from collections import defaultdict
 from models import ModelS, ModelT
-from global_server_interface import GlobalServerInterface
+from global_server_interface import GlobalServerInterface, GlobalServerAccessException
 
 # Document model is used to store data in CouchDB. The API is independent from the choice of model.
 DEFAULT_MODEL = ModelS()
@@ -185,15 +187,15 @@ class ERSLocal(ERSReadWrite):
         super(ERSLocal, self).__init__(server_url, dbname, model)
         self.fixed_peers = list(fixed_peers)
 
-    def get_annotation(self, entity):
-        result = self.get_data(entity)
+    def get_annotation(self, entity, graph=None):
+        result = self.get_data(entity, graph)
         for remote in self.get_peer_ers_interfaces():
-            merge_annotations(result, remote.get_data(entity))
+            merge_annotations(result, remote.get_data(entity, graph))
 
         return result
 
-    def get_values(self, entity, prop):
-        entity_data = self.get_annotation(entity)
+    def get_values(self, entity, prop, graph=None):
+        entity_data = self.get_annotation(entity, graph)
 
         return entity_data.get(prop, [])
 
@@ -309,6 +311,91 @@ class ERSGlobal(object):
 
         for e, p, v in cache.iter_triples():
             self.server.create(e, p, v, graph)
+
+    def check_server_online_now(self):
+        try:
+            self.server.graph_exists('urn:ers:meta:bogusGraph')
+
+            return True
+        except GlobalServerAccessException:
+            return False
+
+
+GLOBAL_SERVER_PING_INTERVAL_SEC = 10.0
+
+
+class ERS:
+    local_ers = None
+    global_ers = None
+
+    _monitor_thread = None
+    _server_online_now = False
+
+    def __init__(self, local_server_url=r'http://admin:admin@127.0.0.1:5984/', dbname='ers', model=DEFAULT_MODEL,
+                 global_server_url=r'http://127.0.0.1:8888/', fixed_peers=()):
+
+        self.local_ers = ERSLocal(local_server_url, dbname, model, fixed_peers)
+        self.global_ers = ERSGlobal(global_server_url)
+
+        self._monitor_thread = threading.Thread(target=self._run_monitor_thread)
+        self._monitor_thread.daemon = True
+        self._monitor_thread.start()
+
+    def get_annotation(self, entity, graph=None):
+        result = self.local_ers.get_annotation(entity, graph)
+
+        if self._server_online_now:
+            try:
+                merge_annotations(result, self.global_ers.get_annotation(entity, graph))
+            except RuntimeError:
+                pass
+
+        return list(result)
+
+    def get_values(self, entity, prop, graph=None):
+        result = set(self.local_ers.get_values(entity, prop, graph))
+
+        if self._server_online_now:
+            try:
+                result |= self.global_ers.get_values(entity, graph)
+            except RuntimeError:
+                pass
+
+        return list(result)
+
+    def exist(self, entity, graph):
+        result = self.local_ers.exist(entity, graph)
+
+        if self._server_online_now:
+            try:
+                result = result or self.global_ers.exist(entity, graph)
+            except RuntimeError:
+                pass
+
+        return result
+
+    def add_data(self, entity, prop, value, graph):
+        self.local_ers.add_data(entity, prop, value, graph)
+
+    def delete_entity(self, entity, graph=None):
+        self.local_ers.delete_entity(entity, graph)
+
+    def delete_value(self, entity, prop, graph=None):
+        self.local_ers.delete_value(entity, prop, graph)
+
+    def import_nt(self, file_name, target_graph):
+        self.local_ers.import_nt(file_name, target_graph)
+
+    def update_value(self, entity, prop, new_value, graph):
+        self.local_ers.update_value(entity, prop, new_value, graph)
+
+    def write_cache(self, cache, graph):
+        self.local_ers.write_cache(cache, graph)
+
+    def _run_monitor_thread(self):
+        while True:
+            time.sleep(GLOBAL_SERVER_PING_INTERVAL_SEC)
+            self._server_online_now = self.global_ers.check_server_online_now()
 
 
 def test():
