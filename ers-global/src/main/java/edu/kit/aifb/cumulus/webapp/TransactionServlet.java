@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.util.Iterator;
 import java.util.logging.Logger;
 import java.util.StringTokenizer;
-import java.lang.StringBuffer;
 import java.util.List;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -15,7 +14,6 @@ import java.io.FileReader;
 import java.io.File;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.lang.NumberFormatException;
 
 import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
@@ -128,7 +126,7 @@ public class TransactionServlet extends AbstractHttpServlet {
 					_log.info("Returning value: " + r);
 					out_r.println("Adding operation to transwaction " + tr.ID + " failed!" + "(line: " + n);
                                         out_r.println("Please check the operation type to be one of the supported ones: insert," +
-                                                        "update, delete");
+                                                        "update, delete, copy_shallow, copy_deep");
 					break;
 				}
 			}
@@ -241,7 +239,7 @@ public class TransactionServlet extends AbstractHttpServlet {
 						_log.info("Returning value: " + r);
 						out_r.println("Adding operation to transwaction " + t.ID + " failed!" + "(line: " + line);
                                                 out_r.println("Please check the operation type to be one of the supported ones: insert," +
-                                                        "update, delete");
+                                                        "update, delete, copy_shallow, copy_deep");
 						break;
 					}
 				}

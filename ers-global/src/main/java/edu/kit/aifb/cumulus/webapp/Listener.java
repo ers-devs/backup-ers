@@ -12,22 +12,17 @@ import javax.servlet.ServletContext;
 import javax.servlet.ServletContextEvent;
 import javax.servlet.ServletContextListener;
 
-import org.openrdf.query.resultio.TupleQueryResultFormat;
-import org.openrdf.query.resultio.TupleQueryResultWriterRegistry;
 import org.yaml.snakeyaml.Yaml;
 
 import edu.kit.aifb.cumulus.store.CassandraRdfHectorHierHash;
 import edu.kit.aifb.cumulus.store.CassandraRdfHectorFlatHash;
-import edu.kit.aifb.cumulus.store.CassandraRdfHectorQuads;
 import edu.kit.aifb.cumulus.store.Store;
 import edu.kit.aifb.cumulus.store.StoreException;
 
 import me.prettyprint.hector.api.ConsistencyLevelPolicy;
-import me.prettyprint.hector.api.ConsistencyLevelPolicy;
 import me.prettyprint.hector.api.HConsistencyLevel;
 import me.prettyprint.cassandra.service.OperationType;
 
-import edu.kit.aifb.cumulus.store.sesame.SPARQLResultsNxWriterFactory;
 import edu.kit.aifb.cumulus.webapp.formatter.HTMLFormat;
 import edu.kit.aifb.cumulus.webapp.formatter.NTriplesFormat;
 import edu.kit.aifb.cumulus.webapp.formatter.SerializationFormat;
@@ -77,6 +72,7 @@ public class Listener implements ServletContextListener {
 	private static final int DEFAULT_TRIPLES_OBJECT = 5000;
 	private static final int DEFAULT_QUERY_LIMIT = -1;
         public static final String DEFAULT_ERS_LINKS_PREFIX = "INVERTED_";
+        public static final String SHALLOW_COPY_PROPERTY = "\"sameAs\"";
 	
 	private static final String LAYOUT_SUPER = "super";
 	private static final String LAYOUT_FLAT = "flat";

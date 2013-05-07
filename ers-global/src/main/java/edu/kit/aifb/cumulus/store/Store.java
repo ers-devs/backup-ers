@@ -130,6 +130,14 @@ public abstract class Store {
 	public abstract int deleteByRowKey(String e, String keyspace);
 	public abstract Iterator<Node[]> getRowIterator(String e, String keyspace);
 
+        // shallow copy an entity if exists
+        public abstract int shallowClone(String e_src, String graph_src, String e_dest,
+                String graph_dest);
+
+        // deep copy an entity if exists
+        public abstract int deepClone(String e_src, String graph_src, String e_dest,
+                String graph_dest);
+
 	// delete all data (if force is true, then delete even if it is not empty) 
 	public int dropKeyspace(String keyspace) { 
 		return dropKeyspace(keyspace, false);

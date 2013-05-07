@@ -51,16 +51,67 @@ public class Transaction
 		// at least (e,p,v,g) must exist
 		if( ++counter < 4 ) 	
 			return 3;
-		// add this operation part of the transaction 
-		this.ops.add(oper);
-                if( Listener.DEFAULT_ERS_CREATE_LINKS.equals("yes") ) {
-                    // add to the same list as before the operation for managing the links
-                    this.addLinkOp(oper);
-                }
+		// add this operation part of the transaction
+                registerOperation(oper);
+		
                 // add the reversed op for being able to Rollback
-		this.addReverseOp(oper);
+                registerReverseOperation(oper);
 		return 0;
 	}
+
+        private void registerOperation(Operation oper) {
+            this.ops.add(oper);
+            // however, if update, then add a LOCK operation for locking the
+            //entity that will be deleted
+            if( oper.getType() == Operation.Type.UPDATE ) {
+                Operation lock_op = new Operation(oper.getType());
+                lock_op.just_for_locking = true;
+                lock_op.copyParam(oper);
+                lock_op.swapOldNewValuesParam();
+                this.ops.add(lock_op);
+            }
+            // add another LOCK operation for the
+            else if( oper.getType() == Operation.Type.ENT_SHALLOW_CLONE ||
+                oper.getType() == Operation.Type.ENT_DEEP_CLONE ) {
+                Operation lock_op = new Operation(oper.getType());
+                lock_op.just_for_locking = true;
+                lock_op.copyParam(oper);
+                lock_op.swapEwithV();
+                this.ops.add(lock_op);
+            }
+
+            // if links are set, then add the locking operations
+            if( Listener.DEFAULT_ERS_CREATE_LINKS.equals("yes") &&
+                    oper.getType() != Operation.Type.ENT_DEEP_CLONE &&
+                    oper.getType() != Operation.Type.ENT_SHALLOW_CLONE ) {
+                Operation lock_op = new Operation(oper.getType());
+                lock_op.just_for_locking = true;
+                lock_op.copyParam(oper);
+                if( oper.getType() == Operation.Type.UPDATE ) {
+                    lock_op.swapOldNewValuesParam();
+                }
+                lock_op.prepareForLinks();
+                this.ops.add(lock_op);
+
+                // however, if update, then add a LOCK operation for locking the
+                //entity that will be deleted
+                if( oper.getType() == Operation.Type.UPDATE ) {
+                    lock_op = new Operation(oper.getType());
+                    lock_op.just_for_locking = true;
+                    lock_op.copyParam(oper);
+                    lock_op.prepareForLinks();
+                    this.ops.add(lock_op);
+                }
+            }
+        }
+
+        
+        private void registerReverseOperation(Operation oper) {
+            this.addReverseOp(oper);
+            // no need to add extra LOCK operation as we did for registerOperation()
+            //method, as when this is run the locks are already acquired
+        }
+
 
 	private void addReverseOp(Operation op) { 
 		//based on what kind of op is
@@ -68,22 +119,11 @@ public class Transaction
 	  	oper.copyParam(op);
 		// invert v_old with v_new if was an update 
 		if( oper.getType() == Operation.Type.UPDATE ) { 
-			oper.swapValuesParam();
+			oper.swapOldNewValuesParam();
 		}
 		// now add it to the ArrayList 
 		this.reverse_ops.add(oper);
 	}
-	
-        // depending on the operation type, add another one for estabilishing the link
-        private void addLinkOp(Operation op) {
-            Operation oper = new Operation(Operation.map.get(Operation.LINK_OP_NAME));
-            oper.copyParam(op);
-            if( oper.getType() == Operation.Type.UPDATE ) {
-                oper.swapValuesParam();
-            }
-            oper.prepareForLinks();
-            this.ops.add(oper);
-        }
 
 	public Operation getReverseOp(int index) { 
 		return this.reverse_ops.get(index);

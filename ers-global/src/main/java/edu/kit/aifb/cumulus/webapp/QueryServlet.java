@@ -1,7 +1,6 @@
 package edu.kit.aifb.cumulus.webapp;
 
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.io.BufferedWriter;
 import java.io.CharArrayWriter;
 import java.util.Iterator;
@@ -25,7 +24,6 @@ import edu.kit.aifb.cumulus.store.AbstractCassandraRdfHector;
 import edu.kit.aifb.cumulus.store.StoreException;
 import edu.kit.aifb.cumulus.webapp.formatter.SerializationFormat;
 
-import static org.apache.commons.lang.StringEscapeUtils.escapeHtml;
 
 /** 
  * 

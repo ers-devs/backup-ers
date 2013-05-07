@@ -402,12 +402,12 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		while (it.hasNext()) {
 			Node[] nx = it.next();
 			//_log.info("addData  " + nx[0].toString() + " " + nx[1].toString() + " " + nx[2].toString());
-			batch.add(nx);
-         // add the back link as well 
-         if( Listener.DEFAULT_ERS_CREATE_LINKS.equals("yes") && nx[2] instanceof Resource ) 
-            batch.add(Util.reorderForLink(nx, _maps.get("link")));
+                        batch.add(nx);
+                         // add the back link as well
+                        if( Listener.DEFAULT_ERS_CREATE_LINKS.equals("yes") && nx[2] instanceof Resource )
+                                batch.add(Util.reorderForLink(nx, _maps.get("link")));
 
-			batchSize += nx[0].toN3().getBytes().length + nx[1].toN3().getBytes().length + nx[2].toN3().getBytes().length;
+                        batchSize += nx[0].toN3().getBytes().length + nx[1].toN3().getBytes().length + nx[2].toN3().getBytes().length;
 			count++;
 			if (batchSize >= _batchSizeMB * 1048576) {
 				_log.finer("insert batch of size " + batchSize + " (" + batch.size() + " tuples)");
@@ -531,6 +531,92 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		// now run an add
 	 	return addData(e, p, v_new, keyspace);	
 	}
+
+        // it creates a new e_dest entity with a property "sameAs" to e_src
+        public int shallowClone(String e_src, String keyspace_src, String e_dest,
+                String keyspace_dest) {
+                // test if the source keyspace exists
+                if( !existsKeyspace(keyspace_src) ) {
+			return -1;
+		}
+                // test if the dest keyspace exists
+                if( !existsKeyspace(keyspace_dest) ) {
+			return -2;
+		}
+                // get the src entity
+                Node[] query = new Node[3];
+		try {
+                        if (e_src != null && e_src.trim().length() > 2)
+                            query[0] = NxParser.parseNode(e_src);
+                        else
+                            query[0] = new Variable("s");
+                        query[1] = new Variable("p");
+                        query[2] = new Variable("o");
+		} catch (ParseException ex) {
+			_log.severe(ex.getMessage());
+			return -3;
+		}
+                Iterator<Node[]> it;
+                try {
+                        it = this.query(query, 1, keyspace_src);
+                        if( it.hasNext() ) {
+                            // there is at least one triple, so it makes sense to shallow copy then
+                            // this will also add an inverted link to e_src.
+                            addData(e_dest, Listener.SHALLOW_COPY_PROPERTY, e_src, keyspace_dest);
+                        }
+                        else
+                            return -5;
+                } catch (StoreException ex) {
+                        _log.severe(ex.getMessage());
+                        return -4;
+                }
+                return 0;
+        }
+
+        // it creates a new full copy of e_src into e_dest
+        public int deepClone(String e_src, String keyspace_src, String e_dest,
+                String keyspace_dest) {
+                // test if the source keyspace exists
+                if( !existsKeyspace(keyspace_src) ) {
+			return -1;
+		}
+                // test if the dest keyspace exists
+                if( !existsKeyspace(keyspace_dest) ) {
+			return -2;
+		}
+                // get the src entity
+                Node[] query = new Node[3];
+		try {
+                        if (e_src != null && e_src.trim().length() > 2)
+                            query[0] = NxParser.parseNode(e_src);
+                        else
+                            query[0] = new Variable("s");
+                        query[1] = new Variable("p");
+                        query[2] = new Variable("o");
+		} catch (ParseException ex) {
+			_log.severe(ex.getMessage());
+			return -3;
+		}
+                Iterator<Node[]> it;
+                try {
+                        it = this.query(query, Integer.MAX_VALUE, keyspace_src);
+                        ArrayList<Node[]> batch = new ArrayList<Node[]>();
+                        for( ; it.hasNext(); ) {
+                                Node[] current = (Node[]) it.next();
+                                current[0] = NxParser.parseNode(e_dest);
+                                batch.add(current);
+                        }
+                        addData(batch.iterator(), keyspace_src);
+                } catch (StoreException ex) {
+                        _log.severe(ex.getMessage());
+                        return -4;
+                } catch (ParseException ex) {
+                        _log.severe(ex.getMessage());
+                        return -3;
+                }
+                return 0;
+        }
+
 
 	@Override
 	public boolean contains(Node s, String keyspace) throws StoreException {
