@@ -1,6 +1,9 @@
 *.pyc
 *.class
 
+ers-global/target/
+
+ers-local/build/
 ers-local/couch/couchdata/*
 
 .DS_Store
