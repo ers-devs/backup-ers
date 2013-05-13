@@ -169,7 +169,11 @@ public class Listener implements ServletContextListener {
 			_log.info("config-file param not set or config file not found, using parameters from web.xml");
 			config = new HashMap<String,String>();
 			for (String param : CONFIG_PARAMS) {
-				String value = ctx.getInitParameter(param);
+				String value = ctx.getInitParameter(param + "-OVERRIDE");
+
+				if (value == null) {
+					value = ctx.getInitParameter(param);
+				}
 				if (value != null) {
 					config.put(param, value);
 				}

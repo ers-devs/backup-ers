@@ -1,6 +1,7 @@
 package launch;
 import java.io.File;
 import org.apache.catalina.startup.Tomcat;
+import org.apache.catalina.Context;
 
 public class Main {
 
@@ -18,8 +19,20 @@ public class Main {
 
         tomcat.setPort(Integer.valueOf(webPort));
 
-        tomcat.addWebapp("/", new File(webappDirLocation).getAbsolutePath());
+        Context context = tomcat.addWebapp("/", new File(webappDirLocation).getAbsolutePath());
         System.out.println("configuring app with basedir: " + new File("./" + webappDirLocation).getAbsolutePath());
+
+        for (String s : args) {
+            int pos = s.indexOf('=');
+            if (pos == -1) continue;
+
+            String param_name = s.substring(0, pos);
+            String param_value = s.substring(pos + 1);
+
+            System.out.println("web.xml parameter override: " + s);
+
+            context.addParameter(param_name + "-OVERRIDE", param_value);
+        }
 
         tomcat.start();
         tomcat.getServer().await();  
