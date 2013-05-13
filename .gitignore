@@ -2,6 +2,7 @@
 *.class
 
 ers-local/couch/couchdata/*
+ers-global/target/*
 
 .DS_Store
 .idea/
