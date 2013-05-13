@@ -323,6 +323,7 @@ public class ExecuteTransactions
                                 else {
                                     /** ADDED FOR SUPPORTING COPY OPERATION AND ITS ENTIRE ENTITY LOCKING **/
                                     // COPY_ALL operation, so get a WRITE_LOCK on the entire entity if none READ LOCKS
+                                    // OR ENTITY_DELETE operation, same locks must be acquired
                                     prev_val = ExecuteTransactions.full_entity_lock_map.get(key_e);
                                     if( prev_val != null) {
                                         if( prev_val.type == LockEnt.LockType.WRITE_LOCK ) {
@@ -435,7 +436,8 @@ public class ExecuteTransactions
 						break;
                                         case ENT_SHALLOW_CLONE:
                                                 r = store.shallowClone(c_op.params[0], Store.encodeKeyspace(c_op.params[1]),
-                                                        c_op.params[2], Store.encodeKeyspace(c_op.params[3]));
+                                                        c_op.params[2], Store.encodeKeyspace(c_op.params[3]), c_op.params[1],
+                                                        c_op.params[3] );
                                                 if ( r != 0 )
                                                     _log.info("COMMIT SHALLOW CLONE " + c_op.params[0] + " FAILED with exit code " + r);
                                                 break;
@@ -444,6 +446,11 @@ public class ExecuteTransactions
                                                         c_op.params[2], Store.encodeKeyspace(c_op.params[3]));
                                                 if ( r != 0 )
                                                     _log.info("COMMIT DEEP CLONE " + c_op.params[0] + " FAILED with exit code " + r);
+                                                break;
+                                        case ENT_DELETE:
+                                                r = store.deleteByRowKey(c_op.params[0], Store.encodeKeyspace(c_op.params[1]));
+                                                if ( r != 0 )
+                                                    _log.info("COMMIT ENTITY DELETE " + c_op.params[0] + " FAILED with exit code " + r);
                                                 break;
 					default:
 						break;	
@@ -481,12 +488,19 @@ public class ExecuteTransactions
 									_log.info("ROLLBACK DELETE " + p_op.params[0] + " FAILED with exit code " + r);
 								break;
                                                         case ENT_SHALLOW_CLONE:
-                                                                // TODO: DELETE THE ENTITY !!!
-                                                                _log.info("ROLLBACK CLONE ENT SHALLOW ");
+                                                                r = store.deleteShallowClone(c_op.params[0], Store.encodeKeyspace(c_op.params[1]),
+                                                                        c_op.params[2], Store.encodeKeyspace(c_op.params[3]), c_op.params[1],
+                                                                        c_op.params[3] );
+								if ( r != 0 )
+									_log.info("ROLLBACK SHALLOW CLONE " + p_op.params[0] + " FAILED with exit code " + r);
                                                                 break;
                                                         case ENT_DEEP_CLONE:
-                                                                // TODO: DELETE THE WHOLE ENTITY !!!
-                                                                _log.info("ROLLBACK CLONE ENT DEEP");
+                                                                r = store.deleteDeepClone(c_op.params[2], Store.encodeKeyspace(c_op.params[3]));
+                                                                if ( r != 0 )
+                                                                        _log.info("ROLLBACK DEEP CLONE " + p_op.params[0] + " FAILED with exit code " + r);
+                                                                break;
+                                                        case ENT_DELETE:
+                                                                _log.info("ROLLBACK for a full entity deletion is not yet supported!");
                                                                 break;
 							default:
 								break;	

@@ -41,6 +41,7 @@ public class Operation
                 map.put(JUST_LOCK_OP_NAME, Type.LOCK);
                 map.put(SHALLOW_CLONE_OP_NAME, Type.ENT_SHALLOW_CLONE);
                 map.put(DEEP_CLONE_OP_NAME, Type.ENT_DEEP_CLONE);
+                map.put(DELETE_ALL_OP_NAME, Type.ENT_DELETE);
 
 		reverse.put(Type.GET, Type.GET); 
 		reverse.put(Type.INSERT, Type.DELETE); 
@@ -48,6 +49,7 @@ public class Operation
 		reverse.put(Type.UPDATE, Type.UPDATE);
                 reverse.put(Type.ENT_SHALLOW_CLONE, Type.ENT_DELETE);
                 reverse.put(Type.ENT_DEEP_CLONE, Type.ENT_DELETE);
+                reverse.put(Type.ENT_DELETE, Type.ENT_DEEP_CLONE);
                 reverse.put(Type.LOCK, Type.LOCK);
 	}
 	

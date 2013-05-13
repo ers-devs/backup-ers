@@ -48,8 +48,8 @@ public class Transaction
 		while( st.hasMoreTokens() ) { 
 			oper.addParam(st.nextToken(), ++counter);	
 		}
-		// at least (e,p,v,g) must exist
-		if( ++counter < 4 ) 	
+		// at least (e,g) must exist
+		if( ++counter < 2 )
 			return 3;
 		// add this operation part of the transaction
                 registerOperation(oper);
@@ -104,14 +104,12 @@ public class Transaction
                 }
             }
         }
-
         
         private void registerReverseOperation(Operation oper) {
             this.addReverseOp(oper);
             // no need to add extra LOCK operation as we did for registerOperation()
             //method, as when this is run the locks are already acquired
         }
-
 
 	private void addReverseOp(Operation op) { 
 		//based on what kind of op is

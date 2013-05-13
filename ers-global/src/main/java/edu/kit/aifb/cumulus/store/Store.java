@@ -132,11 +132,16 @@ public abstract class Store {
 
         // shallow copy an entity if exists
         public abstract int shallowClone(String e_src, String graph_src, String e_dest,
-                String graph_dest);
+                String graph_dest, String unencoded_graph_src, String unencoded_graph_dest);
+         // rollback shallow copy an entity 
+        public abstract int deleteShallowClone(String e_src, String graph_src, String e_dest,
+                String graph_dest, String unencoded_graph_src, String unencoded_graph_dest);
 
         // deep copy an entity if exists
         public abstract int deepClone(String e_src, String graph_src, String e_dest,
                 String graph_dest);
+       // rollback deep copy an entity
+        public abstract int deleteDeepClone(String e_dest, String graph_dest);
 
 	// delete all data (if force is true, then delete even if it is not empty) 
 	public int dropKeyspace(String keyspace) { 
