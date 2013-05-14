@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 class LocalModelBase(object):
     """ """
     view_name = '_all_docs'
@@ -132,13 +134,50 @@ class ModelT(LocalModelBase):
 
 
 class ModelH(ModelT):
+    """
+
+    Example document:
+
+    {
+
+    }
+    """
+    views_doc = {
+                    "_id": "_design/index",
+                    "language": "coffeescript",
+                    "views": {
+                        "by_entity_graph": {
+                            "map": "(doc) -> emit([doc.s, doc.g], null)"
+                        }
+                    }
+                }
+
     view_name = 'by_graph_subject'
 
     def cache_key(self, couch_key):
         pass
 
     def couch_key(self, cache_key, graph):
+        return uuid4()
+
+    def new_doc(self):
         pass
 
     def add_data(self, couch_doc, cache):
+        pp, oo = zip(*[(p, o) for p, oo in cache[couch_doc['s']].iteritems() for o in oo])
+        couch_doc['p'] = tuple(couch_doc.get('p', ())) + pp
+        couch_doc['o'] = tuple(couch_doc.get('o', ())) + oo
+        return couch_doc
+
+    def get_data(self, doc, subject, graph):
+        data_dict = {}
+        if (subject != None) and ((doc['s'] != subject) or (graph != None and (doc['g'] != graph))):
+            return {}
+        for p, o in zip(doc['p'], doc['o']):
+            data_dict.setdefault(p, []).append(o)
+        return data_dict
+        
+    def delete_property(self, couch_doc, prop):
         pass
+
+

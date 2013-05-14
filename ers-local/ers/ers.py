@@ -3,7 +3,7 @@
 import couchdbkit
 import rdflib
 from collections import defaultdict
-from models import ModelS, ModelT
+from models import ModelS, ModelT, ModelH
                                                         
 # Document model is used to store data in CouchDB. The API is independent from the choice of model.
 DEFAULT_MODEL = ModelS()
@@ -37,6 +37,21 @@ class ERSReadOnly(object):
             docs = [d['doc'] for d in self.db.view('index/by_entity', include_docs=True, key=subject)]
         else:
             docs = [self.get_doc(subject, graph)]
+        for doc in docs:
+            merge_annotations(result, self.model.get_data(doc, subject, graph))
+        return result
+
+    def get_data_h(self, subject, graph=None):
+        result = {}
+        if graph is None:
+            docs = [d['doc'] for d in self.db.view('index/by_entity_graph',
+                                                    include_docs=True,
+                                                    startkey=[subject],
+                                                    endkey=[subject, {}])]
+        else:
+            docs = [d['doc'] for d in self.db.view('index/by_entity_graph',
+                                                    include_docs=True,
+                                                    key=[subject, graph])]
         for doc in docs:
             merge_annotations(result, self.model.get_data(doc, subject, graph))
         return result
@@ -125,13 +140,33 @@ class ERSReadWrite(ERSReadOnly):
 
     def write_cache(self, cache, graph):
         docs = []
-        # TODO: check if sorting keys makes it faster
-        couch_docs = self.db.view(self.model.view_name, include_docs=True,
-                                  keys=[self.model.couch_key(k, graph) for k in cache])
+        doc_dict = {}
+        lookup_keys = [(s, graph) for s in cache]
+        existing_docs = self.db.view('index/by_entity_graph', include_docs=True, keys=lookup_keys)
+        for doc in existing_docs:
+            if 'doc' in doc:
+                doc_dict[tuple(doc['key'])] = doc['doc']
+        for key in lookup_keys:
+            if key not in doc_dict:
+                doc_dict[key] = {"_id": self.model.couch_key(key[0], key[1])}
+            self.model.add_data(doc_dict[key], cache)
+        self.db.save_docs(doc_dict.values())
+
+        return
+        # option 1: return 1 doc
+        for s in cache:
+            self.db.view('index/by_entity_graph', include_docs=True,
+                                  key=[s, graph])
+
+        # option 2: return empty doc
         for doc in couch_docs:
             couch_doc = doc.get('doc', {'_id': doc['key']})
             self.model.add_data(couch_doc, cache)
             docs.append(couch_doc)
+        self.db.save_docs(docs)
+
+    def write_cache_h(self, cache, graph):
+        docs = [self.model.add_data({'g': graph, 's': s}, cache) for s in cache]
         self.db.save_docs(docs)
 
     def update_value(self, subject, object, graph=None):
