@@ -159,7 +159,7 @@ public class CumulusRDFStoreConnection extends NotifyingSailConnectionBase {
 		List<Node[]> list = new ArrayList<Node[]>();
 		list.add(_factory.createNodes(subj, pred, obj));
 		try {
-			_crdf.addData(list.iterator(), _keyspace);
+			_crdf.addData(list.iterator(), _keyspace, 0);
 		}
 		catch (StoreException e) {
 			e.printStackTrace();

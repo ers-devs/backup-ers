@@ -117,18 +117,26 @@ public abstract class Store {
 	
 	public abstract void open() throws StoreException;
 	public abstract void close() throws StoreException;
-	public abstract int addData(Iterator<Node[]> it, String keyspace) throws StoreException;
 
-	// add (e,p,v,g)
-	public abstract int addData(String e, String p, String v, String keyspace);
+	public abstract int addData(Iterator<Node[]> it, String keyspace, Integer
+                linkFlag) throws StoreException;
+	// add (e,p,v,g); if insertLink != 0, then create the link as well
+	public abstract int addData(String e, String p, String v, String keyspace,
+                Integer linkFlag);
+
 	// update/replace (e,p,v_old,g) with (e,p,v_new,g);
-	public abstract int updateData(String e, String p, String v_old, String v_new, String keyspace);
+
+        public abstract int updateData(String e, String p, String v_old, String v_new, 
+                String keyspace, Integer linkFlag);
 	// delete (e,p,v,g)  
-	public abstract int deleteData(String e, String p, String v, String keyspace);
+	public abstract int deleteData(String e, String p, String v, String keyspace,
+                Integer linkFlag);
 	// this is called by deleteData(...) and for the "clever" delete() that uses query()
-	public abstract void deleteData(Node[] nx, String keyspace);
-	public abstract int deleteByRowKey(String e, String keyspace);
-	public abstract Iterator<Node[]> getRowIterator(String e, String keyspace);
+	public abstract void deleteData(Node[] nx, String keyspace, Integer linkFlag);
+        
+	public abstract int deleteByRowKey(String e, String keyspace, Integer linkFlag);
+
+        public abstract Iterator<Node[]> getRowIterator(String e, String keyspace);
 
         // shallow copy an entity if exists
         public abstract int shallowClone(String e_src, String graph_src, String e_dest,

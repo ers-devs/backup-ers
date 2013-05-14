@@ -4,8 +4,6 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Iterator;
 import java.util.logging.Logger;
-import java.util.StringTokenizer;
-import java.util.HashMap;
 import java.util.List;
 
 import javax.servlet.ServletContext;
@@ -13,14 +11,9 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.semanticweb.yars.nx.Node;
-import org.semanticweb.yars.nx.Resource;
-import org.semanticweb.yars.nx.parser.NxParser;
-import org.semanticweb.yars.nx.parser.ParseException;
 
 import edu.kit.aifb.cumulus.store.Store;
 import edu.kit.aifb.cumulus.store.AbstractCassandraRdfHector;
-import edu.kit.aifb.cumulus.store.StoreException;
 import edu.kit.aifb.cumulus.webapp.formatter.SerializationFormat;
 
 import static org.apache.commons.lang.StringEscapeUtils.escapeHtml;
@@ -137,7 +130,7 @@ public class GraphServlet extends AbstractHttpServlet {
 			sendError(ctx, req, resp, HttpServletResponse.SC_FORBIDDEN, "Graph " + graph + " cannot be created. Do not use 'system' as prefix.");
 		else {
 			// now insert the triple into Graphs keyspace 
-			int r2 = crdf.addData("\""+Store.encodeKeyspace(a_id)+"\"", a_p, a_v, Listener.GRAPHS_NAMES_KEYSPACE);
+			int r2 = crdf.addData("\""+Store.encodeKeyspace(a_id)+"\"", a_p, a_v, Listener.GRAPHS_NAMES_KEYSPACE, 0);
 			if( r2 != -1 ) { 
 				if (r == 1) 
 					sendResponse(ctx, req, resp, HttpServletResponse.SC_OK, "Graph " + graph + " already exists. New data has been added.");
@@ -204,7 +197,7 @@ public class GraphServlet extends AbstractHttpServlet {
 		switch(r) { 
 			case 0: 
 				//delete from ERS_graphs
-				crdf.deleteByRowKey("\""+encoded_keyspace+"\"", Listener.GRAPHS_NAMES_KEYSPACE);
+				crdf.deleteByRowKey("\""+encoded_keyspace+"\"", Listener.GRAPHS_NAMES_KEYSPACE, 0);
 				sendResponse(ctx, req, resp, HttpServletResponse.SC_OK, "The entire of graph " + graph + " has been deleted.");
 				break;
 			case 1: 	

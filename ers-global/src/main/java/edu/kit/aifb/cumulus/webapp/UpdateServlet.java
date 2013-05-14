@@ -107,7 +107,7 @@ public class UpdateServlet extends AbstractHttpServlet {
 		PrintWriter out = resp.getWriter();
 		resp.setContentType(formatter.getContentType());
 		// do an update here 
-		if( crdf.updateData(e,p,v_old,v_new,Store.encodeKeyspace(a)) == -2 )
+		if( crdf.updateData(e,p,v_old,v_new,Store.encodeKeyspace(a), 0) == -2 )
 			sendResponse(ctx, req, resp, HttpServletResponse.SC_OK, "Graph " + a + " does not exists.");
 		else {
 			StringBuffer buf = new StringBuffer(); 
@@ -124,6 +124,7 @@ public class UpdateServlet extends AbstractHttpServlet {
 	public void doDelete(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
 		throw new UnsupportedOperationException("DELETE currently not supported, sorry.");
 	}
+
 	public void doPut(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
 		throw new UnsupportedOperationException("PUT currently not supported, sorry.");
 	}
