@@ -1,0 +1,8 @@
+#!/bin/bash
+DIR="$( cd -P "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+echo "Start clean CouchDB from $DIR"
+cd "$DIR"
+./couchstop
+rm -r couchdata 2> /dev/null
+mkdir couchdata 2> /dev/null
+./couchstart
