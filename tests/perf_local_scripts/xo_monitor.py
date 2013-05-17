@@ -2,6 +2,7 @@ import sys, os; sys.path.extend(['/Users/marat/projects/wikireg/site-packages'])
 import requests, time
 
 hosts = ['xo-0d-58-b2.local.', 'xo-15-4c-93.local.', 'xo-26-7a-e7.local.', 'xo-3c-ea-3a.local.']
+# hosts = ['xo-0d-58-b2.local.', 'xo-15-4c-93.local.', 'xo-3c-ea-3a.local.']
 
 bounds = sorted(hosts) + ['xo-g']
 payload = {'limit': 0}
@@ -23,10 +24,21 @@ def host_stats(host):
     call_time = t1 - t0
     return doc_counts + [call_time, t1, host]
 
-print "total_docs\t{0}\tcall_time\ttimestamp\thost".format('\t'.join(bounds[:-1]))
+fname = sys.argv[1] if len(sys.argv)>1 else 'xo-mon.txt'
+fout = open(fname, 'a')
+def printout(line):
+    l = "{0}\n".format(line)
+    sys.stdout.write(l)
+    fout.write(l)
+    sys.stdout.flush()
+
+printout("=" * 70)
+printout("total_docs\t{0}\tcall_time\ttimestamp\thost".format('\t'.join(bounds[:-1])))
+
 while True:
     for host in hosts:
-        print '\t'.join(map(str, host_stats(host)))
-    print ""
+        stats = '\t'.join(map(str, host_stats(host)))
+        printout(stats)
+    printout("")
     time.sleep(5)
 

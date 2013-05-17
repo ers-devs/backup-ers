@@ -11,10 +11,15 @@ node = platform.node()
 def random_urn():
     return "urn:ers:testdata:{0}".format(random.randint(0, 10e10))
 
+def random_string():
+	[]
+    return "urn:ers:testdata:{0}".format(random.randint(0, 10e10))
+
+
 def loop_write(run_time=1, delay=0):
 	t0 = time()
 	while time() - t0 < run_time:
-		registry.add_data(random_urn(), random_urn(), "test", node)
+		registry.add_data(random_urn(), random_urn(), "test5678910"*1000, node)
 		sleep(delay)
 
 if __name__ == '__main__':
