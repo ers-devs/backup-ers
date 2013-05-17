@@ -6,7 +6,7 @@ then
   kill -15 `cat "$PIDFILE"`
   rm "$PIDFILE"
 else
-  echo "CouchDB is not running or was started from an other directory."
+  echo "CouchDB is not running or was started from another directory."
 fi
 AP_PID="$DIR/couchdata/avahi-publish.pid"
 if [ -f "$AP_PID" ]
