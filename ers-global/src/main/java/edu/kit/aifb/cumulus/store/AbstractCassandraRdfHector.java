@@ -1,12 +1,6 @@
 package edu.kit.aifb.cumulus.store;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.io.PrintWriter;
-import java.io.UnsupportedEncodingException;
-import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -39,12 +33,17 @@ import me.prettyprint.hector.api.exceptions.HectorException;
 import org.semanticweb.yars.nx.Node;
 import org.semanticweb.yars.nx.Resource;
 import org.semanticweb.yars.nx.Variable;
-import org.semanticweb.yars.nx.Literal;
 import org.semanticweb.yars.nx.parser.NxParser;
 import org.semanticweb.yars.nx.parser.ParseException;
-import org.semanticweb.yars2.rdfxml.RDFXMLParser;
 
 import edu.kit.aifb.cumulus.webapp.Listener;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
+import org.semanticweb.yars2.rdfxml.RDFXMLParser;
 
 public abstract class AbstractCassandraRdfHector extends Store {
 
@@ -159,7 +158,8 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		}
 		
 	}
-	protected static final String COL_S = "s";
+
+        protected static final String COL_S = "s";
 	protected static final String COL_P = "p";
 	protected static final String COL_O = "o";
 
@@ -258,7 +258,8 @@ public abstract class AbstractCassandraRdfHector extends Store {
 			return 1;
 		HFactory.createKeyspace(encoded_keyspaceName, _cluster, Listener.DEFAULT_CONSISTENCY_POLICY);
 		// also add an entry into Listener.GRAPHS_NAMES_KEYSPACE to keep a mapping of hashed keyspace name and the real one 
-		this.addData("\""+encoded_keyspaceName+"\"", "\"hashValue\"", "\""+keyspaceName+"\"", Listener.GRAPHS_NAMES_KEYSPACE);	
+		this.addData("\""+encoded_keyspaceName+"\"", "\"hashValue\"", 
+                        "\""+keyspaceName+"\"", Listener.GRAPHS_NAMES_KEYSPACE, 0);
 		return 0;
 	}
 
@@ -391,7 +392,7 @@ public abstract class AbstractCassandraRdfHector extends Store {
 	}
 
 	@Override
-	public int addData(Iterator<Node[]> it, String keyspace) throws StoreException {
+	public int addData(Iterator<Node[]> it, String keyspace, Integer linkFlag) throws StoreException {
 		// check firstly if keyspace exists, if not, return error 
 		if( !existsKeyspace(keyspace) ) { 
 			return -1;
@@ -404,7 +405,7 @@ public abstract class AbstractCassandraRdfHector extends Store {
 			//_log.info("addData  " + nx[0].toString() + " " + nx[1].toString() + " " + nx[2].toString());
                         batch.add(nx);
                          // add the back link as well
-                        if( Listener.DEFAULT_ERS_CREATE_LINKS.equals("yes") && nx[2] instanceof Resource )
+                        if( linkFlag != 0 && nx[2] instanceof Resource )
                                 batch.add(Util.reorderForLink(nx, _maps.get("link")));
 
                         batchSize += nx[0].toN3().getBytes().length + nx[1].toN3().getBytes().length + nx[2].toN3().getBytes().length;
@@ -431,7 +432,8 @@ public abstract class AbstractCassandraRdfHector extends Store {
         }
 
 	// TM: add just one record
-	public int addData(String e, String p, String v, String keyspace) {
+	public int addData(String e, String p, String v, String keyspace,
+                Integer linkFlag) {
 		if( !existsKeyspace(keyspace) ) { 
 			return -2; 
 		}
@@ -440,15 +442,12 @@ public abstract class AbstractCassandraRdfHector extends Store {
 			Node[] nx = NxParser.parseNodes(triple);	
 	 		List<Node[]> batch = new ArrayList<Node[]>();
 			batch.add(nx);
-                        // do not add back links for CLONE operations
-                        if( ! p.equals(Listener.SHALLOW_COPY_PROPERTY) ) {
+                        if( linkFlag != 0 )
                             // add the back link as well
-                            if( Listener.DEFAULT_ERS_CREATE_LINKS.equals("yes") && nx[2] instanceof Resource )
+                            if( nx[2] instanceof Resource )
                                 batch.add(Util.reorderForLink(nx, _maps.get("link")));
-                        }
-			for (String cf : _cfs) {
+			for (String cf : _cfs)
 				batchInsert(cf, batch, keyspace);
-			}
 			return 0;
 		} 
 		catch( ParseException ex ) { 
@@ -459,7 +458,8 @@ public abstract class AbstractCassandraRdfHector extends Store {
 	}
 
 	// TM: delete a record 
-	public int deleteData(String e, String p, String v, String keyspace) { 
+	public int deleteData(String e, String p, String v, String keyspace,
+                Integer linkFlag) {
 		// check if keyspace exists	
 		if( !existsKeyspace(keyspace)) { 
 			return -2; 
@@ -467,12 +467,11 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		String triple = e + " " + p + " " + v + " ."; 
 		try { 
 			Node[] nx = NxParser.parseNodes(triple);
-                        this.deleteData(nx, keyspace);
+                        this.deleteData(nx, keyspace, linkFlag);
                         // add the back link as well
-                        if( Listener.DEFAULT_ERS_CREATE_LINKS.equals("yes")
-                                && nx[2] instanceof Resource )
+                        if( linkFlag != 0 && nx[2] instanceof Resource )
                             this.deleteData(Util.reorderForLink(nx, _maps.get("link")),
-                                    keyspace);
+                                    keyspace, 1);
 			return 0;
 		} 
 		catch( ParseException ex ) { 
@@ -482,12 +481,11 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		}
 	}
 	
-	public void deleteData(Node[] nx, String keyspace) { 
+	public void deleteData(Node[] nx, String keyspace, Integer linkFlag) {
 	 	List<Node[]> batch = new ArrayList<Node[]>();
 		batch.add(nx);
                 // add the back link as well
-                if( Listener.DEFAULT_ERS_CREATE_LINKS.equals("yes")
-                        && nx[2] instanceof Resource )
+                if( linkFlag != 0 && nx[2] instanceof Resource )
                     batch.add(Util.reorderForLink(nx, _maps.get("link")));
 		for (String cf : _cfs) {
 			batchDelete(cf, batch, keyspace);
@@ -513,7 +511,7 @@ public abstract class AbstractCassandraRdfHector extends Store {
 
 	// it queries to get the whole data and then it uses it to delete
         //(of course, it would be easier to directly delete it by using the row key, but for POS and OSP column families it is not that easy)
-	public int deleteByRowKey(String e, String keyspace) { 
+	public int deleteByRowKey(String e, String keyspace, Integer linkFlag) {
 	 	// check if keyspace exists	
 		if( !existsKeyspace(keyspace)) { 
 			return -2; 
@@ -521,7 +519,7 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		Iterator<Node[]> it = getRowIterator(e, keyspace);		
 		for( ; it.hasNext(); ) {
 			Node[] n = (Node[])it.next();
-			this.deleteData(n, keyspace);
+			this.deleteData(n, keyspace, linkFlag);
 		} 
 		return 1;
 	}
@@ -531,16 +529,17 @@ public abstract class AbstractCassandraRdfHector extends Store {
          * NOTE: this has a bit of overhead since the value is stored as column name; thus 
          * for updating it needs 1 deletion and 1 insertion 
   	*/
-	public int updateData(String e, String p, String v_old, String v_new, String keyspace) { 
+	public int updateData(String e, String p, String v_old, String v_new, 
+                String keyspace, Integer linkFlag) {
 		// check if keyspace exists
 		if ( !existsKeyspace(keyspace) ) { 
 			return -2; 
 		}
 		// assuming the old record exists, run a del
-		if( deleteData(e, p, v_old, keyspace) == -1 )
+		if( deleteData(e, p, v_old, keyspace, linkFlag) == -1 )
 			return -1;
 		// now run an add
-	 	return addData(e, p, v_new, keyspace);	
+	 	return addData(e, p, v_new, keyspace, linkFlag);
 	}
 
         // it creates a new e_dest entity with a property "sameAs" to e_src
@@ -572,10 +571,9 @@ public abstract class AbstractCassandraRdfHector extends Store {
                 try {
                         it = this.query(query, 1, keyspace_src);
                         if( it.hasNext() ) {
-                            // there is at least one triple, so it makes sense to shallow copy then
-                            // this will also add an inverted link to e_src.
                             addData(e_dest, Listener.SHALLOW_COPY_PROPERTY,
-                                    prepareCloningValue(e_src, unencoded_keyspace_src), keyspace_dest);
+                                    prepareCloningValue(e_src, unencoded_keyspace_src), 
+                                    keyspace_dest, 0);
                         }
                         else
                             return -5;
@@ -585,7 +583,8 @@ public abstract class AbstractCassandraRdfHector extends Store {
                 }
                 // now add "sameAs" link also to the source entity => make it both directions
                 addData(e_src, Listener.SHALLOW_COPY_PROPERTY, 
-                        prepareCloningValue(e_dest, unencoded_keyspac_dest), keyspace_src);
+                        prepareCloningValue(e_dest, unencoded_keyspac_dest), 
+                        keyspace_src, 0);
                 return 0;
         }
 
@@ -602,10 +601,11 @@ public abstract class AbstractCassandraRdfHector extends Store {
 			return -2;
 		}
                 // delete the destination entity
-                deleteByRowKey(e_dest, keyspace_dest);
-                // now "sameAs" link also to the source entity => make it both directions
+                deleteByRowKey(e_dest, keyspace_dest, 0);
+                // now delete the "sameAs" property of the source entity
                 deleteData(e_src, Listener.SHALLOW_COPY_PROPERTY,
-                        prepareCloningValue(e_dest, unencoded_keyspace_dest), keyspace_src);
+                        prepareCloningValue(e_dest, unencoded_keyspace_dest), 
+                        keyspace_src, 0);
                 return 0;
         }
 
@@ -642,7 +642,7 @@ public abstract class AbstractCassandraRdfHector extends Store {
                                 current[0] = NxParser.parseNode(e_dest);
                                 batch.add(current);
                         }
-                        addData(batch.iterator(), keyspace_dest);
+                        addData(batch.iterator(), keyspace_dest, 0);
                 } catch (StoreException ex) {
                         _log.severe(ex.getMessage());
                         return -4;
@@ -659,7 +659,7 @@ public abstract class AbstractCassandraRdfHector extends Store {
                 if( !existsKeyspace(keyspace_dest) ) {
 			return -2;
 		}
-                deleteByRowKey(e_dest, keyspace_dest);
+                deleteByRowKey(e_dest, keyspace_dest, 1);
                 return 0;
         }
 
@@ -820,9 +820,11 @@ public abstract class AbstractCassandraRdfHector extends Store {
 				continue;
 			}
 			triples.add(nx);
-         // add the back link as well 
-         if( Listener.DEFAULT_ERS_CREATE_LINKS.equals("yes") && nx[2] instanceof Resource ) 
-            triples.add(Util.reorderForLink(nx, _maps.get("link")));
+                        /*
+                        // add the back link as well
+                        if( Listener.DEFAULT_ERS_CREATE_LINKS.equals("yes") && nx[2] instanceof Resource )
+                                triples.add(Util.reorderForLink(nx, _maps.get("link")));
+                        */
 			i++;
 			for (int k=0; k < nx.length; k++) {
 				batchSize += nx[k].toN3().getBytes().length; // + nx[1].toN3().getBytes().length + nx[2].toN3().getBytes().length;

@@ -97,7 +97,7 @@ public class CleverDeleteServlet extends AbstractHttpServlet {
                     p != null && !p.isEmpty() &&
                     v != null && !v.isEmpty() && 
                     g != null && !g.isEmpty() ) { 
-			if( crdf.deleteData(e,p,v,Store.encodeKeyspace(g)) == -2 ) 
+			if( crdf.deleteData(e,p,v,Store.encodeKeyspace(g), 0) == -2 )
 				sendResponse(ctx, req, resp, HttpServletResponse.SC_CONFLICT, "Graph " + g + " does not exists.");
 			else { 
 				String msg = "Quad ("+e+","+p+","+v+","+g+") has been deleted.";
@@ -132,7 +132,7 @@ public class CleverDeleteServlet extends AbstractHttpServlet {
 				for( ; it.hasNext(); ) {
 					++total_deletion;
 					Node[] n = (Node[]) it.next(); 
-					crdf.deleteData(n, k);
+					crdf.deleteData(n, k, 0);
 				}
 			} catch (StoreException ex) {
 				_log.severe(ex.getMessage());

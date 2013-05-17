@@ -210,16 +210,24 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 						m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn(colKey, ""));
 						m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn("!p", reordered[0].toN3()));
 						m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn("!o", reordered[1].toN3()));
+						break;
+                                        case 11:
+						// insertion link
+						// reorder for the key
+						reordered = Util.reorder(nx, _maps_br.get(cf));
+						rowKey = createKey(new Node[] { reordered[0], reordered[1] });
+						colKey = reordered[2].toN3();
+						m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn(colKey, ""));
+						m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn("!p", reordered[0].toN3()));
+						m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn("!o", reordered[1].toN3()));
 
                                                 // add the back link as well
-                                                if( Listener.DEFAULT_ERS_CREATE_LINKS.equals("yes") && nx[2] instanceof Resource ) {
-                                                    reordered = Util.reorder(nx, _maps_br.get("link"));
-                                                    rowKey = createKey(new Node[] { reordered[0], reordered[1] });
-                                                    colKey = reordered[2].toN3();
-                                                    m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn(colKey, ""));
-                                                    m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn("!p", reordered[0].toN3()));
-                                                    m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn("!o", reordered[1].toN3()));
-                                                }
+                                                reordered = Util.reorder(nx, _maps_br.get("link"));
+                                                rowKey = createKey(new Node[] { reordered[0], reordered[1] });
+                                                colKey = reordered[2].toN3();
+                                                m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn(colKey, ""));
+                                                m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn("!p", reordered[0].toN3()));
+                                                m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn("!o", reordered[1].toN3()));
 						break;
 					case 2: 
 						//deletion 
@@ -229,16 +237,24 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 						colKey = reordered[2].toN3();
 						// delete the full row 
 						m.addDeletion(rowKey.array(), cf);
+						break;
+                                        case 21:
+						//deletion link
+	 					// reorder for the key
+						reordered = Util.reorder(nx, _maps_br.get(cf));
+						rowKey = createKey(new Node[] { reordered[0], reordered[1] });
+						colKey = reordered[2].toN3();
+						// delete the full row
+						m.addDeletion(rowKey.array(), cf);
 
                                                 // delete the back link as well
-                                                if( Listener.DEFAULT_ERS_CREATE_LINKS.equals("yes") && nx[2] instanceof Resource ) {
+                                                if( nx[2] instanceof Resource ) {
                                                     reordered = Util.reorder(nx, _maps_br.get("link") );
                                                     rowKey = createKey(new Node[] { reordered[0], reordered[1] });
                                                     colKey = reordered[2].toN3();
                                                     // delete the full row containing the back link
                                                     m.addDeletion(rowKey.array(), cf);
                                                 }
-
 						break;
 					case 3: 
 						//update, run a delete and an insert 
@@ -250,8 +266,27 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 						// delete the full row 
 						m.addDeletion(rowKey.array(), cf);
 
+						//insertion
+						// reorder for the key
+						reordered = Util.reorder(nx, _maps_br_update_i.get(cf));
+						rowKey = createKey(new Node[] { reordered[0], reordered[1] });
+						colKey = reordered[2].toN3();
+						m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn(colKey, ""));
+						m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn("!p", reordered[0].toN3()));
+						m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn("!o", reordered[1].toN3()));
+						break;
+                                        case 31:
+						//update with link, run a delete and an insert
+						//deletion
+	 					// reorder for the key
+						reordered = Util.reorder(nx, _maps_br_update_d.get(cf));
+						rowKey = createKey(new Node[] { reordered[0], reordered[1] });
+						colKey = reordered[2].toN3();
+						// delete the full row
+						m.addDeletion(rowKey.array(), cf);
+
                                                 // delete the back link as well
-                                                if( Listener.DEFAULT_ERS_CREATE_LINKS.equals("yes") && nx[2] instanceof Resource ) {
+                                                if( nx[2] instanceof Resource ) {
                                                     reordered = Util.reorder(nx, _maps_br_update_d.get("link"));
                                                     rowKey = createKey(new Node[] { reordered[0], reordered[1] });
                                                     colKey = reordered[2].toN3();
@@ -269,7 +304,7 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 						m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn("!o", reordered[1].toN3()));
 
                                                 // insert also the new back link
-                                                if( Listener.DEFAULT_ERS_CREATE_LINKS.equals("yes") && nx[5] instanceof Resource ) {
+                                                if( nx[5] instanceof Resource ) {
                                                     reordered = Util.reorder(nx, _maps_br_update_i.get("link"));
                                                     rowKey = createKey(new Node[] { reordered[0], reordered[1] });
                                                     colKey = reordered[2].toN3();

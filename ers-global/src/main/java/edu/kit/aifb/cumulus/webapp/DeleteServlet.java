@@ -2,23 +2,15 @@ package edu.kit.aifb.cumulus.webapp;
 
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.Iterator;
 import java.util.logging.Logger;
-import java.util.StringTokenizer;
-import java.util.HashMap;
 
 import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.semanticweb.yars.nx.Node;
-import org.semanticweb.yars.nx.Resource;
-import org.semanticweb.yars.nx.parser.NxParser;
-import org.semanticweb.yars.nx.parser.ParseException;
 
 import edu.kit.aifb.cumulus.store.Store;
-import edu.kit.aifb.cumulus.store.StoreException;
 import edu.kit.aifb.cumulus.webapp.formatter.SerializationFormat;
 
 /** 
@@ -94,7 +86,7 @@ public class DeleteServlet extends AbstractHttpServlet {
 		PrintWriter out = resp.getWriter();
 		resp.setContentType(formatter.getContentType());
 		// do the deletion here 
-		if( crdf.deleteData(e,p,v,Store.encodeKeyspace(a)) == -2 ) { 
+		if( crdf.deleteData(e,p,v,Store.encodeKeyspace(a), 0) == -2 ) {
 			out.println("Graph " + a + " does not exist.");
 		}
 		else { 

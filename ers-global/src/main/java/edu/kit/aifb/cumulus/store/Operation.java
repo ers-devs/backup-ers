@@ -8,56 +8,77 @@ public class Operation
 	public static enum Type {
                 // clasical operations
 		GET, INSERT, UPDATE, DELETE,
+                // operation with links
+                INSERT_LINK, UPDATE_LINK, DELETE_LINK,
                 // clone and delete an entire entity
                 ENT_SHALLOW_CLONE, ENT_DEEP_CLONE, ENT_DELETE,
                 // generic used just for locking
                 LOCK
 	}
 
+        // simple operations without link
 	public static final String GET_OP_NAME = "get"; 
 	public static final String INSERT_OP_NAME = "insert";
-	public static final String UPDATE_OP_NAME = "update"; 
-	public static final String DELETE_OP_NAME = "delete";
-        // if links is set to on, then the links must be also managed (either 
-        //created, updated or deleted); for this reason, another generic 
-        //operation must be added to the list just to acquire the locks
-        public static final String JUST_LOCK_OP_NAME = "lock";
+	public static final String UPDATE_OP_NAME = "update";
+        public static final String DELETE_OP_NAME = "delete";
+        // simple operations with link
+        public static final String INSERT_LINK_OP_NAME = "insert_link";
+        public static final String UPDATE_LINK_OP_NAME = "update_link";
+        public static final String DELETE_LINK_OP_NAME = "delete_link";
+        // complex operations that need to lock entire entity
         public static final String SHALLOW_CLONE_OP_NAME = "shallow_clone";
         public static final String DEEP_CLONE_OP_NAME = "deep_clone";
-
         public static final String DELETE_ALL_OP_NAME = "delete_all";
+        // dummy op used just for locking by linking operations
+        public static final String JUST_LOCK_OP_NAME = "lock";
 
 	public static Hashtable<String, Type> map = new Hashtable<String,Type>();
 	public static Hashtable<Type, Type> reverse = new Hashtable<Type, Type>();
 	
+        // each operation has a different need in terms of # of params
+        public static Hashtable<Type, Integer> needed_params = new Hashtable<Type,Integer>();
+
         // set this to true if this operation is used only in the locking logic
         public boolean just_for_locking = false;
 
 	static { 
 		map.put(GET_OP_NAME, Type.GET);
 		map.put(INSERT_OP_NAME, Type.INSERT);
+                map.put(INSERT_LINK_OP_NAME, Type.INSERT_LINK);
 		map.put(UPDATE_OP_NAME, Type.UPDATE);
+                map.put(UPDATE_LINK_OP_NAME, Type.UPDATE_LINK);
 		map.put(DELETE_OP_NAME, Type.DELETE);
-                map.put(JUST_LOCK_OP_NAME, Type.LOCK);
+                map.put(DELETE_LINK_OP_NAME, Type.DELETE_LINK);
                 map.put(SHALLOW_CLONE_OP_NAME, Type.ENT_SHALLOW_CLONE);
                 map.put(DEEP_CLONE_OP_NAME, Type.ENT_DEEP_CLONE);
                 map.put(DELETE_ALL_OP_NAME, Type.ENT_DELETE);
+                map.put(JUST_LOCK_OP_NAME, Type.LOCK);
 
 		reverse.put(Type.GET, Type.GET); 
-		reverse.put(Type.INSERT, Type.DELETE); 
-		reverse.put(Type.DELETE, Type.INSERT); 
+		reverse.put(Type.INSERT, Type.DELETE);
+                reverse.put(Type.INSERT_LINK, Type.DELETE_LINK);
+		reverse.put(Type.DELETE, Type.INSERT);
+                reverse.put(Type.DELETE_LINK, Type.INSERT_LINK);
 		reverse.put(Type.UPDATE, Type.UPDATE);
+                reverse.put(Type.UPDATE_LINK, Type.UPDATE_LINK);
                 reverse.put(Type.ENT_SHALLOW_CLONE, Type.ENT_DELETE);
                 reverse.put(Type.ENT_DEEP_CLONE, Type.ENT_DELETE);
                 reverse.put(Type.ENT_DELETE, Type.ENT_DEEP_CLONE);
                 reverse.put(Type.LOCK, Type.LOCK);
-	}
+
+                needed_params.put(Type.GET, 4);                  // (e,p,v,graph)
+                needed_params.put(Type.INSERT, 4);               // (e,p,v,graph)
+                needed_params.put(Type.INSERT_LINK, 4);          // (e1,p,e2,graph)
+                needed_params.put(Type.UPDATE, 5);               // (e,p,v_new,graph,v_old)
+                needed_params.put(Type.UPDATE_LINK, 5);          // (e,p,e_new,graph,v_old)
+                needed_params.put(Type.DELETE, 4);               // (e,p,v,graph)
+                needed_params.put(Type.DELETE_LINK, 4);          // (e1,p,e2,graph)
+                needed_params.put(Type.ENT_SHALLOW_CLONE, 4);    // (e_src,graph_src,e_dest,graph_dest)
+                needed_params.put(Type.ENT_DEEP_CLONE, 4);       // (e_src,graph_src,e_dest,graph_dest)
+                needed_params.put(Type.ENT_DELETE, 2);           // (e_src,graph_src)
+ 	}
 	
-	/* a simplistic pattern: 
- 		op_type(e, p, v, g, [v_old])\r\n
-	*/
 	private Type type; 
-	// e, p, v, g, v_old as params
 	public String[] params = new String[5];
 
 	public Operation() { 

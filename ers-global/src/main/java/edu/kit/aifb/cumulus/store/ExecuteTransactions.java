@@ -85,7 +85,9 @@ public class ExecuteTransactions
 		// keep here track of all acquired locks during this transaction
 		Hashtable<String, LockEnt> locks_hold = new Hashtable<String, LockEnt>();
 
-                // keep track here of all the locks over the entire entity (important for copy operation)
+                // keep track here of all the locks over the entire entity (important for copy operations and delete all)
+                // NOTE: a ReadLock here means that either a lock exist on one of this entity properties
+                // NOTE: a WriteLock here means exclusive access at the level of the entity, no other locks can co-exist
                 Hashtable<String, LockEnt> full_locks_hold = new Hashtable<String, LockEnt>();
 
 		try { 	
@@ -203,9 +205,10 @@ public class ExecuteTransactions
                                                 }
 					}
 				}
-                                // !COPY operation && !GET operation (thus: insert,update,delete)
+                                // !COPY operation && !GET operation (thus: insert,update,delete,lock + linking ops)
 				else if( op.getType() != Operation.Type.ENT_SHALLOW_CLONE &&
-                                         op.getType() != Operation.Type.ENT_DEEP_CLONE) {
+                                         op.getType() != Operation.Type.ENT_DEEP_CLONE &&
+                                         op.getType() != Operation.Type.ENT_DELETE) {
 					// operation != GET, we want an EXCLUSIVE WRITE LOCK
 					if( prev_lock != null ) { 
 						if ( prev_lock.type == LockEnt.LockType.WRITE_LOCK )
@@ -273,7 +276,7 @@ public class ExecuteTransactions
                                                         return 7;
 						}
 						else {
-                                                        // keep lock track about locks acquired
+                                                        // keep local track about locks acquired
                                                         locks_hold.put(key, new LockEnt(LockEnt.LockType.WRITE_LOCK));
                                                         
                                                         /** ADDED FOR SUPPORTING COPY OPERATION AND ITS ENTIRE ENTITY LOCKING **/
@@ -322,7 +325,7 @@ public class ExecuteTransactions
 				}
                                 else {
                                     /** ADDED FOR SUPPORTING COPY OPERATION AND ITS ENTIRE ENTITY LOCKING **/
-                                    // COPY_ALL operation, so get a WRITE_LOCK on the entire entity if none READ LOCKS
+                                    // COPY_ALL operations, so get a WRITE_LOCK on the entire entity if none READ LOCKS
                                     // OR ENTITY_DELETE operation, same locks must be acquired
                                     prev_val = ExecuteTransactions.full_entity_lock_map.get(key_e);
                                     if( prev_val != null) {
@@ -415,24 +418,43 @@ public class ExecuteTransactions
 						break;
 					case INSERT:
 						r = store.addData(c_op.params[0], c_op.params[1],
-							c_op.params[2], 
-							Store.encodeKeyspace(c_op.params[3]));
+							c_op.params[2], Store.encodeKeyspace(c_op.params[3]), 0);
 						if ( r != 0 ) 
 							_log.info("COMMIT INSERT " + c_op.params[0] + " FAILED with exit code " + r);
+						break;
+                                        case INSERT_LINK:
+						r = store.addData(c_op.params[0], c_op.params[1],
+							c_op.params[2], Store.encodeKeyspace(c_op.params[3]), 1);
+						if ( r != 0 )
+							_log.info("COMMIT INSERT LINK " + c_op.params[0] + " FAILED with exit code " + r);
 						break;
 					case UPDATE:
 						r = store.updateData(c_op.params[0], c_op.params[1],
 						   c_op.params[4], c_op.params[2], 
-						   Store.encodeKeyspace(c_op.params[3]));
+						   Store.encodeKeyspace(c_op.params[3]), 0);
 						if ( r != 0 ) 
 							_log.info("COMMIT UPDATE " + c_op.params[0] + " FAILED with exit code " + r);
+						break;
+                                        case UPDATE_LINK:
+						r = store.updateData(c_op.params[0], c_op.params[1],
+						   c_op.params[4], c_op.params[2],
+						   Store.encodeKeyspace(c_op.params[3]), 1);
+						if ( r != 0 )
+							_log.info("COMMIT UPDATE LINK " + c_op.params[0] + " FAILED with exit code " + r);
 						break;
 					case DELETE:
 						r = store.deleteData(c_op.params[0], c_op.params[1],
 							c_op.params[2], 
-							Store.encodeKeyspace(c_op.params[3]));
+							Store.encodeKeyspace(c_op.params[3]), 0);
 						if ( r != 0 ) 
 							_log.info("COMMIT DELETE " + c_op.params[0] + " FAILED with exit code " + r);
+						break;
+                                        case DELETE_LINK:
+						r = store.deleteData(c_op.params[0], c_op.params[1],
+							c_op.params[2],
+							Store.encodeKeyspace(c_op.params[3]), 1);
+						if ( r != 0 )
+							_log.info("COMMIT DELETE LINK " + c_op.params[0] + " FAILED with exit code " + r);
 						break;
                                         case ENT_SHALLOW_CLONE:
                                                 r = store.shallowClone(c_op.params[0], Store.encodeKeyspace(c_op.params[1]),
@@ -448,7 +470,7 @@ public class ExecuteTransactions
                                                     _log.info("COMMIT DEEP CLONE " + c_op.params[0] + " FAILED with exit code " + r);
                                                 break;
                                         case ENT_DELETE:
-                                                r = store.deleteByRowKey(c_op.params[0], Store.encodeKeyspace(c_op.params[1]));
+                                                r = store.deleteByRowKey(c_op.params[0], Store.encodeKeyspace(c_op.params[1]), 1);
                                                 if ( r != 0 )
                                                     _log.info("COMMIT ENTITY DELETE " + c_op.params[0] + " FAILED with exit code " + r);
                                                 break;
@@ -468,24 +490,43 @@ public class ExecuteTransactions
 								break;
 							case INSERT:
 								r = store.addData(p_op.params[0], p_op.params[1],
-									p_op.params[2], 
-									Store.encodeKeyspace(p_op.params[3]));
+									p_op.params[2], Store.encodeKeyspace(p_op.params[3]), 0);
 								if ( r != 0 ) 
 									_log.info("ROLLBACK INSERT " + p_op.params[0] + " FAILED with exit code " + r);
+								break;
+                                                        case INSERT_LINK:
+								r = store.addData(p_op.params[0], p_op.params[1],
+									p_op.params[2], Store.encodeKeyspace(p_op.params[3]), 1);
+								if ( r != 0 )
+									_log.info("ROLLBACK INSERT LINK " + p_op.params[0] + " FAILED with exit code " + r);
 								break;
 							case UPDATE:
 								r = store.updateData(p_op.params[0], p_op.params[1],
 								   p_op.params[4], p_op.params[2], 
-								   Store.encodeKeyspace(p_op.params[3]));
+								   Store.encodeKeyspace(p_op.params[3]), 0);
 								if ( r != 0 ) 
 									_log.info("ROLLBACK UPDATE " + p_op.params[0] + " FAILED with exit code " + r);
+								break;
+                                                        case UPDATE_LINK:
+								r = store.updateData(p_op.params[0], p_op.params[1],
+								   p_op.params[4], p_op.params[2],
+								   Store.encodeKeyspace(p_op.params[3]), 1);
+								if ( r != 0 )
+									_log.info("ROLLBACK UPDATE LINK " + p_op.params[0] + " FAILED with exit code " + r);
 								break;
 							case DELETE:
 								r = store.deleteData(p_op.params[0], p_op.params[1],
 									p_op.params[2], 
-									Store.encodeKeyspace(p_op.params[3]));
+									Store.encodeKeyspace(p_op.params[3]), 0);
 								if ( r != 0 ) 
 									_log.info("ROLLBACK DELETE " + p_op.params[0] + " FAILED with exit code " + r);
+								break;
+                                                        case DELETE_LINK:
+								r = store.deleteData(p_op.params[0], p_op.params[1],
+									p_op.params[2],
+									Store.encodeKeyspace(p_op.params[3]), 1);
+								if ( r != 0 )
+									_log.info("ROLLBACK DELETE LINK " + p_op.params[0] + " FAILED with exit code " + r);
 								break;
                                                         case ENT_SHALLOW_CLONE:
                                                                 r = store.deleteShallowClone(c_op.params[0], Store.encodeKeyspace(c_op.params[1]),

@@ -48,8 +48,8 @@ public class Transaction
 		while( st.hasMoreTokens() ) { 
 			oper.addParam(st.nextToken(), ++counter);	
 		}
-		// at least (e,g) must exist
-		if( ++counter < 2 )
+		// check if all parameters are sent
+		if( Operation.needed_params.get(op_type) != ++counter )
 			return 3;
 		// add this operation part of the transaction
                 registerOperation(oper);
@@ -61,6 +61,7 @@ public class Transaction
 
         private void registerOperation(Operation oper) {
             this.ops.add(oper);
+
             // however, if update, then add a LOCK operation for locking the
             //entity that will be deleted
             if( oper.getType() == Operation.Type.UPDATE ) {
@@ -70,7 +71,7 @@ public class Transaction
                 lock_op.swapOldNewValuesParam();
                 this.ops.add(lock_op);
             }
-            // add another LOCK operation for the
+            // if clone, then add another LOCK operation for the entire entity
             else if( oper.getType() == Operation.Type.ENT_SHALLOW_CLONE ||
                 oper.getType() == Operation.Type.ENT_DEEP_CLONE ) {
                 Operation lock_op = new Operation(oper.getType());
@@ -80,10 +81,10 @@ public class Transaction
                 this.ops.add(lock_op);
             }
 
-            // if links are set, then add the locking operations
-            if( Listener.DEFAULT_ERS_CREATE_LINKS.equals("yes") &&
-                    oper.getType() != Operation.Type.ENT_DEEP_CLONE &&
-                    oper.getType() != Operation.Type.ENT_SHALLOW_CLONE ) {
+            // if linking operation
+            if( oper.getType() == Operation.Type.INSERT_LINK ||
+                  oper.getType() == Operation.Type.UPDATE_LINK ||
+                  oper.getType() == Operation.Type.DELETE_LINK ) {
                 Operation lock_op = new Operation(oper.getType());
                 lock_op.just_for_locking = true;
                 lock_op.copyParam(oper);
