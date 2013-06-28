@@ -1,9 +1,16 @@
 import os
 import couchdbkit
+
+# Prefer ../ers-local/ers/ers.py over installed versions
+# TODO: Use setuptools for testing without installing
+import sys
+TESTS_PATH = os.path.dirname(os.path.realpath(__file__))
+ERS_PATH = os.path.join(os.path.dirname(TESTS_PATH), 'ers-local')
+sys.path.insert(0, ERS_PATH)
 from ers import ERSLocal, ModelS, ModelT
 
 DEFAULT_MODEL = ModelS()
-nt_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'timbl.nt')
+nt_file = os.path.join(TESTS_PATH, 'data', 'timbl.nt')
 
 def test():
     server = couchdbkit.Server(r'http://admin:admin@127.0.0.1:5984/')
@@ -65,12 +72,12 @@ def test():
                                                             'dbname': 'ers_remote'}])
     assert set(ers_local.get_annotation(entity)[p]) == all_objects
     assert set(ers_local.get_values(entity, p)) == all_objects
+    assert set(ers_local.search(p)) == set((s, graph) for graph in (g, g2, g3))
     ers_local.delete_entity(entity)
     assert set(ers_local.get_annotation(entity)[p]) == remote_objects
 
     print "Tests pass"
 
 
-
-test()
-
+if __name__ == '__main__':
+    test()
