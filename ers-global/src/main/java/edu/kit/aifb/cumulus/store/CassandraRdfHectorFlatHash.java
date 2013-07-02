@@ -28,6 +28,7 @@ import me.prettyprint.hector.api.ddl.KeyspaceDefinition;
 import org.semanticweb.yars.nx.Node;
 import org.semanticweb.yars.nx.Nodes;
 import org.semanticweb.yars.nx.Resource;
+import org.semanticweb.yars.nx.Variable;
 import org.semanticweb.yars.nx.parser.NxParser;
 import org.semanticweb.yars.nx.parser.ParseException;
 
@@ -49,20 +50,20 @@ public class CassandraRdfHectorFlatHash extends CassandraRdfHectorQuads {
 		_maps.put(CF_S_PO, new int[] { 0, 1, 2 });
 		_maps.put(CF_O_SP, new int[] { 2, 0, 1 });
 		_maps.put(CF_PO_S, new int[] { 1, 2, 0 });
-                 // used to create another triple before loading into different CF for expressing the link
-                _maps.put("link", new int[] { 2, 1, 0});
-		_maps_br.put(CF_S_PO, new int[] { 0, 1, 2, 3, 4 });
-		_maps_br.put(CF_O_SP, new int[] { 2, 0, 1, 3, 4 });
-		_maps_br.put(CF_PO_S, new int[] { 1, 2, 0, 3, 4 });
-                _maps_br.put("link", new int[] { 2, 1, 0, 3, 4 });
-		_maps_br_update_d.put(CF_S_PO, new int[] { 0, 1, 2, 3, 4, 5 });
-		_maps_br_update_d.put(CF_O_SP, new int[] { 2, 0, 1, 3, 4, 5 });
-		_maps_br_update_d.put(CF_PO_S, new int[] { 1, 2, 0, 3, 4, 5 });
-                _maps_br_update_d.put("link", new int[] { 2, 1, 0, 3, 4, 5 });
-		_maps_br_update_i.put(CF_S_PO, new int[] { 0, 1, 5, 3, 4, 2 });
-		_maps_br_update_i.put(CF_O_SP, new int[] { 5, 0, 1, 3, 4, 2 });
-		_maps_br_update_i.put(CF_PO_S, new int[] { 1, 5, 0, 3, 4, 2 });
-                _maps_br_update_i.put("link", new int[] { 5, 1, 0, 3, 4, 2 });
+         // used to create another triple before loading into different CF for expressing the link
+        _maps.put("link", new int[] { 2, 1, 0});
+		_maps_br.put(CF_S_PO, new int[] { 0, 1, 2, 3 });
+		_maps_br.put(CF_O_SP, new int[] { 2, 0, 1, 3 });
+		_maps_br.put(CF_PO_S, new int[] { 1, 2, 0, 3 });
+        _maps_br.put("link", new int[] { 2, 1, 0, 3 });
+		_maps_br_update_d.put(CF_S_PO, new int[] { 0, 1, 2, 3, 4 });
+		_maps_br_update_d.put(CF_O_SP, new int[] { 2, 0, 1, 3, 4 });
+		_maps_br_update_d.put(CF_PO_S, new int[] { 1, 2, 0, 3, 4 });
+        _maps_br_update_d.put("link", new int[] { 2, 1, 0, 3, 4 });
+		_maps_br_update_i.put(CF_S_PO, new int[] { 0, 1, 4, 3, 2 });
+		_maps_br_update_i.put(CF_O_SP, new int[] { 4, 0, 1, 3, 2 });
+		_maps_br_update_i.put(CF_PO_S, new int[] { 1, 4, 0, 3, 2 });
+        _maps_br_update_i.put("link", new int[] { 4, 1, 0, 3, 2 });
 	}
 		
 	@Override
@@ -197,7 +198,7 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 
 //				_log.info("$$$ " + nx[0].toString() + " " + nx[1].toString() + " " + nx[2].toString() + " " + nx[3].toString());
 
-				switch( Integer.parseInt(nx[4].toString()) ) { 
+				switch( Integer.parseInt(nx[3].toString()) ) { 
 					case 0:
 						//ignore query
 						continue; 
@@ -211,7 +212,7 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 						m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn("!p", reordered[0].toN3()));
 						m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn("!o", reordered[1].toN3()));
 						break;
-                                        case 11:
+                    case 11:
 						// insertion link
 						// reorder for the key
 						reordered = Util.reorder(nx, _maps_br.get(cf));
@@ -221,14 +222,14 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 						m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn("!p", reordered[0].toN3()));
 						m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn("!o", reordered[1].toN3()));
 
-                                                // add the back link as well
-                                                reordered = Util.reorder(nx, _maps_br.get("link"));
-                                                rowKey = createKey(new Node[] { reordered[0], reordered[1] });
-                                                colKey = reordered[2].toN3();
-                                                m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn(colKey, ""));
-                                                m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn("!p", reordered[0].toN3()));
-                                                m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn("!o", reordered[1].toN3()));
-						break;
+                        // add the back link as well
+                        reordered = Util.reorder(nx, _maps_br.get("link"));
+                        rowKey = createKey(new Node[] { reordered[0], reordered[1] });
+                        colKey = reordered[2].toN3();
+                        m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn(colKey, ""));
+                        m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn("!p", reordered[0].toN3()));
+                        m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn("!o", reordered[1].toN3()));
+                        break;
 					case 2: 
 						//deletion 
 	 					// reorder for the key
@@ -238,7 +239,7 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 						// delete the full row 
 						m.addDeletion(rowKey.array(), cf);
 						break;
-                                        case 21:
+                    case 21:
 						//deletion link
 	 					// reorder for the key
 						reordered = Util.reorder(nx, _maps_br.get(cf));
@@ -247,14 +248,14 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 						// delete the full row
 						m.addDeletion(rowKey.array(), cf);
 
-                                                // delete the back link as well
-                                                if( nx[2] instanceof Resource ) {
-                                                    reordered = Util.reorder(nx, _maps_br.get("link") );
-                                                    rowKey = createKey(new Node[] { reordered[0], reordered[1] });
-                                                    colKey = reordered[2].toN3();
-                                                    // delete the full row containing the back link
-                                                    m.addDeletion(rowKey.array(), cf);
-                                                }
+                        // delete the back link as well
+                        if( nx[2] instanceof Resource ) {
+                            reordered = Util.reorder(nx, _maps_br.get("link") );
+                            rowKey = createKey(new Node[] { reordered[0], reordered[1] });
+                            colKey = reordered[2].toN3();
+                            // delete the full row containing the back link
+                            m.addDeletion(rowKey.array(), cf);
+                        }
 						break;
 					case 3: 
 						//update, run a delete and an insert 
@@ -275,7 +276,26 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 						m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn("!p", reordered[0].toN3()));
 						m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn("!o", reordered[1].toN3()));
 						break;
-                                        case 31:
+                     case 4: 
+                        // delete the full entity
+                        Node[] query = new Node[3];
+                        query[0] = nx[0];
+                        query[1] = new Variable("p");
+                        query[2] = new Variable("o");
+                        try {
+                            Iterator<Node[]> it = this.query(query, Integer.MAX_VALUE, keyspace);
+                            // if data, delete :) 
+                            for( ; it.hasNext(); ) {
+                                Node[] n = (Node[]) it.next();
+                                //this.deleteData(n, keyspace, 0);
+						        rowKey = createKey(new Node[] { n[0], n[1] });
+                                m.addDeletion(rowKey.array(), cf);
+                            }
+                        } catch (StoreException ex) {
+                            _log.severe(ex.getMessage());
+                        }
+                        break;
+                     case 31:
 						//update with link, run a delete and an insert
 						//deletion
 	 					// reorder for the key
@@ -285,14 +305,14 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 						// delete the full row
 						m.addDeletion(rowKey.array(), cf);
 
-                                                // delete the back link as well
-                                                if( nx[2] instanceof Resource ) {
-                                                    reordered = Util.reorder(nx, _maps_br_update_d.get("link"));
-                                                    rowKey = createKey(new Node[] { reordered[0], reordered[1] });
-                                                    colKey = reordered[2].toN3();
-                                                    // delete the full row containing the back link
-                                                    m.addDeletion(rowKey.array(), cf);
-                                                }
+                        // delete the back link as well
+                        if( nx[2] instanceof Resource ) {
+                            reordered = Util.reorder(nx, _maps_br_update_d.get("link"));
+                            rowKey = createKey(new Node[] { reordered[0], reordered[1] });
+                            colKey = reordered[2].toN3();
+                            // delete the full row containing the back link
+                            m.addDeletion(rowKey.array(), cf);
+                        }
 
 						//insertion
 						// reorder for the key
@@ -303,15 +323,15 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 						m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn("!p", reordered[0].toN3()));
 						m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn("!o", reordered[1].toN3()));
 
-                                                // insert also the new back link
-                                                if( nx[5] instanceof Resource ) {
-                                                    reordered = Util.reorder(nx, _maps_br_update_i.get("link"));
-                                                    rowKey = createKey(new Node[] { reordered[0], reordered[1] });
-                                                    colKey = reordered[2].toN3();
-                                                    m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn(colKey, ""));
-                                                    m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn("!p", reordered[0].toN3()));
-                                                    m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn("!o", reordered[1].toN3()));
-                                                }
+                        // insert also the new back link
+                        if( nx[5] instanceof Resource ) {
+                            reordered = Util.reorder(nx, _maps_br_update_i.get("link"));
+                            rowKey = createKey(new Node[] { reordered[0], reordered[1] });
+                            colKey = reordered[2].toN3();
+                            m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn(colKey, ""));
+                            m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn("!p", reordered[0].toN3()));
+                            m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn("!o", reordered[1].toN3()));
+                        }
 						break;
 					default:	
 						_log.info("OPERATION UNKNOWN, moving to next quad");
@@ -329,7 +349,7 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 
 //				_log.info("$$$ " + nx[0].toString() + " " + nx[1].toString() + " " + nx[2].toString() + " " + nx[3].toString());
 
-				switch( Integer.parseInt(nx[4].toString()) ) { 
+				switch( Integer.parseInt(nx[3].toString()) ) { 
 					case 0:
 						//ignore query
 						continue; 
@@ -362,6 +382,25 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 						colKey = Nodes.toN3(new Node[] { reordered[1], reordered[2] });
 						m.addInsertion(rowKey, cf, HFactory.createStringColumn(colKey, ""));
 						break;
+                    case 4: 
+                         // delete the full entity
+                        Node[] query = new Node[3];
+                        query[0] = nx[0];
+                        query[1] = new Variable("p");
+                        query[2] = new Variable("o");
+                        try {
+                            Iterator<Node[]> it = this.query(query, Integer.MAX_VALUE, keyspace);
+                            // if data, delete :) 
+                            for( ; it.hasNext(); ) {
+                                Node[] n = (Node[]) it.next();
+                                //this.deleteData(n, keyspace, 0);
+						        rowKey = n[0].toN3();
+                                m.addDeletion(rowKey, cf);
+                            }
+                        } catch (StoreException ex) {
+                            _log.severe(ex.getMessage());
+                        }
+                        break;
 					default:
 						_log.info("OPERATION UNKNOWN, moving to next quad");
 						break;

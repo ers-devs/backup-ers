@@ -93,6 +93,7 @@ public class Listener implements ServletContextListener {
                                 */
 				if( op_type == OperationType.WRITE ) 
 	                                return HConsistencyLevel.ALL;
+					//return HConsistencyLevel.ONE;
 				else 
 					return HConsistencyLevel.ONE;
                         }   
@@ -101,6 +102,7 @@ public class Listener implements ServletContextListener {
                         public HConsistencyLevel get(OperationType op_type) {
 				if( op_type == OperationType.WRITE ) 
 	                                return HConsistencyLevel.ALL;
+					//return HConsistencyLevel.ONE;
 				else
 					return HConsistencyLevel.ONE;
                         }   
@@ -108,6 +110,8 @@ public class Listener implements ServletContextListener {
 	// NOTE: this can be adjusted per keyspace, the default one is used for now by all of the keyspaces
 	// NOTE2: this is a web.xml parameter; use the default value for the Embedded version
 	public static Integer DEFAULT_REPLICATION_FACTOR = 1; 
+
+    public static final String SEQ_NUMBER_PROPERTY = "<lastSync>";
 
 	public static final String TRIPLES_SUBJECT = "tsubj";
 	public static final String TRIPLES_OBJECT = "tobj";

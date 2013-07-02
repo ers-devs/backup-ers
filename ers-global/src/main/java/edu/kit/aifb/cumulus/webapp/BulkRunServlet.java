@@ -42,7 +42,7 @@ import static org.apache.commons.lang.StringEscapeUtils.escapeHtml;
  * Use this to bulk load/run a file with operations using this pattern: 
  * 	G E P V query_type .  or 
  * 	G E P V_old query_type v_new . 
- * where query_type_number can be 0(query), 1(create), 2(delete), 3(update)
+ * where query_type_number can be 0(query), 1(create), 2(delete), 3(update), 4(delete full entity)
  * e.g.: <e1> <p2> <v3> "0" .
  */
 @SuppressWarnings("serial")

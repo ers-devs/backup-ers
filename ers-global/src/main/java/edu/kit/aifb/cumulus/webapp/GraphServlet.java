@@ -197,8 +197,8 @@ public class GraphServlet extends AbstractHttpServlet {
 		switch(r) { 
 			case 0: 
 				//delete from ERS_graphs
-				crdf.deleteByRowKey("\""+encoded_keyspace+"\"", Listener.GRAPHS_NAMES_KEYSPACE, 0);
-				sendResponse(ctx, req, resp, HttpServletResponse.SC_OK, "The entire of graph " + graph + " has been deleted.");
+				int r2 = crdf.deleteByRowKey("\""+encoded_keyspace+"\"", Listener.GRAPHS_NAMES_KEYSPACE, 0);
+				sendResponse(ctx, req, resp, HttpServletResponse.SC_OK, "The entire of graph " + graph + " has been deleted. DEBUG: " + r2);
 				break;
 			case 1: 	
 				sendResponse(ctx, req, resp, HttpServletResponse.SC_OK, "The graph " + graph + " does not exist. Nothing to delete.");

@@ -484,9 +484,9 @@ public abstract class AbstractCassandraRdfHector extends Store {
 	public void deleteData(Node[] nx, String keyspace, Integer linkFlag) {
 	 	List<Node[]> batch = new ArrayList<Node[]>();
 		batch.add(nx);
-                // add the back link as well
-                if( linkFlag != 0 && nx[2] instanceof Resource )
-                    batch.add(Util.reorderForLink(nx, _maps.get("link")));
+        // add the back link as well
+        if( linkFlag != 0 && nx[2] instanceof Resource )
+            batch.add(Util.reorderForLink(nx, _maps.get("link")));
 		for (String cf : _cfs) {
 			batchDelete(cf, batch, keyspace);
 		}
@@ -494,31 +494,34 @@ public abstract class AbstractCassandraRdfHector extends Store {
 
 	// return one row iterator over all its columns  
 	public Iterator<Node[]> getRowIterator(String e, String keyspace) { 
-		 Resource resource = new Resource(e);
+		Resource resource = new Resource(e);
 		try {
 			Node[] query = new Node[3];
-			query[0] = new Resource(e);
+			query[0] = NxParser.parseNode(e);
 			query[1] = new Variable("p");
 			query[2] = new Variable("o");	
-       	        	return this.query(query, Integer.MAX_VALUE, keyspace); 
+       	    return this.query(query, Integer.MAX_VALUE, keyspace); 
 		}
-                catch (StoreException ex) {
+        catch (Exception ex) {
 			ex.printStackTrace();
 			_log.severe("ERS exception: " + ex.getMessage());
-                        return null; 
+             return null; 
 		}
 	}
 
 	// it queries to get the whole data and then it uses it to delete
-        //(of course, it would be easier to directly delete it by using the row key, but for POS and OSP column families it is not that easy)
+    //(of course, it would be easier to directly delete it by using the row key, but for POS and OSP column families it is not that easy)
 	public int deleteByRowKey(String e, String keyspace, Integer linkFlag) {
 	 	// check if keyspace exists	
 		if( !existsKeyspace(keyspace)) { 
 			return -2; 
 		}
 		Iterator<Node[]> it = getRowIterator(e, keyspace);		
+            _log.info("DELETE| keyspace: " + keyspace + " e: " + e);
 		for( ; it.hasNext(); ) {
 			Node[] n = (Node[])it.next();
+
+
 			this.deleteData(n, keyspace, linkFlag);
 		} 
 		return 1;
@@ -614,12 +617,12 @@ public abstract class AbstractCassandraRdfHector extends Store {
                 String keyspace_dest) {
                 // test if the source keyspace exists
                 if( !existsKeyspace(keyspace_src) ) {
-			return -1;
-		}
+        			return -1;
+        		}
                 // test if the dest keyspace exists
                 if( !existsKeyspace(keyspace_dest) ) {
-			return -2;
-		}
+		        	return -2;
+        		}
                 // get the src entity
                 Node[] query = new Node[3];
 		try {
@@ -717,7 +720,7 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		int cnt=0;
 		while (nxp.hasNext()) {
 			Node[] nx = nxp.next();
-			if( nx.length != 5 ) {
+			if( nx.length < 4 ) {
 				++cnt;
 				continue;
 			}
