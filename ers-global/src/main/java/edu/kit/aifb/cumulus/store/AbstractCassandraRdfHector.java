@@ -36,6 +36,10 @@ import org.semanticweb.yars.nx.Variable;
 import org.semanticweb.yars.nx.parser.NxParser;
 import org.semanticweb.yars.nx.parser.ParseException;
 
+import me.prettyprint.hector.api.ConsistencyLevelPolicy;
+import me.prettyprint.hector.api.HConsistencyLevel;
+import me.prettyprint.cassandra.service.OperationType;
+
 import edu.kit.aifb.cumulus.webapp.Listener;
 import java.io.File;
 import java.io.FileInputStream;
@@ -43,6 +47,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
+import me.prettyprint.hector.api.ConsistencyLevelPolicy;
 import org.semanticweb.yars2.rdfxml.RDFXMLParser;
 
 public abstract class AbstractCassandraRdfHector extends Store {
@@ -238,7 +243,20 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		}
 		else 
 			return 1;
-		HFactory.createKeyspace(keyspaceName, _cluster, Listener.DEFAULT_CONSISTENCY_POLICY);
+                //NOTE: very important that this keyspace uses ALL consistency!
+                // this may create the following scenario: one node erase and immediately creates
+                // a new keyspace, but another node does see only the deletion for some time ... 
+		HFactory.createKeyspace(keyspaceName, _cluster,  new ConsistencyLevelPolicy() {
+			@Override
+                        public HConsistencyLevel get(OperationType op_type, String cf) {
+                                return HConsistencyLevel.ALL;
+                        }
+
+                        @Override
+                        public HConsistencyLevel get(OperationType op_type) {
+                            return HConsistencyLevel.ALL;
+                        }
+                });
 		return 0;
 	}
 
