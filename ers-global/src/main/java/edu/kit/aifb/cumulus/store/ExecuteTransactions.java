@@ -16,20 +16,56 @@ public class ExecuteTransactions
         // keep here only locks for the entire entity
         protected static ConcurrentHashMap<String, LockEnt> full_entity_lock_map = new ConcurrentHashMap<String, LockEnt>();
 
+        // in case the granularity is changed, a cleanup of locks may be required
+        public static void resetLocks() {
+            ExecuteTransactions.lock_map.clear();
+            ExecuteTransactions.full_entity_lock_map.clear();
+        }
+
 	// returns the key used in the lock table
 	// just one record with this key can exist in the table at same time
 	private String getKey(Operation op) {
-                if( Listener.DEFAULT_TRANS_LOCKING_GRANULARITY.equals("1") )
-                    return op.getParam(0);
-                else if( Listener.DEFAULT_TRANS_LOCKING_GRANULARITY.equals("2") )
-                    return op.getParam(0)+op.getParam(1);
-                // default case
-		return op.getParam(0)+op.getParam(1)+op.getParam(2); // (e,p,v)
+                switch( op.getType() ) {
+                        case INSERT:
+                        case INSERT_LINK:
+                        case UPDATE:
+                        case UPDATE_LINK:
+                        case DELETE:
+                        case DELETE_LINK:
+                            if( Listener.DEFAULT_TRANS_LOCKING_GRANULARITY.equals("1") )
+                                return op.getParam(3)+op.getParam(0);  // (g, e)
+                            else if( Listener.DEFAULT_TRANS_LOCKING_GRANULARITY.equals("2") )
+                                return op.getParam(3)+op.getParam(0)+op.getParam(1);
+                            else
+                                return op.getParam(3)+op.getParam(0)+op.getParam(1)+op.getParam(2);
+                        case ENT_DEEP_CLONE:
+                        case ENT_SHALLOW_CLONE:
+                        case ENT_DELETE:
+                            return op.getParam(1)+op.getParam(0);
+                        default:
+                            // THIS MUST not be reached!
+                            return "";
+                }
 	}
 
         // the key used to lock a full entity, mostly used by copy operation
         private String getFullEntityKey(Operation op) {
-            return op.getParam(0);
+              switch( op.getType() ) {
+                        case INSERT:
+                        case INSERT_LINK:
+                        case UPDATE:
+                        case UPDATE_LINK:
+                        case DELETE:
+                        case DELETE_LINK:
+                            return op.getParam(3)+op.getParam(0);
+                        case ENT_DEEP_CLONE:
+                        case ENT_SHALLOW_CLONE:
+                        case ENT_DELETE:
+                            return op.getParam(1)+op.getParam(0);
+                        default:
+                            // THIS MUST not be reached!
+                            return "";
+                }
         }
 
        /**
@@ -86,7 +122,7 @@ public class ExecuteTransactions
 		Hashtable<String, LockEnt> locks_hold = new Hashtable<String, LockEnt>();
 
                 // keep track here of all the locks over the entire entity (important for copy operations and delete all)
-                // NOTE: a ReadLock here means that either a lock exist on one of this entity properties
+                // NOTE: a ReadLock here means that either a read or write lock exists on one of this entity properties
                 // NOTE: a WriteLock here means exclusive access at the level of the entity, no other locks can co-exist
                 Hashtable<String, LockEnt> full_locks_hold = new Hashtable<String, LockEnt>();
 
@@ -102,46 +138,43 @@ public class ExecuteTransactions
 
                                 /** ADDED FOR SUPPORTING COPY OPERATION AND ITS ENTIRE ENTITY LOCKING **/
                                 // maybe a previous operation has already acquired the needed lock, check this
-				LockEnt prev_lock = full_locks_hold.get(key_e);
-				if( prev_lock != null && prev_lock.type == LockEnt.LockType.WRITE_LOCK )
+				LockEnt prev_full_lock = full_locks_hold.get(key_e);
+				if( prev_full_lock != null && prev_full_lock.type == LockEnt.LockType.WRITE_LOCK )
 					// don't need anything else as a previous operation has acquired
                                         // an exclusive lock over the whole entity 
 					continue;
                                 /**END**/
-
 				// maybe a previous operation has already acquired the needed lock, check this 
-				prev_lock = locks_hold.get(key);
+				LockEnt prev_lock = locks_hold.get(key);
 				if( prev_lock != null && prev_lock.type == LockEnt.LockType.WRITE_LOCK ) 
 					// don't need anything else as a previous operation has acquired the exclusive lock
 					continue;
+
 
 				//_log.info("Try to acquire lock for key: " + key);
 				// check if another T acquired write lock on the same key
 				LockEnt prev_val = ExecuteTransactions.lock_map.get(key);
 				if( prev_val != null && prev_val.type == LockEnt.LockType.WRITE_LOCK ) {
 					// conflict 
-					_log.info("CONFLICT: transaction " + t.ID + " @ operation with key " + key + 
-						  " (write lock already acquired by another transaction)");
+					_log.info("CONFLICT: transaction " + t.ID + " @ operation with key " + key);
 					return 1;
 				}
 
-				// NO WRITE LOCK ACQUIRED BY ANOTHER T, TRY TO ACQUIRE THE NEEDED LOCK 
-				if( op.getType() == Operation.Type.GET ) { 
-					// operation == GET, just a READ_LOCK would suffice
-					if( prev_lock != null && ( prev_lock.type == LockEnt.LockType.READ_LOCK || 
-								   prev_lock.type == LockEnt.LockType.WRITE_LOCK ) ) 
-						// lock has been acquired already for this entity, go to next transaction 
+				// NO WRITE LOCK ACQUIRED BY ANOTHER T, TRY TO ACQUIRE THE NEEDED LOCK
+                                switch( op.getType() ) {
+                                    case GET:
+                                        // for GET we need a read lock
+					if( prev_lock != null && prev_lock.type == LockEnt.LockType.READ_LOCK )
+						// lock has been acquired already for this entity, go to next operation
 						continue;
 
-					// read again the already acquired lock with this key (as it may have changed since previous 
- 					// same call)
+					// read again the already acquired lock with this key
 					prev_val = ExecuteTransactions.lock_map.get(key);	
 					if( prev_val != null ) {
 						// increment the previous read lock counter 
 						LockEnt new_lock = new LockEnt(LockEnt.LockType.READ_LOCK, prev_val.counter.get()+1);
 						if( ExecuteTransactions.lock_map.replace(key, prev_val, new_lock) == false ) {
-							// this may fail in case another Transaction changed this lock (maybe a WRITE one
- 							// or just deleted at all); a restart is needed here 
+							// this may fail in case another Transaction changed this lock 
 							_log.info("CONFLICT: transaction " + t.ID + " @ operation with key " + key + 
 								   " (cannot increment a READ_LOCK counter as another changed it in the" +
 								   " meanwhile; restart the whole transaction!)");
@@ -154,30 +187,29 @@ public class ExecuteTransactions
                                                     /** ADDED FOR SUPPORTING COPY OPERATION AND ITS ENTIRE ENTITY LOCKING **/
                                                     // now try to increment the read lock on the entire entity, if still exist
                                                     // write lock is only used by copy operation to signal exclusive lock
-                                                    prev_val = ExecuteTransactions.full_entity_lock_map.get(key_e);
-                                                    if( prev_val != null && prev_val.type == LockEnt.LockType.READ_LOCK ) {
+                                                    prev_full_lock = ExecuteTransactions.full_entity_lock_map.get(key_e);
+                                                    if( prev_full_lock != null && prev_full_lock.type == LockEnt.LockType.READ_LOCK ) {
                                                         // increment the counter
-                                                        new_lock = new LockEnt(LockEnt.LockType.READ_LOCK, prev_val.counter.get()+1);
-                                                        if( ExecuteTransactions.full_entity_lock_map.replace(key_e, prev_val, new_lock) == false ) {
-                                                                // so again a conflict, another T may have changed either the counter or the
-                                                                // entire lock; a restart is needed here
+                                                        new_lock = new LockEnt(LockEnt.LockType.READ_LOCK, prev_full_lock.counter.get()+1);
+                                                        if( ExecuteTransactions.full_entity_lock_map.replace(key_e, prev_full_lock, new_lock) == false ) {
+                                                                // so again a conflict, another T may have changed either the counter or the entire lock;
                                                                 _log.info("CONFLICT: transaction " + t.ID + " @ operation with key " + key +
                                                                         "(cannot increment a READ_LOCK on the FULL entity lock map as aonther " +
                                                                         "changed it in the meanwhile; restart the whole transaction!)");
                                                                 return 22;
                                                         }
                                                         else {
-                                                                // keep local track about the lock acquired
+                                                                // keep local track of the lock acquired
                                                                 full_locks_hold.put(key_e, new_lock);
+                                                                continue;
                                                         }
                                                     }
                                                     /**END**/
                                                 }
 					}
-					else {
+					else {// previous value is empty!
 						// just add the read lock object (no one existed before)
-						if( ExecuteTransactions.lock_map.putIfAbsent(key, 
-							new LockEnt(LockEnt.LockType.READ_LOCK, 1)) != null ) {
+						if( ExecuteTransactions.lock_map.putIfAbsent(key, new LockEnt(LockEnt.LockType.READ_LOCK, 1)) != null ) {
 							_log.info("CONFLICT: transaction " + t.ID + " @ operation with key " + key + 
 								  " (cannot add new READ_LOCK as there may already be added by another" +
 								  " concurrent transaction; restart the whole transaction!)");
@@ -200,16 +232,20 @@ public class ExecuteTransactions
                                                     else {
                                                             // keep local track about the lock acquired
                                                             full_locks_hold.put(key_e, new LockEnt(LockEnt.LockType.READ_LOCK, 1));
+                                                            continue;
                                                     }
                                                     /**END**/
                                                 }
 					}
-				}
-                                // !COPY operation && !GET operation (thus: insert,update,delete,lock + linking ops)
-				else if( op.getType() != Operation.Type.ENT_SHALLOW_CLONE &&
-                                         op.getType() != Operation.Type.ENT_DEEP_CLONE &&
-                                         op.getType() != Operation.Type.ENT_DELETE) {
-					// operation != GET, we want an EXCLUSIVE WRITE LOCK
+                                        break;
+                                case INSERT:
+                                case INSERT_LINK:
+                                case UPDATE:
+                                case UPDATE_LINK:
+                                case DELETE:
+                                case DELETE_LINK:
+                                case LOCK:
+					// operation != GET, so here we want an EXCLUSIVE WRITE LOCK
 					if( prev_lock != null ) { 
 						if ( prev_lock.type == LockEnt.LockType.WRITE_LOCK )
 							// lock has been acquired already for this entity, go to next transaction 
@@ -228,21 +264,18 @@ public class ExecuteTransactions
 							else { 
 								// keep local track of this updated lock (the old value is replaced)
 								locks_hold.put(key, new LockEnt(LockEnt.LockType.WRITE_LOCK));
-
                                                                  /** ADDED FOR SUPPORTING COPY OPERATION AND ITS ENTIRE ENTITY LOCKING **/
                                                                 // do nothing in this case, a read lock on the full entity map must exist already
                                                                 /**END**/
-
 								// don't bother anymore as we have now the right lock 
 								continue; 
 							}
 						}
 					}
-					// read again the already acquired lock with this key (as it may have changed since previous 
- 					// same call)
+					// read again the already acquired lock with this key (as it may have changed since previous same call)
                                         /** ADDED FOR SUPPORTING COPY OPERATION AND ITS ENTIRE ENTITY LOCKING **/
-                                        prev_val = ExecuteTransactions.full_entity_lock_map.get(key_e);
-                                        if( prev_val != null && prev_val.type == LockEnt.LockType.WRITE_LOCK ) {
+                                        prev_full_lock = ExecuteTransactions.full_entity_lock_map.get(key_e);
+                                        if( prev_full_lock != null && prev_full_lock.type == LockEnt.LockType.WRITE_LOCK ) {
                                                 //conflict, write lock is exclusive, it means a copy operation is running now
                                                 _log.info("CONFLICT: transaction " + t.ID + " @ operation with key " + key +
                                                           " (cannot get an exclusive WRITE_LOCK as a WRITE_LOCK already exists" +
@@ -321,79 +354,65 @@ public class ExecuteTransactions
                                                         /** END **/
                                                 }
 					}
-						
-				}
-                                else {
-                                    /** ADDED FOR SUPPORTING COPY OPERATION AND ITS ENTIRE ENTITY LOCKING **/
-                                    // COPY_ALL operations, so get a WRITE_LOCK on the entire entity if none READ LOCKS
-                                    // OR ENTITY_DELETE operation, same locks must be acquired
-                                    prev_val = ExecuteTransactions.full_entity_lock_map.get(key_e);
-                                    if( prev_val != null) {
-                                        if( prev_val.type == LockEnt.LockType.WRITE_LOCK ) {
-                                            // another one has already acquired it, so quit
-                                            _log.info("CONFLICT: transaction " + t.ID + " @ operation with key " + key +
-                                                "(cannot create a WRITE_LOCK on the FULL entity lock map as aonther " +
-                                                "has acquired a WRITE_LOCK it in the meanwhile; restart the whole transaction!)");
-                                            return 30;
+					break;
+                                case ENT_SHALLOW_CLONE:
+                                case ENT_DEEP_CLONE:
+                                case ENT_DELETE:
+                                        /** ADDED FOR SUPPORTING COPY OPERATION AND ITS ENTIRE ENTITY LOCKING **/
+                                        // COPY_ALL operations, so get a WRITE_LOCK on the entire entity if none READ LOCKS
+                                        // OR ENTITY_DELETE operation, same locks must be acquired
+                                        prev_full_lock = ExecuteTransactions.full_entity_lock_map.get(key_e);
+                                        if( prev_full_lock != null) {
+                                            if( prev_full_lock.type == LockEnt.LockType.WRITE_LOCK ) {
+                                                // another one has already acquired it, so quit
+                                                _log.info("CONFLICT: transaction " + t.ID + " @ operation with key " + key +
+                                                    "(cannot create a WRITE_LOCK on the FULL entity lock map as aonther " +
+                                                    "has acquired a WRITE_LOCK it in the meanwhile; restart the whole transaction!)");
+                                                return 30;
+                                            }
+                                            else { // so there is a read lock
+                                                prev_lock = full_locks_hold.get(key_e);
+                                               if( prev_lock != null && prev_lock.type == LockEnt.LockType.READ_LOCK ) {
+                                                    // upgrade to write lock if we are the only reader
+                                                    if( ExecuteTransactions.full_entity_lock_map.replace(key_e,
+                                                            new LockEnt(LockEnt.LockType.READ_LOCK, 1),
+                                                            new LockEnt(LockEnt.LockType.WRITE_LOCK)) == false ) {
+                                                            // it failed (there is another reader besides me)
+                                                            _log.info("CONFLICT: transaction " + t.ID + " @ operation with key "
+                                                                     + key + " (cannot upgrade to WRITE_LOCK to the FULL entity locking map" +
+                                                                     " as another reader is present; restart the whole transaction)");
+                                                            return 31;
+                                                    }
+                                                    else {
+                                                        // keep local track of the locks
+                                                        full_locks_hold.put(key_e, new LockEnt(LockEnt.LockType.WRITE_LOCK));
+                                                    }
+                                                }
+                                                // WRITE_LOCK can also be present, but this check has been done at the beginning, so skip it here
+                                            }
                                         }
                                         else {
-                                            prev_lock = full_locks_hold.get(key_e);
-                                            if( prev_lock == null ) {
-                                                // insert a WRITE_LOCK as no locks present yet
-                                                 if( ExecuteTransactions.full_entity_lock_map.putIfAbsent(key_e, 
-                                                        new LockEnt(LockEnt.LockType.WRITE_LOCK) ) != null ) {
-                                                     // so again a conflict, another T may have already added a lock
-                                                        _log.info("CONFLICT: transaction " + t.ID + " @ operation with key " + key +
-                                                            " (cannot add new WRITE_LOCK on FULL lock entity map as there may already " +
-                                                            "be added by another concurrent transaction; restart the whole transaction!)");
-                                                        return 33;
-                                                 }
-                                                 else {
-                                                     // keep local track of the locks
-                                                    full_locks_hold.put(key_e, new LockEnt(LockEnt.LockType.WRITE_LOCK));
-                                                 }
+                                            // so no one has a READ or WRITE lock
+                                            // no it's time to create a WRITE exclusive lock
+                                            if( ExecuteTransactions.full_entity_lock_map.putIfAbsent(key_e,
+                                                new LockEnt(LockEnt.LockType.WRITE_LOCK) ) != null ) {
+                                                // so again a conflict, another T may have already added a lock
+                                                _log.info("CONFLICT: transaction " + t.ID + " @ operation with key " + key +
+                                                    " (cannot add new WRITE_LOCK on FULL lock entity map as there may already " +
+                                                    "be added by another concurrent transaction; restart the whole transaction!)");
+                                                return 32;
                                             }
-                                            // READ_LOCK, upgrade to WRITE_LOCK is we are the one holding this read lock
-                                            else if( prev_lock != null && prev_lock.type == LockEnt.LockType.READ_LOCK ) {
-                                                // upgrade to write lock if we are the only reader
-                                                if( ExecuteTransactions.full_entity_lock_map.replace(key_e,
-                                                        new LockEnt(LockEnt.LockType.READ_LOCK, prev_lock.counter.get()),
-                                                        new LockEnt(LockEnt.LockType.WRITE_LOCK)) == false ) {
-                                                        // it failed (there is another reader besides me)
-                                                        _log.info("CONFLICT: transaction " + t.ID + " @ operation with key "
-                                                                 + key + " (cannot upgrade to WRITE_LOCK to the FULL entity locking map" +
-                                                                 " as another reader is present; restart the whole transaction)");
-                                                        return 31;
-                                                }
-                                                else {
+                                            else
                                                     // keep local track of the locks
                                                     full_locks_hold.put(key_e, new LockEnt(LockEnt.LockType.WRITE_LOCK));
-                                                }
-                                            }
-                                            // WRITE_LOCK can also be present, but this check has been done at the beginning, so skip it here
+                                        /** END **/
                                         }
-                                    }
-                                    else {
-                                        // so no one has a READ or WRITE lock
-                                        // no it's time to create a WRITE exclusive lock
-                                        if( ExecuteTransactions.full_entity_lock_map.putIfAbsent(key_e,
-                                            new LockEnt(LockEnt.LockType.WRITE_LOCK) ) != null ) {
-                                            // so again a conflict, another T may have already added a lock
-                                            _log.info("CONFLICT: transaction " + t.ID + " @ operation with key " + key +
-                                                " (cannot add new WRITE_LOCK on FULL lock entity map as there may already " +
-                                                "be added by another concurrent transaction; restart the whole transaction!)");
-                                            return 32;
-                                        }
-                                        else {
-                                                // keep local track of the locks
-                                                full_locks_hold.put(key_e, new LockEnt(LockEnt.LockType.WRITE_LOCK));
-                                        }
-                                    /** END **/
-                                    }
+                                        break;
+                                    default:
+                                           _log.info("UNKNOWN operation part of transaction " + t.ID);
+                                           break;
                                 }
 			}
-
-                        
 			/*// here, all locks are held
                         this.print(locks_hold, t);
 			try { 
@@ -401,7 +420,6 @@ public class ExecuteTransactions
 				Thread.sleep(2000);
 			} catch (Exception e ) { }
 			_log.info("WAKE UP !!");*/
-
 
 
 			// run the ops 

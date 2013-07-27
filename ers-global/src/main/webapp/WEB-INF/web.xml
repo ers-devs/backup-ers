@@ -18,7 +18,7 @@
 	<!-- NOTE: just one of the two following parameters can be set true !! not both in the same time -->
 	<context-param>	
 		<param-name>start-embedded</param-name> 
-		<param-value>no</param-value>  <!-- possible values: yes,no; if 'yes', the replication is set to 1 -->
+		<param-value>yes</param-value>  <!-- possible values: yes,no; if 'yes', the replication is set to 1 -->
 	</context-param>
 	<context-param>	
 		<param-name>run-on-openshift</param-name> 
@@ -91,6 +91,11 @@
   	<servlet-name>response</servlet-name>
   	<servlet-class>edu.kit.aifb.cumulus.webapp.ResponseServlet</servlet-class>
   </servlet>
+  <servlet>
+  	<servlet-name>setup</servlet-name>
+  	<servlet-class>edu.kit.aifb.cumulus.webapp.ChangeServerParams</servlet-class>
+  </servlet>
+  
 
 
   <!--TM: C R U D operations --> 
@@ -170,7 +175,11 @@
     <url-pattern>/*</url-pattern>
   </servlet-mapping>
 -->
- 
+
+   <servlet-mapping>
+    <servlet-name>setup</servlet-name>
+    <url-pattern>/setup</url-pattern>
+  </servlet-mapping>
   <servlet-mapping>
     <servlet-name>graph</servlet-name>
     <url-pattern>/graph</url-pattern>
