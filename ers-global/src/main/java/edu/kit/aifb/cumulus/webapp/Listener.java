@@ -16,6 +16,7 @@ import org.yaml.snakeyaml.Yaml;
 
 import edu.kit.aifb.cumulus.store.CassandraRdfHectorHierHash;
 import edu.kit.aifb.cumulus.store.CassandraRdfHectorFlatHash;
+import edu.kit.aifb.cumulus.store.ExecuteTransactions;
 import edu.kit.aifb.cumulus.store.Store;
 import edu.kit.aifb.cumulus.store.StoreException;
 
@@ -84,7 +85,7 @@ public class Listener implements ServletContextListener {
 
 	// NOTE: consistency level is tunable per keyspace, per CF, per operation type 
         // for the moment all keyspaces use this default policy 
-	public static final ConsistencyLevelPolicy DEFAULT_CONSISTENCY_POLICY = new ConsistencyLevelPolicy() { 
+	public static ConsistencyLevelPolicy DEFAULT_CONSISTENCY_POLICY = new ConsistencyLevelPolicy() { 
 			@Override
                         public HConsistencyLevel get(OperationType op_type, String cf) {
                                 /*NOTE: based on operation type and/or column family, the 
@@ -92,26 +93,27 @@ public class Listener implements ServletContextListener {
                                    However, we just use for the moment the given parameter 
                                 */
 				if( op_type == OperationType.WRITE ) 
-	                                return HConsistencyLevel.ALL;
-					//return HConsistencyLevel.ONE;
+	                                return Listener.write_cons_level;
 				else 
-					return HConsistencyLevel.ONE;
+					return Listener.read_cons_level;
                         }   
                                                                                                        
                         @Override
                         public HConsistencyLevel get(OperationType op_type) {
-				if( op_type == OperationType.WRITE ) 
-	                                return HConsistencyLevel.ALL;
-					//return HConsistencyLevel.ONE;
+				if( op_type == OperationType.WRITE )
+	                                return Listener.write_cons_level;
 				else
-					return HConsistencyLevel.ONE;
+					return Listener.read_cons_level;
                         }   
 	};
+        public static HConsistencyLevel read_cons_level = HConsistencyLevel.ONE;
+        public static HConsistencyLevel write_cons_level = HConsistencyLevel.ONE;
+
 	// NOTE: this can be adjusted per keyspace, the default one is used for now by all of the keyspaces
 	// NOTE2: this is a web.xml parameter; use the default value for the Embedded version
 	public static Integer DEFAULT_REPLICATION_FACTOR = 1; 
 
-    public static final String SEQ_NUMBER_PROPERTY = "<lastSync>";
+        public static final String SEQ_NUMBER_PROPERTY = "<lastSync>";
 
 	public static final String TRIPLES_SUBJECT = "tsubj";
 	public static final String TRIPLES_OBJECT = "tobj";
@@ -321,4 +323,72 @@ public class Listener implements ServletContextListener {
 		else
 			return _formats.get("ntriples");
 	}
+
+        public static void changeConsistency(String read_cons, String write_cons) {
+            
+            if( read_cons.equals("one") )
+                read_cons_level = HConsistencyLevel.ONE;
+            else if( read_cons.equals("quorum") )
+                read_cons_level = HConsistencyLevel.QUORUM;
+            else if( read_cons.equals("all") )
+                read_cons_level = HConsistencyLevel.ALL;
+            else if( read_cons.equals("two") )
+                read_cons_level = HConsistencyLevel.TWO;
+            else if( read_cons.equals("three") )
+                read_cons_level = HConsistencyLevel.THREE;
+            else if( read_cons.equals("any") )
+                read_cons_level = HConsistencyLevel.ANY;
+
+            if( read_cons.equals("one") )
+                write_cons_level = HConsistencyLevel.ONE;
+            else if( read_cons.equals("quorum") )
+                write_cons_level = HConsistencyLevel.QUORUM;
+            else if( read_cons.equals("all") )
+                write_cons_level = HConsistencyLevel.ALL;
+            else if( read_cons.equals("two") )
+                write_cons_level = HConsistencyLevel.TWO;
+            else if( read_cons.equals("three") )
+                write_cons_level = HConsistencyLevel.THREE;
+            else if( read_cons.equals("any") )
+                write_cons_level = HConsistencyLevel.ANY;
+
+            Listener.DEFAULT_CONSISTENCY_POLICY = new ConsistencyLevelPolicy() {
+			@Override
+                        public HConsistencyLevel get(OperationType op_type, String cf) {
+                                /*NOTE: based on operation type and/or column family, the
+                                   consistency level is tunable
+                                   However, we just use for the moment the given parameter
+                                */
+				if( op_type == OperationType.WRITE )
+	                                return Listener.write_cons_level;
+				else
+					return Listener.read_cons_level;
+                        }
+
+                        @Override
+                        public HConsistencyLevel get(OperationType op_type) {
+				if( op_type == OperationType.WRITE )
+	                                return Listener.write_cons_level;
+				else
+					return Listener.read_cons_level;
+                        }   
+            };
+        }
+
+        public static void changeLockingGranulartiy(String level) {
+            ExecuteTransactions.resetLocks();
+            if( level.matches("e") ) {
+                Listener.DEFAULT_TRANS_LOCKING_GRANULARITY = "1";
+            }
+            else if( level.matches("ep") ) {
+                Listener.DEFAULT_TRANS_LOCKING_GRANULARITY = "2";
+            }
+            else if( level.matches("epv") ) {
+                Listener.DEFAULT_TRANS_LOCKING_GRANULARITY = "3";
+            }
+        }
+
+        public static void changeReplicationFactor(int factor) {
+            Listener.DEFAULT_REPLICATION_FACTOR = factor;
+        }
 }

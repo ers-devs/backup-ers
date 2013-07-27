@@ -2,13 +2,25 @@
 
 import couchdbkit
 import rdflib
-import peer_monitor
+import re
 import sys
 
 from StringIO import StringIO
 from collections import defaultdict
 from models import ModelS, ModelT
-                                                        
+from zeroconf import ServicePeer
+
+
+ERS_AVAHI_SERVICE_TYPE = '_ers._tcp'
+
+ERS_PEER_TYPE_CONTRIB = 'contrib'
+ERS_PEER_TYPE_BRIDGE = 'bridge'
+ERS_PEER_TYPES = [ERS_PEER_TYPE_CONTRIB, ERS_PEER_TYPE_BRIDGE]
+
+ERS_DEFAULT_DBNAME = 'ers'
+ERS_DEFAULT_PEER_TYPE = ERS_PEER_TYPE_CONTRIB
+
+
 # Document model is used to store data in CouchDB. The API is independent from the choice of model.
 DEFAULT_MODEL = ModelS()
 
@@ -16,6 +28,52 @@ DEFAULT_MODEL = ModelS()
 def merge_annotations(a, b):
     for key in set(a.keys() + b.keys()):
         a.setdefault(key, []).extend(b.get(key, []))
+
+
+class ERSPeerInfo(ServicePeer):
+    """
+    This class contains information on an ERS peer.
+    """
+    dbname = None
+    peer_type = None
+
+    def __init__(self, service_name, host, ip, port, dbname=ERS_DEFAULT_DBNAME, peer_type=ERS_DEFAULT_PEER_TYPE):
+        ServicePeer.__init__(self, service_name, ERS_AVAHI_SERVICE_TYPE, host, ip, port)
+        self.dbname = dbname
+        self.peer_type = peer_type
+
+    def __str__(self):
+        return "ERS peer '{0}' on {1}(={2}):{3} (dbname={4}, type={5})".format(
+            self.service_name, self.host, self.ip, self.port, self.dbname, self.peer_type)
+
+    def to_json(self):
+        return {
+            'name': self.service_name,
+            'host': self.host,
+            'ip': self.ip,
+            'port': self.port,
+            'dbname': self.dbname,
+            'type': self.peer_type
+        }
+
+    @staticmethod
+    def from_service_peer(svc_peer):
+        dbname = ERS_DEFAULT_DBNAME
+        peer_type = ERS_DEFAULT_PEER_TYPE
+
+        match = re.match(r'ERS on .* [(](.*)[)]$', svc_peer.service_name)
+        if match is None:
+            return None
+
+        for item in match.group(1).split(','):
+            param, sep, value = item.partition('=')
+
+            if param == 'dbname':
+                dbname = value
+            if param == 'type':
+                peer_type = value
+
+        return ERSPeerInfo(svc_peer.service_name, svc_peer.host, svc_peer.ip, svc_peer.port, dbname, peer_type)
 
 
 class EntityCache(defaultdict):
@@ -120,8 +178,9 @@ class ERSReadWrite(ERSReadOnly):
             self.server.delete_db(dbname)
         self.db = self.server.get_or_create_db(dbname)
         self.model = model
-        if not self.db.doc_exist('_design/index'):
-            self.db.save_doc(self.model.index_doc())
+        for doc in self.model.initial_docs():
+            if not self.db.doc_exist(doc['_id']):
+                self.db.save_doc(doc)
 
     def add_data(self, s, p, o, g):
         """Adds the value for the given property in the given entity. Create the entity if it does not exist yet)"""
@@ -225,21 +284,27 @@ class ERSLocal(ERSReadWrite):
     def get_peers(self):
         result = []
 
-        for peer_info in self.fixed_peers + peer_monitor.get_peers():
+        for peer_info in self.fixed_peers:
             if 'url' in peer_info:
                 server_url = peer_info['url']
             elif 'host' in peer_info and 'port' in peer_info:
                 server_url = r'http://admin:admin@' + peer_info['host'] + ':' + str(peer_info['port']) + '/'
             else:
-                continue
+                raise RuntimeError("Must include either 'url' or 'host' and 'port' in fixed peer specification")
 
             dbname = peer_info['dbname'] if 'dbname' in peer_info else 'ers'
 
             result.append({'server_url': server_url, 'dbname': dbname})
+
+        state_doc = self.db.open_doc('_design/state')
+        for peer in state_doc['peers']:
+            result.append({
+                'server_url': r'http://admin:admin@' + peer['ip'] + ':' + str(peer['port']) + '/',
+                'dbname': peer['dbname']
+            })
 
         return result
 
 
 if __name__ == '__main__':
     print "To test this module use 'python ../../tests/test_ers.py'."
-

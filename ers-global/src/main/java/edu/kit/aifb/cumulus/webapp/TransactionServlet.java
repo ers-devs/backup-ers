@@ -44,7 +44,7 @@ public class TransactionServlet extends AbstractHttpServlet {
 	    return Thread.currentThread().getStackTrace()[2].getLineNumber()+"";
 	}
 	
-	private void doPostWithoutFile(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException { 
+	private void doPostWithoutFile(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
 		long start = System.currentTimeMillis();
 		ServletContext ctx = getServletContext();
 		if (req.getCharacterEncoding() == null)
@@ -267,10 +267,12 @@ public class TransactionServlet extends AbstractHttpServlet {
 	public void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
 		throw new UnsupportedOperationException("GET currently not supported, sorry.");
 	}	
-	public void doDelete(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
+
+        public void doDelete(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
 		throw new UnsupportedOperationException("DELETE currently not supported, sorry.");
 	}
-	public void doPut(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
+
+        public void doPut(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
 		throw new UnsupportedOperationException("PUT currently not supported, sorry.");
 	}
 }
