@@ -12,9 +12,9 @@ branches:
     - develop
 
 before_install:
-    - sudo apt-get install -qq avahi-utils python-avahi
 
-install: 
+install:
+    - PYLIBDIR=`pip --version | grep -Po '(?<=from ).*(?=/(dist|site)-packages)'`; curl https://raw.github.com/ers-devs/ers-utils/master/xo_setup/site-packages.tar | tar --transform "s,^,$PYLIBDIR/," -x "site-packages/avahi/*"
     - pip install -r requirements.txt --use-mirrors
     - python setup.py install
     - cd ers-global; mvn package -Dmaven.test.skip=true -f pom_embedded.xml; cd ..
