@@ -333,6 +333,23 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		return 0;
 	}
 
+        // truncate all column families of a keyspace
+        public int truncateKeyspace(String keyspaceName) {
+		if(keyspaceName.startsWith("system"))
+			return 3;
+		if ( !existsKeyspace(keyspaceName))
+			return 1;
+
+		try {
+                    for (String cf : _cfs)
+			_cluster.truncate(keyspaceName, cf);
+		} catch(HectorException ex) {
+			ex.printStackTrace();
+			return 2;
+		}
+		return 0;
+	}
+
 	protected ColumnDefinition createColDef(String colName, String validationClass, boolean indexed) {
 		return createColDef(colName, validationClass, indexed, colName + "_index");
 	}

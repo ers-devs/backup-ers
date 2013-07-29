@@ -156,6 +156,7 @@ public abstract class Store {
 		return dropKeyspace(keyspace, false);
 	}
 	public abstract int dropKeyspace(String keyspace, boolean force);
+        public abstract int truncateKeyspace(String keyspace);
 	// create a keyspace / graph 
 	public abstract int createKeyspace(String keyspace);
 	public abstract int createKeyspaceInit(String keyspace);
