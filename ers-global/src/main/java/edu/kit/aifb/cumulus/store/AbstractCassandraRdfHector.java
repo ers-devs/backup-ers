@@ -206,15 +206,19 @@ public abstract class AbstractCassandraRdfHector extends Store {
 	@Override
 	public void open() throws StoreException {
 		CassandraHostConfigurator config = new CassandraHostConfigurator(_hosts);
-		config.setCassandraThriftSocketTimeout(60*1000);
-		//config.setMaxActive(6);
-		//config.setExhaustedPolicy(ExhaustedPolicy.WHEN_EXHAUSTED_BLOCK);
+        // before it was 60s, kind of too less if we want to DELETE a DB quite big ...
+		config.setCassandraThriftSocketTimeout(1200*1000);
+        // !! IMPORTANT: maxim number of concurrent connections 
+        config.setUseSocketKeepalive(true);
+        config.setMaxActive(1028);
+        //config.setExhaustedPolicy(ExhaustedPolicy.WHEN_EXHAUSTED_GROW);
+
 		config.setRetryDownedHostsDelayInSeconds(5);
 		config.setRetryDownedHostsQueueSize(128);
 		config.setRetryDownedHosts(true);
 		
 		// experiments with timeouts
-		config.setCassandraThriftSocketTimeout(0);
+		//config.setCassandraThriftSocketTimeout(0);
 		config.setMaxWaitTimeWhenExhausted(-1);
 		
 		// RoundRobin, LeastActive and Dynamic as possible values
