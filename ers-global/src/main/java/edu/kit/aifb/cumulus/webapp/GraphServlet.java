@@ -200,9 +200,12 @@ public class GraphServlet extends AbstractHttpServlet {
                 else
                     r = crdf.dropKeyspace(encoded_keyspace, force);
 		switch(r) { 
-			case 0: 
-				//delete from ERS_graphs
-				int r2 = crdf.deleteByRowKey("\""+encoded_keyspace+"\"", Listener.GRAPHS_NAMES_KEYSPACE, 0);
+			case 0:
+                                int r2 = -1;
+                                if( truncate == null ) {
+                                    //delete from ERS_graphs
+                                    r2 = crdf.deleteByRowKey("\""+encoded_keyspace+"\"", Listener.GRAPHS_NAMES_KEYSPACE, 0);
+                                }
 				sendResponse(ctx, req, resp, HttpServletResponse.SC_OK, "The entire of graph " + graph + " has been deleted/truncated. DEBUG: " + r2);
 				break;
 			case 1: 	

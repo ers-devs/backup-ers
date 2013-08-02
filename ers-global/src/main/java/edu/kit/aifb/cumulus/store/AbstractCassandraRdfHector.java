@@ -205,8 +205,9 @@ public abstract class AbstractCassandraRdfHector extends Store {
 
 	@Override
 	public void open() throws StoreException {
-		CassandraHostConfigurator config = new CassandraHostConfigurator(_hosts);
-		config.setCassandraThriftSocketTimeout(60*1000);
+                CassandraHostConfigurator config = new CassandraHostConfigurator(_hosts);
+		config.setCassandraThriftSocketTimeout(600*1000);
+                config.setUseSocketKeepalive(true);
 		//config.setMaxActive(6);
 		//config.setExhaustedPolicy(ExhaustedPolicy.WHEN_EXHAUSTED_BLOCK);
 		config.setRetryDownedHostsDelayInSeconds(5);
