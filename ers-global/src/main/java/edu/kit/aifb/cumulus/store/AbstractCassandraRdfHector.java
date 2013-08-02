@@ -212,11 +212,9 @@ public abstract class AbstractCassandraRdfHector extends Store {
         config.setUseSocketKeepalive(true);
         config.setMaxActive(1028);
         //config.setExhaustedPolicy(ExhaustedPolicy.WHEN_EXHAUSTED_GROW);
-
 		config.setRetryDownedHostsDelayInSeconds(5);
 		config.setRetryDownedHostsQueueSize(128);
 		config.setRetryDownedHosts(true);
-		
 		// experiments with timeouts
 		//config.setCassandraThriftSocketTimeout(0);
 		config.setMaxWaitTimeWhenExhausted(-1);
