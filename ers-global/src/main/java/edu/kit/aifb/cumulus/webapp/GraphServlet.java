@@ -3,6 +3,7 @@ package edu.kit.aifb.cumulus.webapp;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Iterator;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.List;
 
@@ -143,6 +144,7 @@ public class GraphServlet extends AbstractHttpServlet {
 				sendError(ctx, req, resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Error on adding the triple!");
 		}
 
+
 // TEST IF GRAPH HAS BEEN REALLY CREATED!
                 boolean b = crdf.existsKeyspace(a_id);
                 if( b == false ) {
@@ -150,6 +152,22 @@ public class GraphServlet extends AbstractHttpServlet {
                     sendError(ctx, req, resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
                             "GRAPH " + a_id + " HAS NOOOOOOOOOT BEEN CREATED ?!?!?!");
                 }
+                if( !b ) {
+                    _log.info("sleep 5s and try again later ... ");
+            try {
+                Thread.sleep(5000);
+            } catch (InterruptedException ex) {
+                Logger.getLogger(GraphServlet.class.getName()).log(Level.SEVERE, null, ex);
+            }
+                }
+                b = crdf.existsKeyspace(a_id);
+                if( b == false ) {
+                    _log.info("GRAPH " + a_id + " HAS NOOOOOOOOOT BEEN CREATED ?!?!?!");
+                    sendError(ctx, req, resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                            "GRAPH " + a_id + " HAS NOOOOOOOOOT BEEN CREATED ?!?!?!");
+                }
+//END OF TEST
+                
 
 		PrintWriter out = resp.getWriter();
 		resp.setContentType(formatter.getContentType());
