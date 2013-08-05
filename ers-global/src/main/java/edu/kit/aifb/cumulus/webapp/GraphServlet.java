@@ -144,29 +144,6 @@ public class GraphServlet extends AbstractHttpServlet {
 				sendError(ctx, req, resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Error on adding the triple!");
 		}
 
-
-// TEST IF GRAPH HAS BEEN REALLY CREATED!
-                while(true) {
-                    boolean b = crdf.existsKeyspace(a_id);
-                    if( b == false ) {
-                        _log.info("GRAPH " + a_id + " HAS NOOOOOOOOOT BEEN CREATED ?!?!?!");
-                        sendError(ctx, req, resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-                                "GRAPH " + a_id + " HAS NOOOOOOOOOT BEEN CREATED ?!?!?!");
-                    }
-                    if( !b ) {
-                        _log.info("sleep 5s and try again later ... ");
-                        try {
-                            Thread.sleep(5000);
-                        } catch (InterruptedException ex) {
-                            Logger.getLogger(GraphServlet.class.getName()).log(Level.SEVERE, null, ex);
-                        }
-                    }
-                    if(b)
-                        break;
-                }
-//END OF TEST
-                
-
 		PrintWriter out = resp.getWriter();
 		resp.setContentType(formatter.getContentType());
 		out.print(msg);
