@@ -237,7 +237,7 @@ public abstract class AbstractCassandraRdfHector extends Store {
 	public int createKeyspaceInit(String keyspaceName) {
 		if (! existsKeyspace(keyspaceName))  {
 			try { 
-				_cluster.addKeyspace(createKeyspaceDefinition(keyspaceName));	
+				_cluster.addKeyspace(createKeyspaceDefinition(keyspaceName), true);
 			} catch( HectorException ex ) { 
 				ex.printStackTrace(); 	
 				return 3;
@@ -268,7 +268,7 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		String encoded_keyspaceName = Store.encodeKeyspace(keyspaceName);
 		if (! existsKeyspace(encoded_keyspaceName)) 
 			try { 
-				_cluster.addKeyspace(createKeyspaceDefinition(encoded_keyspaceName));	
+				_cluster.addKeyspace(createKeyspaceDefinition(encoded_keyspaceName), true);
 			} catch( HectorException ex ) { 
 				ex.printStackTrace(); 	
 				_log.severe("ERS exception: "+ex.getMessage() );
