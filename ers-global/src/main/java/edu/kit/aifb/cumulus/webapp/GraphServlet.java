@@ -126,6 +126,7 @@ public class GraphServlet extends AbstractHttpServlet {
 		Store crdf = (Store)ctx.getAttribute(Listener.STORE);
 		// create the associated keyspace with this graph, if it does not exist  
 		int r = crdf.createKeyspace(a_id);
+
 		String msg = "";
 		if( r == 2 ) 
 			sendError(ctx, req, resp, HttpServletResponse.SC_FORBIDDEN, "Graph " + graph + " cannot be created. Do not use 'system' as prefix.");
@@ -144,28 +145,6 @@ public class GraphServlet extends AbstractHttpServlet {
 				sendError(ctx, req, resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Error on adding the triple!");
 		}
 
-
-// TEST IF GRAPH HAS BEEN REALLY CREATED!
-                while(true) {
-                    boolean b = crdf.existsKeyspace(a_id);
-                    if( b == false ) {
-                        _log.info("GRAPH " + a_id + " HAS NOOOOOOOOOT BEEN CREATED ?!?!?!");
-                        sendError(ctx, req, resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-                                "GRAPH " + a_id + " HAS NOOOOOOOOOT BEEN CREATED ?!?!?!");
-                    }
-                    if( !b ) {
-                        _log.info("sleep 5s and try again later ... ");
-                        try {
-                            Thread.sleep(5000);
-                        } catch (InterruptedException ex) {
-                            Logger.getLogger(GraphServlet.class.getName()).log(Level.SEVERE, null, ex);
-                        }
-                    }
-                    if(b)
-                        break;
-                }
-//END OF TEST
-                
 
 		PrintWriter out = resp.getWriter();
 		resp.setContentType(formatter.getContentType());
@@ -196,7 +175,7 @@ public class GraphServlet extends AbstractHttpServlet {
 		if ( formatter.getContentType().equals("text/html") )
 			resource = escapeHtml(resource); 
 
-                String truncate = req.getParameter("truncate");
+        String truncate = req.getParameter("truncate");
 		String a_id = req.getParameter("g");
 		String f = req.getParameter("f");
 		if( a_id == null || a_id.isEmpty() ) { 
@@ -224,6 +203,7 @@ public class GraphServlet extends AbstractHttpServlet {
                     r = crdf.truncateKeyspace(encoded_keyspace);
                 else
                     r = crdf.dropKeyspace(encoded_keyspace, force);
+
 		switch(r) { 
 			case 0:
                                 int r2 = -1;
@@ -251,7 +231,7 @@ public class GraphServlet extends AbstractHttpServlet {
 				sendError(ctx, req, resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "UNKNOWN exit code of deleting/truncating the graph method.");
 				break;
 		}	
-		_log.info("[dataset] DELETE/TRUNCATE keyspace(graph) " + (System.currentTimeMillis() - start) + "ms ");
+		_log.info("[dataset] DELETE/TRUNCATE keyspace("+graph+") " + (System.currentTimeMillis() - start) + "ms ");
 	}
 
 	public void doPut(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
