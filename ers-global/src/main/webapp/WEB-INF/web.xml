@@ -61,6 +61,13 @@
       <param-value>3</param-value>
    </context-param>
 
+   <!-- set this to 1 if you want to use Zookeeper locks -->
+   <!-- if not set, default value is 0 -->
+   <context-param> 
+      <param-name>ers-transactional-locking-zookeeper</param-name>
+      <param-value>1</param-value>
+   </context-param>
+
    <!-- if set to yes, any operation will also handle links  -->
    <!-- default value: yes -->
    <context-param>

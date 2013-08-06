@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.servlet.ServletContext;
@@ -29,6 +30,10 @@ import edu.kit.aifb.cumulus.webapp.formatter.NTriplesFormat;
 import edu.kit.aifb.cumulus.webapp.formatter.SerializationFormat;
 import edu.kit.aifb.cumulus.webapp.formatter.StaxRDFXMLFormat;
 
+import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.framework.CuratorFrameworkFactory;
+import org.apache.curator.retry.ExponentialBackoffRetry;
+import org.apache.curator.test.TestingCluster;
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper;
 /** 
  * 
@@ -54,6 +59,7 @@ public class Listener implements ServletContextListener {
 	private static final String PARAM_DEFAULT_REPLICATION_FACTOR = "default-replication-factor";
 	private static final String PARAM_START_EMBEDDED = "start-embedded";
         private static final String PARAM_TRANS_LOCKING_GRANULARITY = "ers-transactional-locking-granularity";
+        private static final String PARAM_TRANS_LOCKING_ZOOKEEPER = "ers-transactional-locking-zookeeper";
 	
 	// add here the params stored in web.xml
 	private static final String[] CONFIG_PARAMS = new String[] {
@@ -133,7 +139,12 @@ public class Listener implements ServletContextListener {
 
 	private static Map<String,String> _mimeTypes = null;
 	private static Map<String,SerializationFormat> _formats = null;
-	
+
+        // Zookeeper + Curator stuff
+        public static TestingCluster ts;
+        public static CuratorFramework curator_client;
+        public static int USE_ZOOKEEPER;
+
 	@SuppressWarnings("unchecked")
 	public void contextInitialized(ServletContextEvent event) {
 		ServletContext ctx = event.getServletContext();
@@ -296,6 +307,24 @@ public class Listener implements ServletContextListener {
 			if (proxy)
 				ctx.setAttribute(PROXY_MODE, true);
 		}
+
+
+                USE_ZOOKEEPER = config.containsKey(PARAM_TRANS_LOCKING_ZOOKEEPER) ?
+				Integer.parseInt(config.get(PARAM_TRANS_LOCKING_ZOOKEEPER)) : 0;
+                if( USE_ZOOKEEPER == 1 ) {
+                     // TOOD: exchange this with real Zookeeper Instalation !!!
+                    ts = new TestingCluster(3);
+                    try {
+                        ts.start();
+                    } catch (Exception ex) {
+                        Logger.getLogger(Listener.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                    curator_client = CuratorFrameworkFactory.newClient(Listener.ts.getConnectString(),
+                            new ExponentialBackoffRetry(1000,3));
+                    curator_client.start();
+                    
+                    //TODO: where to put ts.stop() and curator_client.stop() ?!
+                }
 	}
 		
 	public void contextDestroyed(ServletContextEvent event) {
@@ -306,6 +335,14 @@ public class Listener implements ServletContextListener {
 				_log.severe(e.getMessage());
 			}
 		}
+                if( USE_ZOOKEEPER == 1 ) {
+                    try {
+                        ts.stop();
+                    } catch (IOException ex) {
+                        Logger.getLogger(Listener.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                    curator_client.close();
+                }
 	}
 	
 	public static String getFormat(String accept) {

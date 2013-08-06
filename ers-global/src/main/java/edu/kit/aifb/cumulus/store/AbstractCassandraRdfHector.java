@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import me.prettyprint.cassandra.connection.LeastActiveBalancingPolicy;
@@ -425,7 +426,15 @@ public abstract class AbstractCassandraRdfHector extends Store {
 	}
 
 	public int runTransaction(Transaction t) { 
-		return _transactions.executeTransaction(t, this);
+            try {
+                if( Listener.USE_ZOOKEEPER == 1 )
+                    return _transactions.executeTransaction_Zookeeper(t, this);
+                else
+                    return _transactions.executeTransaction(t, this);
+            } catch (Exception ex) {
+                Logger.getLogger(AbstractCassandraRdfHector.class.getName()).log(Level.SEVERE, null, ex);
+                return -1;
+            }
 	}
 
 	@Override
@@ -521,12 +530,12 @@ public abstract class AbstractCassandraRdfHector extends Store {
 	public void deleteData(Node[] nx, String keyspace, Integer linkFlag) {
 	 	List<Node[]> batch = new ArrayList<Node[]>();
 		batch.add(nx);
-        // add the back link as well
-        if( linkFlag != 0 && nx[2] instanceof Resource )
-            batch.add(Util.reorderForLink(nx, _maps.get("link")));
-		for (String cf : _cfs) {
-			batchDelete(cf, batch, keyspace);
-		}
+                // add the back link as well
+                if( linkFlag != 0 && nx[2] instanceof Resource )
+                    batch.add(Util.reorderForLink(nx, _maps.get("link")));
+                for (String cf : _cfs) {
+                        batchDelete(cf, batch, keyspace);
+                }
 	}
 
 	// return one row iterator over all its columns  
@@ -557,8 +566,6 @@ public abstract class AbstractCassandraRdfHector extends Store {
             _log.info("DELETE| keyspace: " + keyspace + " e: " + e);
 		for( ; it.hasNext(); ) {
 			Node[] n = (Node[])it.next();
-
-
 			this.deleteData(n, keyspace, linkFlag);
 		} 
 		return 1;
