@@ -341,6 +341,7 @@ public class Listener implements ServletContextListener {
                     }*/
                     _log.info("Closing Curator client ... ");
                     curator_client.close();
+                    return;
             } 
         }
 
@@ -442,12 +443,16 @@ public class Listener implements ServletContextListener {
 
         public static void changeTransactionalSupport(String mode) {
             if( mode.equals("zookeeper") )  {
-                // TODO: also initialize curator_client !!!
-                Listener.USE_ZOOKEEPER = 1;
-                Listener.initOrCleanCurator(null);
+                if( Listener.USE_ZOOKEEPER != 1) {
+                    Listener.USE_ZOOKEEPER = 1;
+                    Listener.initOrCleanCurator(null);
+                }
              }
             else {
-                Listener.USE_ZOOKEEPER = 0;
+                if( Listener.USE_ZOOKEEPER != 0 || Listener.USE_ZOOKEEPER != -1 ) {
+                    Listener.USE_ZOOKEEPER = -1;  
+                    Listener.initOrCleanCurator(null);
+                }
             }
         }
 }
