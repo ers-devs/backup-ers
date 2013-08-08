@@ -58,7 +58,7 @@ public class ChangeServerParams extends AbstractHttpServlet {
 		if( read_cons == null && write_cons == null && trans_lock_gran == null 
                         && replication_factor == null && trans_support == null ) {
 			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please pass data like " +
-                                "'read_cons=_&write_cons=_&trans_lock_gran=_&repl_factor=_'");
+                                "'read_cons=_&write_cons=_&trans_lock_gran=_&repl_factor=_&trans_support=_'");
                         _log.info("Please pass data like 'read_cons=_&write_cons=_&trans_lock_gran=_&repl_factor=_&trans_support=_'");
 			return;
 		}
