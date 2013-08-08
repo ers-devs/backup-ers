@@ -20,7 +20,7 @@
       <properties>
         <packaging.type>war</packaging.type>
         <startup.openshift>no</startup.openshift>
-        <startup.embedded>yes</startup.embedded>
+        <startup.embedded>no</startup.embedded>
       </properties>
       <dependencies>
         <dependency>
