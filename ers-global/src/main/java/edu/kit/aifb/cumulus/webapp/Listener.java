@@ -428,4 +428,14 @@ public class Listener implements ServletContextListener {
         public static void changeReplicationFactor(int factor) {
             Listener.DEFAULT_REPLICATION_FACTOR = factor;
         }
+
+        public static void changeTransactionalSupport(String mode) {
+            if( mode.equals("zookeeper") )  {
+                // TODO: also initialize curator_client !!!
+                Listener.USE_ZOOKEEPER = 1;
+            }
+            else {
+                Listener.USE_ZOOKEEPER = 0;
+            }
+        }
 }
