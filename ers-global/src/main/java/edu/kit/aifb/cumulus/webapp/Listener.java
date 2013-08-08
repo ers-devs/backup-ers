@@ -45,6 +45,7 @@ public class Listener implements ServletContextListener {
 	private static final String PARAM_CONFIGFILE = "config-file";
 	
 	private static final String PARAM_HOSTS = "cassandra-hosts";
+	private static final String PARAM_ZOOKEEPER_HOSTS = "zookeeper-hosts";
 	private static final String PARAM_EMBEDDED_HOST = "cassandra-embedded-host";		// this must be set to 'true' if intended to be run as embedded version
 	private static final String PARAM_RUN_ON_OPENSHIFT = "run-on-openshift";		// this must be set to 'true' if intended to be run on Openshift platform
 	private static final String PARAM_ERS_KEYSPACES_PREFIX = "ers-keyspaces-prefix";
@@ -58,18 +59,19 @@ public class Listener implements ServletContextListener {
 	private static final String PARAM_TUPLE_LENGTH = "tuple_length";
 	private static final String PARAM_DEFAULT_REPLICATION_FACTOR = "default-replication-factor";
 	private static final String PARAM_START_EMBEDDED = "start-embedded";
-        private static final String PARAM_TRANS_LOCKING_GRANULARITY = "ers-transactional-locking-granularity";
-        private static final String PARAM_TRANS_LOCKING_ZOOKEEPER = "ers-transactional-locking-zookeeper";
+    private static final String PARAM_TRANS_LOCKING_GRANULARITY = "ers-transactional-locking-granularity";
+    private static final String PARAM_TRANS_LOCKING_ZOOKEEPER = "ers-transactional-locking-zookeeper";
 	
 	// add here the params stored in web.xml
 	private static final String[] CONFIG_PARAMS = new String[] {
-		PARAM_HOSTS, PARAM_EMBEDDED_HOST, PARAM_ERS_KEYSPACES_PREFIX, 
+		PARAM_HOSTS, PARAM_EMBEDDED_HOST, PARAM_ZOOKEEPER_HOSTS,
+        PARAM_ERS_KEYSPACES_PREFIX, 
 		PARAM_LAYOUT, PARAM_PROXY_MODE, PARAM_RUN_ON_OPENSHIFT,
 		//PARAM_RESOURCE_PREFIX, PARAM_DATA_PREFIX,
 		PARAM_TRIPLES_OBJECT,
 		PARAM_TRIPLES_SUBJECT, PARAM_QUERY_LIMIT,
 		PARAM_DEFAULT_REPLICATION_FACTOR, PARAM_START_EMBEDDED,
-                PARAM_TRANS_LOCKING_GRANULARITY
+        PARAM_TRANS_LOCKING_GRANULARITY, PARAM_TRANS_LOCKING_ZOOKEEPER
 		};
 	
 //	private static final String DEFAULT_RESOURCE_PREFIX = "resource";
@@ -308,23 +310,22 @@ public class Listener implements ServletContextListener {
 				ctx.setAttribute(PROXY_MODE, true);
 		}
 
-
-                USE_ZOOKEEPER = config.containsKey(PARAM_TRANS_LOCKING_ZOOKEEPER) ?
-				Integer.parseInt(config.get(PARAM_TRANS_LOCKING_ZOOKEEPER)) : 0;
-                if( USE_ZOOKEEPER == 1 ) {
-                     // TOOD: exchange this with real Zookeeper Instalation !!!
-                    ts = new TestingCluster(3);
-                    try {
-                        ts.start();
-                    } catch (Exception ex) {
-                        Logger.getLogger(Listener.class.getName()).log(Level.SEVERE, null, ex);
-                    }
-                    curator_client = CuratorFrameworkFactory.newClient(Listener.ts.getConnectString(),
-                            new ExponentialBackoffRetry(1000,3));
-                    curator_client.start();
-                    
-                    //TODO: where to put ts.stop() and curator_client.stop() ?!
-                }
+        USE_ZOOKEEPER = config.containsKey(PARAM_TRANS_LOCKING_ZOOKEEPER) ?
+                        Integer.parseInt(config.get(PARAM_TRANS_LOCKING_ZOOKEEPER)) : 0;
+        if( USE_ZOOKEEPER == 1 ) {
+            /* THIS MAY BE USED FOR LOCAL TESTING, WITHOUT USING A REAL ZOOKEEPER DEPLOYMENT
+            ts = new TestingCluster(3);
+            try {
+                ts.start();
+            } catch (Exception ex) {
+                Logger.getLogger(Listener.class.getName()).log(Level.SEVERE, null, ex);
+            }*/
+            String zookeeperHosts = config.get(PARAM_ZOOKEEPER_HOSTS);
+		    _log.info("Connect to following zookeeper hosts: " + zookeeperHosts);
+            curator_client = CuratorFrameworkFactory.newClient(zookeeperHosts,
+                    new ExponentialBackoffRetry(1000,3));
+            curator_client.start();
+        }
 	}
 		
 	public void contextDestroyed(ServletContextEvent event) {
@@ -335,14 +336,15 @@ public class Listener implements ServletContextListener {
 				_log.severe(e.getMessage());
 			}
 		}
-                if( USE_ZOOKEEPER == 1 ) {
-                    try {
-                        ts.stop();
-                    } catch (IOException ex) {
-                        Logger.getLogger(Listener.class.getName()).log(Level.SEVERE, null, ex);
-                    }
-                    curator_client.close();
-                }
+        if( USE_ZOOKEEPER == 1 ) {
+            /* THIS MAY BE USED FOR LOCAL TESTING, WITHOUT USING A REAL ZOOKEEPER DEPLOYMENT
+            try {
+                ts.stop();
+            } catch (IOException ex) {
+                Logger.getLogger(Listener.class.getName()).log(Level.SEVERE, null, ex);
+            }*/
+            curator_client.close();
+        }
 	}
 	
 	public static String getFormat(String accept) {

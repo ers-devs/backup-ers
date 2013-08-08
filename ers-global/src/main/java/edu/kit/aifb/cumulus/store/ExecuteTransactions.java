@@ -216,6 +216,7 @@ public class ExecuteTransactions
                                        break;
                                 }
 			}
+
 			/*// here, all locks are held
                         this.print(curator_locks_hold, t);
 			try {
