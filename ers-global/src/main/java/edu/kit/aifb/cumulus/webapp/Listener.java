@@ -146,6 +146,7 @@ public class Listener implements ServletContextListener {
         public static TestingCluster ts;
         public static CuratorFramework curator_client;
         public static int USE_ZOOKEEPER;
+        public static String zookeeperHosts; 
 
 	@SuppressWarnings("unchecked")
 	public void contextInitialized(ServletContextEvent event) {
@@ -312,22 +313,37 @@ public class Listener implements ServletContextListener {
 
         USE_ZOOKEEPER = config.containsKey(PARAM_TRANS_LOCKING_ZOOKEEPER) ?
                         Integer.parseInt(config.get(PARAM_TRANS_LOCKING_ZOOKEEPER)) : 0;
-        if( USE_ZOOKEEPER == 1 ) {
-            /* THIS MAY BE USED FOR LOCAL TESTING, WITHOUT USING A REAL ZOOKEEPER DEPLOYMENT
-            ts = new TestingCluster(3);
-            try {
-                ts.start();
-            } catch (Exception ex) {
-                Logger.getLogger(Listener.class.getName()).log(Level.SEVERE, null, ex);
-            }*/
-            String zookeeperHosts = config.get(PARAM_ZOOKEEPER_HOSTS);
-		    _log.info("Connect to following zookeeper hosts: " + zookeeperHosts);
-            curator_client = CuratorFrameworkFactory.newClient(zookeeperHosts,
-                    new ExponentialBackoffRetry(1000,3));
-            curator_client.start();
-        }
-	}
+        Listener.zookeeperHosts = config.get(PARAM_ZOOKEEPER_HOSTS);
+        Listener.initOrCleanCurator(_log);
+    }
 		
+        private static void initOrCleanCurator(Logger _log) {
+            if( USE_ZOOKEEPER == 1 ) {
+                    /* THIS MAY BE USED FOR LOCAL TESTING, WITHOUT USING A REAL ZOOKEEPER DEPLOYMENT
+                    ts = new TestingCluster(3);
+                    try {
+                        ts.start();
+                    } catch (Exception ex) {
+                        Logger.getLogger(Listener.class.getName()).log(Level.SEVERE, null, ex);
+                    }*/
+                    _log.info("Connect to following zookeeper hosts: " + Listener.zookeeperHosts);
+                    curator_client = CuratorFrameworkFactory.newClient(Listener.zookeeperHosts,
+                            new ExponentialBackoffRetry(1000,3));
+                    curator_client.start();
+                    return;
+            }
+            if( USE_ZOOKEEPER == -1 ) { 
+                    /* THIS MAY BE USED FOR LOCAL TESTING, WITHOUT USING A REAL ZOOKEEPER DEPLOYMENT
+                    try {
+                        ts.stop();
+                    } catch (IOException ex) {
+                        Logger.getLogger(Listener.class.getName()).log(Level.SEVERE, null, ex);
+                    }*/
+                    _log.info("Closing Curator client ... ");
+                    curator_client.close();
+            } 
+        }
+
 	public void contextDestroyed(ServletContextEvent event) {
 		if (_crdf != null) {
 			try {
@@ -336,15 +352,8 @@ public class Listener implements ServletContextListener {
 				_log.severe(e.getMessage());
 			}
 		}
-        if( USE_ZOOKEEPER == 1 ) {
-            /* THIS MAY BE USED FOR LOCAL TESTING, WITHOUT USING A REAL ZOOKEEPER DEPLOYMENT
-            try {
-                ts.stop();
-            } catch (IOException ex) {
-                Logger.getLogger(Listener.class.getName()).log(Level.SEVERE, null, ex);
-            }*/
-            curator_client.close();
-        }
+        USE_ZOOKEEPER = -1;
+        initOrCleanCurator(_log);
 	}
 	
 	public static String getFormat(String accept) {
@@ -435,7 +444,8 @@ public class Listener implements ServletContextListener {
             if( mode.equals("zookeeper") )  {
                 // TODO: also initialize curator_client !!!
                 Listener.USE_ZOOKEEPER = 1;
-            }
+                Listener.initOrCleanCurator(null);
+             }
             else {
                 Listener.USE_ZOOKEEPER = 0;
             }
