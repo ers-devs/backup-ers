@@ -326,7 +326,8 @@ public class Listener implements ServletContextListener {
                     } catch (Exception ex) {
                         Logger.getLogger(Listener.class.getName()).log(Level.SEVERE, null, ex);
                     }*/
-                    _log.info("Connect to following zookeeper hosts: " + Listener.zookeeperHosts);
+                    if( _log != null )
+                        _log.info("Connect to following zookeeper hosts: " + Listener.zookeeperHosts);
                     curator_client = CuratorFrameworkFactory.newClient(Listener.zookeeperHosts,
                             new ExponentialBackoffRetry(1000,3));
                     curator_client.start();
@@ -339,7 +340,8 @@ public class Listener implements ServletContextListener {
                     } catch (IOException ex) {
                         Logger.getLogger(Listener.class.getName()).log(Level.SEVERE, null, ex);
                     }*/
-                    _log.info("Closing Curator client ... ");
+                    if( _log != null )
+                        _log.info("Closing Curator client ... ");
                     curator_client.close();
                     return;
             } 
