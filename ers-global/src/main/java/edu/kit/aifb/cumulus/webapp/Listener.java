@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.servlet.ServletContext;
@@ -29,6 +30,10 @@ import edu.kit.aifb.cumulus.webapp.formatter.NTriplesFormat;
 import edu.kit.aifb.cumulus.webapp.formatter.SerializationFormat;
 import edu.kit.aifb.cumulus.webapp.formatter.StaxRDFXMLFormat;
 
+import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.framework.CuratorFrameworkFactory;
+import org.apache.curator.retry.ExponentialBackoffRetry;
+import org.apache.curator.test.TestingCluster;
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper;
 /** 
  * 
@@ -40,6 +45,7 @@ public class Listener implements ServletContextListener {
 	private static final String PARAM_CONFIGFILE = "config-file";
 	
 	private static final String PARAM_HOSTS = "cassandra-hosts";
+	private static final String PARAM_ZOOKEEPER_HOSTS = "zookeeper-hosts";
 	private static final String PARAM_EMBEDDED_HOST = "cassandra-embedded-host";		// this must be set to 'true' if intended to be run as embedded version
 	private static final String PARAM_RUN_ON_OPENSHIFT = "run-on-openshift";		// this must be set to 'true' if intended to be run on Openshift platform
 	private static final String PARAM_ERS_KEYSPACES_PREFIX = "ers-keyspaces-prefix";
@@ -53,17 +59,19 @@ public class Listener implements ServletContextListener {
 	private static final String PARAM_TUPLE_LENGTH = "tuple_length";
 	private static final String PARAM_DEFAULT_REPLICATION_FACTOR = "default-replication-factor";
 	private static final String PARAM_START_EMBEDDED = "start-embedded";
-        private static final String PARAM_TRANS_LOCKING_GRANULARITY = "ers-transactional-locking-granularity";
+    private static final String PARAM_TRANS_LOCKING_GRANULARITY = "ers-transactional-locking-granularity";
+    private static final String PARAM_TRANS_LOCKING_ZOOKEEPER = "ers-transactional-locking-zookeeper";
 	
 	// add here the params stored in web.xml
 	private static final String[] CONFIG_PARAMS = new String[] {
-		PARAM_HOSTS, PARAM_EMBEDDED_HOST, PARAM_ERS_KEYSPACES_PREFIX, 
+		PARAM_HOSTS, PARAM_EMBEDDED_HOST, PARAM_ZOOKEEPER_HOSTS,
+        PARAM_ERS_KEYSPACES_PREFIX, 
 		PARAM_LAYOUT, PARAM_PROXY_MODE, PARAM_RUN_ON_OPENSHIFT,
 		//PARAM_RESOURCE_PREFIX, PARAM_DATA_PREFIX,
 		PARAM_TRIPLES_OBJECT,
 		PARAM_TRIPLES_SUBJECT, PARAM_QUERY_LIMIT,
 		PARAM_DEFAULT_REPLICATION_FACTOR, PARAM_START_EMBEDDED,
-                PARAM_TRANS_LOCKING_GRANULARITY
+        PARAM_TRANS_LOCKING_GRANULARITY, PARAM_TRANS_LOCKING_ZOOKEEPER
 		};
 	
 //	private static final String DEFAULT_RESOURCE_PREFIX = "resource";
@@ -133,7 +141,13 @@ public class Listener implements ServletContextListener {
 
 	private static Map<String,String> _mimeTypes = null;
 	private static Map<String,SerializationFormat> _formats = null;
-	
+
+        // Zookeeper + Curator stuff
+        public static TestingCluster ts;
+        public static CuratorFramework curator_client;
+        public static int USE_ZOOKEEPER;
+        public static String zookeeperHosts; 
+
 	@SuppressWarnings("unchecked")
 	public void contextInitialized(ServletContextEvent event) {
 		ServletContext ctx = event.getServletContext();
@@ -296,8 +310,43 @@ public class Listener implements ServletContextListener {
 			if (proxy)
 				ctx.setAttribute(PROXY_MODE, true);
 		}
-	}
+
+        USE_ZOOKEEPER = config.containsKey(PARAM_TRANS_LOCKING_ZOOKEEPER) ?
+                        Integer.parseInt(config.get(PARAM_TRANS_LOCKING_ZOOKEEPER)) : 0;
+        Listener.zookeeperHosts = config.get(PARAM_ZOOKEEPER_HOSTS);
+        Listener.initOrCleanCurator(_log);
+    }
 		
+        private static void initOrCleanCurator(Logger _log) {
+            if( USE_ZOOKEEPER == 1 ) {
+                    /* THIS MAY BE USED FOR LOCAL TESTING, WITHOUT USING A REAL ZOOKEEPER DEPLOYMENT
+                    ts = new TestingCluster(3);
+                    try {
+                        ts.start();
+                    } catch (Exception ex) {
+                        Logger.getLogger(Listener.class.getName()).log(Level.SEVERE, null, ex);
+                    }*/
+                    if( _log != null )
+                        _log.info("Connect to following zookeeper hosts: " + Listener.zookeeperHosts);
+                    curator_client = CuratorFrameworkFactory.newClient(Listener.zookeeperHosts,
+                            new ExponentialBackoffRetry(1000,3));
+                    curator_client.start();
+                    return;
+            }
+            if( USE_ZOOKEEPER == -1 ) { 
+                    /* THIS MAY BE USED FOR LOCAL TESTING, WITHOUT USING A REAL ZOOKEEPER DEPLOYMENT
+                    try {
+                        ts.stop();
+                    } catch (IOException ex) {
+                        Logger.getLogger(Listener.class.getName()).log(Level.SEVERE, null, ex);
+                    }*/
+                    if( _log != null )
+                        _log.info("Closing Curator client ... ");
+                    curator_client.close();
+                    return;
+            } 
+        }
+
 	public void contextDestroyed(ServletContextEvent event) {
 		if (_crdf != null) {
 			try {
@@ -306,6 +355,8 @@ public class Listener implements ServletContextListener {
 				_log.severe(e.getMessage());
 			}
 		}
+        USE_ZOOKEEPER = -1;
+        initOrCleanCurator(_log);
 	}
 	
 	public static String getFormat(String accept) {
@@ -390,5 +441,20 @@ public class Listener implements ServletContextListener {
 
         public static void changeReplicationFactor(int factor) {
             Listener.DEFAULT_REPLICATION_FACTOR = factor;
+        }
+
+        public static void changeTransactionalSupport(String mode) {
+            if( mode.equals("zookeeper") )  {
+                if( Listener.USE_ZOOKEEPER != 1) {
+                    Listener.USE_ZOOKEEPER = 1;
+                    Listener.initOrCleanCurator(null);
+                }
+             }
+            else {
+                if( Listener.USE_ZOOKEEPER != 0 || Listener.USE_ZOOKEEPER != -1 ) {
+                    Listener.USE_ZOOKEEPER = -1;  
+                    Listener.initOrCleanCurator(null);
+                }
+            }
         }
 }

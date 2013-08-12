@@ -21,6 +21,7 @@ public class ChangeServerParams extends AbstractHttpServlet {
 
         private String[] consistency_levels = {"one", "two", "three", "any", "quorum", "all"};
         private String[] granularity_levels = {"e", "ep", "epv" };
+        private String[] trans_support_modes = {"zookeeper", "default" };
 
 	@Override
 	public void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
@@ -51,12 +52,14 @@ public class ChangeServerParams extends AbstractHttpServlet {
 		String read_cons = req.getParameter("read_cons"); 	//read consistency
 		String write_cons = req.getParameter("write_cons");	//write consistency
 		String trans_lock_gran = req.getParameter("trans_lock_gran");	//transactiona locking granularity
-                String replication_factor = req.getParameter("repl_factor");    //replication facotr
+                String replication_factor = req.getParameter("repl_factor");    //replication factor
+                String trans_support = req.getParameter("trans_support");    //replication factor
 		// some checks
-		if( read_cons == null && write_cons == null && trans_lock_gran == null && replication_factor == null ) {
+		if( read_cons == null && write_cons == null && trans_lock_gran == null 
+                        && replication_factor == null && trans_support == null ) {
 			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please pass data like " +
-                                "'read_cons=_&write_cons=_&trans_lock_gran=_&repl_factor=_'");
-                        _log.info("Please pass data like 'read_cons=_&write_cons=_&trans_lock_gran=_&repl_factor=_'");
+                                "'read_cons=_&write_cons=_&trans_lock_gran=_&repl_factor=_&trans_support=_'");
+                        _log.info("Please pass data like 'read_cons=_&write_cons=_&trans_lock_gran=_&repl_factor=_&trans_support=_'");
 			return;
 		}
                 boolean match_rc = false;
@@ -141,6 +144,27 @@ public class ChangeServerParams extends AbstractHttpServlet {
                     sendResponse(ctx, req, resp, HttpServletResponse.SC_OK,
                             "New replication factor: " + factor);
                     _log.info("New replication factor: " + factor);
+                }
+
+                if( trans_support != null && !trans_support.isEmpty() ) {
+                     boolean match = false;
+                    // check if a correct consistency level
+                    for( int i=0; i<trans_support_modes.length; i++) {
+                        if( trans_support.matches(trans_support_modes[i]) ) {
+                            match = true;
+                            break;
+                        }
+                    }
+                    if( ! match ) {
+                        sendResponse(ctx, req, resp, HttpServletResponse.SC_CONFLICT,
+                                "Not an allowed transaction support mode passed!");
+                        _log.info("Not an allowed transaction support mode passed!");
+                        return;
+                    }
+                     Listener.changeTransactionalSupport(trans_support);
+                     sendResponse(ctx, req, resp, HttpServletResponse.SC_OK,
+                            "New transactional support mode: " + trans_support);
+                     _log.info("New transactional support mode: " + trans_support);
                 }
 		_log.info("[dataset] SETUP sucessful");
 	}

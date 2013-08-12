@@ -4,7 +4,10 @@ import edu.kit.aifb.cumulus.webapp.Listener;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.Iterator;
 import java.util.Hashtable;
+import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.apache.curator.framework.recipes.locks.InterProcessReadWriteLock;
 
 public class ExecuteTransactions 
 {
@@ -15,6 +18,8 @@ public class ExecuteTransactions
 
         // keep here only locks for the entire entity
         protected static ConcurrentHashMap<String, LockEnt> full_entity_lock_map = new ConcurrentHashMap<String, LockEnt>();
+
+        public static final Integer TIMEOUT_ACQUIRE_LOCKS_ZOOKEEPER_MS = 10;
 
         // in case the granularity is changed, a cleanup of locks may be required
         public static void resetLocks() {
@@ -67,6 +72,351 @@ public class ExecuteTransactions
                             return "";
                 }
         }
+
+        // USE CURATOR (ZOOKEEPER) FOR LOCKING
+        public int executeTransaction_Zookeeper(Transaction t, AbstractCassandraRdfHector store) throws Exception
+	{
+		if( t == null )
+			return -1;
+		//t.printTransaction();
+
+		// local data-structure per transaction
+		// keep here track of all acquired locks during this transaction
+		Hashtable<String, LockEnt> locks_hold = new Hashtable<String, LockEnt>();
+
+                // keep track here of all the locks over the entire entity (important for copy operations and delete all)
+                // NOTE: a ReadLock here means that either a read or write lock exists on one of this entity properties
+                // NOTE: a WriteLock here means exclusive access at the level of the entity, no other locks can co-exist
+                Hashtable<String, LockEnt> full_locks_hold = new Hashtable<String, LockEnt>();
+
+                // CURATOR locks; we need to store this as creating another InterProcessReadWriteLock object when we want to
+                //release it, does not work!!!
+                Hashtable<String, InterProcessReadWriteLock> curator_locks_hold = new Hashtable<String, InterProcessReadWriteLock>();
+                InterProcessReadWriteLock tmp_lock;
+
+		try {
+			// first of all lock all entities involved in this transaction; then execute
+                        // NOTE: for assuring the lock for managing links, some 'dummy' operations were added
+                        //just for this purpose; however, they are not run as the actions themselves are
+                        //integrated into addData, insertData and so on
+			for(Iterator it = t.getOps().iterator(); it.hasNext(); ) {
+				Operation op = (Operation) it.next();
+				String key = this.getKey(op);
+                                String key_e = this.getFullEntityKey(op);
+
+                                /** ADDED FOR SUPPORTING COPY OPERATION AND ITS ENTIRE ENTITY LOCKING **/
+                                // maybe a previous operation has already acquired the needed lock, check this
+				LockEnt prev_full_lock = full_locks_hold.get(key_e);
+				if( prev_full_lock != null && prev_full_lock.type == LockEnt.LockType.WRITE_LOCK )
+                                    // don't need anything else as a previous operation has acquired
+                                    // an exclusive lock over the whole entity
+                                    continue;
+                                /**END**/
+
+				// maybe a previous operation has already acquired the needed lock, check this
+				LockEnt prev_lock = locks_hold.get(key);
+				if( prev_lock != null && prev_lock.type == LockEnt.LockType.WRITE_LOCK )
+					// don't need anything else as a previous operation has acquired the exclusive lock
+					continue;
+
+				// NOW TRY TO ACQUIRE THE NEEDED LOCK
+                                switch( op.getType() ) {
+                                    case GET:
+                                        // for GET we need a read lock
+					if( prev_lock != null && prev_lock.type == LockEnt.LockType.READ_LOCK )
+						// lock has been acquired already for this entity, go to next operation
+						continue;
+                                                   
+                                        // try to get read lock
+                                        tmp_lock = new InterProcessReadWriteLock(Listener.curator_client, "/epv/"+key);
+                                        if( ! tmp_lock.readLock().acquire(TIMEOUT_ACQUIRE_LOCKS_ZOOKEEPER_MS, TimeUnit.MILLISECONDS) ) {
+                                            // this may fail in case another Transaction changed this lock
+                                            _log.info("CONFLICT: transaction " + t.ID + " @ operation with key " + key +
+                                                       " (cannot get a READ_LOCK as another changed it in the" +
+                                                       " meanwhile; restart the whole transaction!)");
+                                            return 2;
+                                        }
+                                        else {
+                                            // keep local track about locks acquired
+                                            locks_hold.put(key, new LockEnt(LockEnt.LockType.READ_LOCK, 1));
+                                            curator_locks_hold.put("/epv/"+key, tmp_lock);
+
+                                            /** ADDED FOR SUPPORTING COPY OPERATION AND ITS ENTIRE ENTITY LOCKING **/
+                                            // now try to get a read lock on the entire entity, if still exist
+                                            // write lock is only used by copy operation to signal exclusive lock
+                                            tmp_lock = new InterProcessReadWriteLock(Listener.curator_client, "/e/"+key_e);
+                                            if( ! tmp_lock.readLock().acquire(TIMEOUT_ACQUIRE_LOCKS_ZOOKEEPER_MS, TimeUnit.MILLISECONDS) ) {
+                                                // so again a conflict, another T may have changed either the counter or the entire lock;
+                                                _log.info("CONFLICT: transaction " + t.ID + " @ operation with key " + key +
+                                                        "(cannot acquire a READ_LOCK on the FULL entity lock map as aonther " +
+                                                        "changed it in the meanwhile; restart the whole transaction!)");
+                                                return 22;
+                                            }
+                                            else {
+                                                // keep local track of the lock acquired
+                                                full_locks_hold.put(key_e, new LockEnt(LockEnt.LockType.READ_LOCK, 1));
+                                                curator_locks_hold.put(key_e, tmp_lock);
+                                                continue;
+                                            }
+                                        }   
+                                case INSERT:
+                                case INSERT_LINK:
+                                case UPDATE:
+                                case UPDATE_LINK:
+                                case DELETE:
+                                case DELETE_LINK:
+                                case LOCK:
+					// operation != GET, so here we want an EXCLUSIVE WRITE LOCK
+
+                                        // create a READ_LOCK or increment its counter on the full entity locking map
+                                        tmp_lock = new InterProcessReadWriteLock(Listener.curator_client, "/e/"+key_e);
+                                        if( ! tmp_lock.readLock().acquire(TIMEOUT_ACQUIRE_LOCKS_ZOOKEEPER_MS, TimeUnit.MILLISECONDS) ) {
+                                            // so again a conflict, another T may have already added a lock
+                                            _log.info("CONFLICT: transaction " + t.ID + " @ operation with key " + key +
+                                                " (cannot add new READ_LOCK on FULL lock entity map as there may already " +
+                                                "be added by another concurrent transaction; restart the whole transaction!)");
+                                            return 27;
+                                        }
+                                        else {
+                                            full_locks_hold.put(key_e, new LockEnt(LockEnt.LockType.READ_LOCK, 1));
+                                            curator_locks_hold.put("/e/"+key_e, tmp_lock);
+
+                                            tmp_lock = new InterProcessReadWriteLock(Listener.curator_client, "/epv/"+key);
+                                            if( ! tmp_lock.writeLock().acquire(TIMEOUT_ACQUIRE_LOCKS_ZOOKEEPER_MS, TimeUnit.MILLISECONDS) ) {
+                                                _log.info("CONFLICT: transaction " + t.ID + " @ operation with key " + key +
+                                                          "(cannot create write lock as another one did it already; restart it)");
+                                                return 7;
+                                            }
+                                            else {
+                                                // keep local track about locks acquired
+                                                locks_hold.put(key, new LockEnt(LockEnt.LockType.WRITE_LOCK));
+                                                curator_locks_hold.put("/epv/"+key, tmp_lock);
+                                            }
+                                        }
+                                        /** END **/
+					break;
+                                case ENT_SHALLOW_CLONE:
+                                case ENT_DEEP_CLONE:
+                                case ENT_DELETE:
+                                        tmp_lock = new InterProcessReadWriteLock(Listener.curator_client, "/e/"+key_e);
+                                        if( ! tmp_lock.writeLock().acquire(TIMEOUT_ACQUIRE_LOCKS_ZOOKEEPER_MS, TimeUnit.MILLISECONDS) ) {
+                                            _log.info("CONFLICT: transaction " + t.ID + " @ operation with key "
+                                                     + key_e + " (cannot acquire to WRITE_LOCK to the FULL entity locking map" +
+                                                     " as another reader is present; restart the whole transaction)");
+                                            return 31;
+                                        }
+                                        else {
+                                            // keep local track of the locks
+                                            full_locks_hold.put(key_e, new LockEnt(LockEnt.LockType.WRITE_LOCK));
+                                            curator_locks_hold.put("/e/"+key_e, tmp_lock);
+                                        }
+                                        break;
+                                    default:
+                                       _log.info("UNKNOWN operation part of transaction " + t.ID);
+                                       break;
+                                }
+			}
+
+			/*// here, all locks are held
+                        this.print(curator_locks_hold, t);
+			try {
+				_log.info("SLEEEEEEEEEEEEEEEEEEEPPPPPPPP......10s.....");
+				Thread.sleep(10000);
+			} catch (Exception e ) { }
+			_log.info("WAKE UP !!");*/
+
+
+			// run the ops
+			int r=0;
+			for( int j=0; j < t.ops.size(); ++j) {
+				Operation c_op = t.ops.get(j);
+                                if( c_op.just_for_locking )
+                                    continue;
+				switch(c_op.getType()) {
+					case GET:
+						// perform just a read (well, perpahs not so common used as there are
+						// no if-else structures into the transaction flow)
+						_log.info("TRANSACTION CONTEXT: GET operations are not supported");
+						break;
+					case INSERT:
+						r = store.addData(c_op.params[0], c_op.params[1],
+							c_op.params[2], Store.encodeKeyspace(c_op.params[3]), 0);
+						if ( r != 0 )
+							_log.info("COMMIT INSERT " + c_op.params[0] + " FAILED with exit code " + r);
+						break;
+                                        case INSERT_LINK:
+						r = store.addData(c_op.params[0], c_op.params[1],
+							c_op.params[2], Store.encodeKeyspace(c_op.params[3]), 1);
+						if ( r != 0 )
+							_log.info("COMMIT INSERT LINK " + c_op.params[0] + " FAILED with exit code " + r);
+						break;
+					case UPDATE:
+						r = store.updateData(c_op.params[0], c_op.params[1],
+						   c_op.params[4], c_op.params[2],
+						   Store.encodeKeyspace(c_op.params[3]), 0);
+						if ( r != 0 )
+							_log.info("COMMIT UPDATE " + c_op.params[0] + " FAILED with exit code " + r);
+						break;
+                                        case UPDATE_LINK:
+						r = store.updateData(c_op.params[0], c_op.params[1],
+						   c_op.params[4], c_op.params[2],
+						   Store.encodeKeyspace(c_op.params[3]), 1);
+						if ( r != 0 )
+							_log.info("COMMIT UPDATE LINK " + c_op.params[0] + " FAILED with exit code " + r);
+						break;
+					case DELETE:
+						r = store.deleteData(c_op.params[0], c_op.params[1],
+							c_op.params[2],
+							Store.encodeKeyspace(c_op.params[3]), 0);
+						if ( r != 0 )
+							_log.info("COMMIT DELETE " + c_op.params[0] + " FAILED with exit code " + r);
+						break;
+                                        case DELETE_LINK:
+						r = store.deleteData(c_op.params[0], c_op.params[1],
+							c_op.params[2],
+							Store.encodeKeyspace(c_op.params[3]), 1);
+						if ( r != 0 )
+							_log.info("COMMIT DELETE LINK " + c_op.params[0] + " FAILED with exit code " + r);
+						break;
+                                        case ENT_SHALLOW_CLONE:
+                                                r = store.shallowClone(c_op.params[0], Store.encodeKeyspace(c_op.params[1]),
+                                                        c_op.params[2], Store.encodeKeyspace(c_op.params[3]), c_op.params[1],
+                                                        c_op.params[3] );
+                                                if ( r != 0 )
+                                                    _log.info("COMMIT SHALLOW CLONE " + c_op.params[0] + " FAILED with exit code " + r);
+                                                break;
+                                        case ENT_DEEP_CLONE:
+                                                r = store.deepClone(c_op.params[0], Store.encodeKeyspace(c_op.params[1]),
+                                                        c_op.params[2], Store.encodeKeyspace(c_op.params[3]));
+                                                if ( r != 0 )
+                                                    _log.info("COMMIT DEEP CLONE " + c_op.params[0] + " FAILED with exit code " + r);
+                                                break;
+                                        case ENT_DELETE:
+                                                r = store.deleteByRowKey(c_op.params[0], Store.encodeKeyspace(c_op.params[1]), 1);
+                                                if ( r != 0 )
+                                                    _log.info("COMMIT ENTITY DELETE " + c_op.params[0] + " FAILED with exit code " + r);
+                                                break;
+					default:
+						break;
+				}
+				if( r != 0 ) {
+					// ROLLBACK !!!
+					// operation failed, rollback all the previous ones
+					for( int k=j-1; k>=0; --k ) {
+						Operation p_op = t.getReverseOp(k);
+                                                if( p_op.just_for_locking )
+                                                    continue;
+						switch(p_op.getType()) {
+							case GET:
+								// no reverse op for t
+								break;
+							case INSERT:
+								r = store.addData(p_op.params[0], p_op.params[1],
+									p_op.params[2], Store.encodeKeyspace(p_op.params[3]), 0);
+								if ( r != 0 )
+									_log.info("ROLLBACK INSERT " + p_op.params[0] + " FAILED with exit code " + r);
+								break;
+                                                        case INSERT_LINK:
+								r = store.addData(p_op.params[0], p_op.params[1],
+									p_op.params[2], Store.encodeKeyspace(p_op.params[3]), 1);
+								if ( r != 0 )
+									_log.info("ROLLBACK INSERT LINK " + p_op.params[0] + " FAILED with exit code " + r);
+								break;
+							case UPDATE:
+								r = store.updateData(p_op.params[0], p_op.params[1],
+								   p_op.params[4], p_op.params[2],
+								   Store.encodeKeyspace(p_op.params[3]), 0);
+								if ( r != 0 )
+									_log.info("ROLLBACK UPDATE " + p_op.params[0] + " FAILED with exit code " + r);
+								break;
+                                                        case UPDATE_LINK:
+								r = store.updateData(p_op.params[0], p_op.params[1],
+								   p_op.params[4], p_op.params[2],
+								   Store.encodeKeyspace(p_op.params[3]), 1);
+								if ( r != 0 )
+									_log.info("ROLLBACK UPDATE LINK " + p_op.params[0] + " FAILED with exit code " + r);
+								break;
+							case DELETE:
+								r = store.deleteData(p_op.params[0], p_op.params[1],
+									p_op.params[2],
+									Store.encodeKeyspace(p_op.params[3]), 0);
+								if ( r != 0 )
+									_log.info("ROLLBACK DELETE " + p_op.params[0] + " FAILED with exit code " + r);
+								break;
+                                                        case DELETE_LINK:
+								r = store.deleteData(p_op.params[0], p_op.params[1],
+									p_op.params[2],
+									Store.encodeKeyspace(p_op.params[3]), 1);
+								if ( r != 0 )
+									_log.info("ROLLBACK DELETE LINK " + p_op.params[0] + " FAILED with exit code " + r);
+								break;
+                                                        case ENT_SHALLOW_CLONE:
+                                                                r = store.deleteShallowClone(c_op.params[0], Store.encodeKeyspace(c_op.params[1]),
+                                                                        c_op.params[2], Store.encodeKeyspace(c_op.params[3]), c_op.params[1],
+                                                                        c_op.params[3] );
+								if ( r != 0 )
+									_log.info("ROLLBACK SHALLOW CLONE " + p_op.params[0] + " FAILED with exit code " + r);
+                                                                break;
+                                                        case ENT_DEEP_CLONE:
+                                                                r = store.deleteDeepClone(c_op.params[2], Store.encodeKeyspace(c_op.params[3]));
+                                                                if ( r != 0 )
+                                                                        _log.info("ROLLBACK DEEP CLONE " + p_op.params[0] + " FAILED with exit code " + r);
+                                                                break;
+                                                        case ENT_DELETE:
+                                                                _log.info("ROLLBACK for a full entity deletion is not yet supported!");
+                                                                break;
+							default:
+								break;
+
+						}
+					}
+					if( r != 0 )
+						// problems while rollback-ing
+						return 100;
+					//rollback has occured successfully
+					return 10;
+				}
+			}
+			// COMMIT !!!
+			return 0;
+		}
+		finally {
+			// release the locks the reverse way they were acquired
+			for( int i = t.getOps().size()-1; i>=0; --i) {
+				Operation op_r = t.getOps().get(i);
+				String key = this.getKey(op_r);
+                                String key_e = this.getFullEntityKey(op_r);
+
+				LockEnt used_lock = locks_hold.get(key);
+				if( used_lock != null ) {
+                                    if( used_lock.type == LockEnt.LockType.WRITE_LOCK )
+                                        curator_locks_hold.get("/epv/"+key).writeLock().release();
+                                    else
+                                        curator_locks_hold.get("/epv/"+key).readLock().release();
+                                    locks_hold.remove(key);
+                                    curator_locks_hold.remove("/epv/"+key);
+				}
+
+                                /** ADDED FOR SUPPORTING COPY OPERATION AND ITS ENTIRE ENTITY LOCKING **/
+                                // remove the exclusive WRITE LOCK over a full entity
+                                // or decremet a read lock counter
+                                used_lock = full_locks_hold.get(key_e);
+                                if( used_lock != null ) {
+                                    if( used_lock.type == LockEnt.LockType.WRITE_LOCK ) 
+                                        curator_locks_hold.get("/e/"+key_e).writeLock().release();
+                                    else
+                                        curator_locks_hold.get("/e/"+key_e).readLock().release();
+                                    full_locks_hold.remove(key_e);
+                                    curator_locks_hold.remove("/e/"+key_e);
+                                }
+                                /** END **/
+			}
+                        /*_log.info("AFTER RELEASING: ");
+                        this.print(locks_hold, t);*/
+		}
+	}
+
+
 
        /**
         * 

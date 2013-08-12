@@ -15,10 +15,17 @@
   		<param-value>134.21.73.204:9160,134.21.73.205:9160,134.21.73.206:9160,134.21.73.207:9160,134.21.73.208:9160</param-value>  
 	</context-param>
 
+    <!-- used only if zookeeper transactional locking is used -->
+    <!-- see: ers-transactional-locking-zookeeper parameter -->
+  	<context-param> 
+ 		<param-name>zookeeper-hosts</param-name>
+  		<param-value>134.21.73.204:2181,134.21.73.206:2181,134.21.73.208:2182</param-value>  
+	</context-param>
+
 	<!-- NOTE: just one of the two following parameters can be set true !! not both in the same time -->
 	<context-param>	
 		<param-name>start-embedded</param-name> 
-		<param-value>yes</param-value>  <!-- possible values: yes,no; if 'yes', the replication is set to 1 -->
+		<param-value>no</param-value>  <!-- possible values: yes,no; if 'yes', the replication is set to 1 -->
 	</context-param>
 	<context-param>	
 		<param-name>run-on-openshift</param-name> 
@@ -59,6 +66,13 @@
    <context-param>
       <param-name>ers-transactional-locking-granularity</param-name>
       <param-value>3</param-value>
+   </context-param>
+
+   <!-- set this to 1 if you want to use Zookeeper locks -->
+   <!-- if not set, default value is 0 -->
+   <context-param> 
+      <param-name>ers-transactional-locking-zookeeper</param-name>
+      <param-value>1</param-value>
    </context-param>
 
    <!-- if set to yes, any operation will also handle links  -->
