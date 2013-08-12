@@ -3,6 +3,7 @@ package edu.kit.aifb.cumulus.webapp;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Iterator;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.List;
 
@@ -125,10 +126,11 @@ public class GraphServlet extends AbstractHttpServlet {
 		Store crdf = (Store)ctx.getAttribute(Listener.STORE);
 		// create the associated keyspace with this graph, if it does not exist  
 		int r = crdf.createKeyspace(a_id);
+
 		String msg = "";
 		if( r == 2 ) 
 			sendError(ctx, req, resp, HttpServletResponse.SC_FORBIDDEN, "Graph " + graph + " cannot be created. Do not use 'system' as prefix.");
-		else {
+                else {
 			// now insert the triple into Graphs keyspace 
 			int r2 = crdf.addData("\""+Store.encodeKeyspace(a_id)+"\"", a_p, a_v, Listener.GRAPHS_NAMES_KEYSPACE, 0);
 			if( r2 != -1 ) { 
@@ -171,6 +173,7 @@ public class GraphServlet extends AbstractHttpServlet {
 		if ( formatter.getContentType().equals("text/html") )
 			resource = escapeHtml(resource); 
 
+        String truncate = req.getParameter("truncate");
 		String a_id = req.getParameter("g");
 		String f = req.getParameter("f");
 		if( a_id == null || a_id.isEmpty() ) { 
@@ -193,32 +196,40 @@ public class GraphServlet extends AbstractHttpServlet {
 
 		// do the deletion of entities associated with this graph  
 		String encoded_keyspace = Store.encodeKeyspace(a_id);
-		int r = crdf.dropKeyspace(encoded_keyspace, force);
+                int r;
+                if( truncate != null )
+                    r = crdf.truncateKeyspace(encoded_keyspace);
+                else
+                    r = crdf.dropKeyspace(encoded_keyspace, force);
+
 		switch(r) { 
-			case 0: 
-				//delete from ERS_graphs
-				int r2 = crdf.deleteByRowKey("\""+encoded_keyspace+"\"", Listener.GRAPHS_NAMES_KEYSPACE, 0);
-				sendResponse(ctx, req, resp, HttpServletResponse.SC_OK, "The entire of graph " + graph + " has been deleted. DEBUG: " + r2);
+			case 0:
+                                int r2 = -1;
+                                if( truncate == null ) {
+                                    //delete from ERS_graphs
+                                    r2 = crdf.deleteByRowKey("\""+encoded_keyspace+"\"", Listener.GRAPHS_NAMES_KEYSPACE, 0);
+                                }
+				sendResponse(ctx, req, resp, HttpServletResponse.SC_OK, "The entire of graph " + graph + " has been deleted/truncated. DEBUG: " + r2);
 				break;
 			case 1: 	
-				sendResponse(ctx, req, resp, HttpServletResponse.SC_OK, "The graph " + graph + " does not exist. Nothing to delete.");
+				sendResponse(ctx, req, resp, HttpServletResponse.SC_OK, "The graph " + graph + " does not exist. Nothing to delete/truncate.");
 				break;
 			case 2: 
 				sendError(ctx, req, resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Deleting the graph has raised exceptions. Check Tomcat log.");
 				break;
 			case 3:	
 				// since we are using the hashed graph name, this does not happen
-				sendError(ctx, req, resp, HttpServletResponse.SC_FORBIDDEN, "Cannot delete any graph (keyspace) whose name has the prefix 'system'.");
+				sendError(ctx, req, resp, HttpServletResponse.SC_FORBIDDEN, "Cannot delete/truncate any graph (keyspace) whose name has the prefix 'system'.");
 				break;
 			case 4:
-				sendError(ctx, req, resp, HttpServletResponse.SC_METHOD_NOT_ALLOWED, "Cannot delete a not-empty graph.");
+				sendError(ctx, req, resp, HttpServletResponse.SC_METHOD_NOT_ALLOWED, "Cannot delete/truncate a not-empty graph.");
 				break;
 			default:	
 				// ideally, this may never happen :)
-				sendError(ctx, req, resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "UNKNOWN exit code of deleting the graph method.");
+				sendError(ctx, req, resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "UNKNOWN exit code of deleting/truncating the graph method.");
 				break;
 		}	
-		_log.info("[dataset] DELETE keyspace(graph) " + (System.currentTimeMillis() - start) + "ms ");
+		_log.info("[dataset] DELETE/TRUNCATE keyspace("+graph+") " + (System.currentTimeMillis() - start) + "ms ");
 	}
 
 	public void doPut(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {

@@ -206,15 +206,17 @@ public abstract class AbstractCassandraRdfHector extends Store {
 	@Override
 	public void open() throws StoreException {
 		CassandraHostConfigurator config = new CassandraHostConfigurator(_hosts);
-		config.setCassandraThriftSocketTimeout(60*1000);
-		//config.setMaxActive(6);
-		//config.setExhaustedPolicy(ExhaustedPolicy.WHEN_EXHAUSTED_BLOCK);
+        // before it was 60s, kind of too less if we want to DELETE a DB quite big ...
+		config.setCassandraThriftSocketTimeout(1200*1000);
+        // !! IMPORTANT: maxim number of concurrent connections 
+        config.setUseSocketKeepalive(true);
+        config.setMaxActive(1028);
+        //config.setExhaustedPolicy(ExhaustedPolicy.WHEN_EXHAUSTED_GROW);
 		config.setRetryDownedHostsDelayInSeconds(5);
 		config.setRetryDownedHostsQueueSize(128);
 		config.setRetryDownedHosts(true);
-		
 		// experiments with timeouts
-		config.setCassandraThriftSocketTimeout(0);
+		//config.setCassandraThriftSocketTimeout(0);
 		config.setMaxWaitTimeWhenExhausted(-1);
 		
 		// RoundRobin, LeastActive and Dynamic as possible values
@@ -235,7 +237,7 @@ public abstract class AbstractCassandraRdfHector extends Store {
 	public int createKeyspaceInit(String keyspaceName) {
 		if (! existsKeyspace(keyspaceName))  {
 			try { 
-				_cluster.addKeyspace(createKeyspaceDefinition(keyspaceName));	
+				_cluster.addKeyspace(createKeyspaceDefinition(keyspaceName), true);
 			} catch( HectorException ex ) { 
 				ex.printStackTrace(); 	
 				return 3;
@@ -266,7 +268,7 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		String encoded_keyspaceName = Store.encodeKeyspace(keyspaceName);
 		if (! existsKeyspace(encoded_keyspaceName)) 
 			try { 
-				_cluster.addKeyspace(createKeyspaceDefinition(encoded_keyspaceName));	
+				_cluster.addKeyspace(createKeyspaceDefinition(encoded_keyspaceName), true);
 			} catch( HectorException ex ) { 
 				ex.printStackTrace(); 	
 				_log.severe("ERS exception: "+ex.getMessage() );
@@ -328,6 +330,23 @@ public abstract class AbstractCassandraRdfHector extends Store {
 			_cluster.dropKeyspace(keyspaceName);
 		} catch(HectorException ex) { 
 			ex.printStackTrace(); 
+			return 2;
+		}
+		return 0;
+	}
+
+        // truncate all column families of a keyspace
+        public int truncateKeyspace(String keyspaceName) {
+		if(keyspaceName.startsWith("system"))
+			return 3;
+		if ( !existsKeyspace(keyspaceName))
+			return 1;
+
+		try {
+                    for (String cf : _cfs)
+			_cluster.truncate(keyspaceName, cf);
+		} catch(HectorException ex) {
+			ex.printStackTrace();
 			return 2;
 		}
 		return 0;

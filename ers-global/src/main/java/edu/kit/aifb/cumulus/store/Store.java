@@ -1,26 +1,20 @@
 package edu.kit.aifb.cumulus.store;
 
-import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.List;
 import java.util.logging.Logger;
 import java.io.Writer;
 import java.io.IOException;
 
-import org.semanticweb.yars.nx.Literal;
 import org.semanticweb.yars.nx.Node;
 import org.semanticweb.yars.nx.Resource;
 import org.semanticweb.yars.nx.Variable;
 
-import org.semanticweb.yars.nx.Nodes;
 import org.semanticweb.yars.nx.parser.NxParser;
 import org.semanticweb.yars.nx.parser.ParseException;
 
 import edu.kit.aifb.cumulus.store.StoreException;
 import edu.kit.aifb.cumulus.webapp.Listener;
 
-import org.apache.commons.codec.binary.Hex;
-import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.digest.DigestUtils;
 
 /** 
@@ -156,6 +150,7 @@ public abstract class Store {
 		return dropKeyspace(keyspace, false);
 	}
 	public abstract int dropKeyspace(String keyspace, boolean force);
+        public abstract int truncateKeyspace(String keyspace);
 	// create a keyspace / graph 
 	public abstract int createKeyspace(String keyspace);
 	public abstract int createKeyspaceInit(String keyspace);
