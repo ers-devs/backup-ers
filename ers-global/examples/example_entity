@@ -1,0 +1,26 @@
+# CREATE an entity by an graph
+curl -v -X POST -H "Content-Type: application/x-www-form-urlencoded" --data "e=<entity1>&p=<property1>&v=<value1>&g=<graph1>" "http://diufpc304.unifr.ch:8080/ers/create"
+
+# TEST if an entity exists
+curl -v -X GET -H "Content-Type: application/x-www-form-urlencoded" "http://diufpc304.unifr.ch:8080/ers/exist_entity?e=<entity>&p=<property>&v=<value>&g=<graph>"
+
+# UPDATE an already existing entity; because also the value (and property) are stored (in the flat data layout) as column names, then the old value must be also passed 
+curl -v -X POST -H "Content-Type: application/x-www-form-urlencoded" --data "e=<entity1>&p=<property1>&v_old=<value20>&v_new=<value11>&g=<graph1>" "http://diufpc304.unifr.ch:8080/ers/update"
+
+# DELETE an existing entity for a give graph 
+curl -v -X DELETE "http://diufpc304.unifr.ch:8080/ers/delete?e=<entity1>&p=<property1>&v=<value11>&g=<graph1>"
+
+# QUERY ! 
+# at leats one of e,p and v must be given 
+curl -v -X GET "http://diufpc304.unifr.ch:8080/ers/query?e=<entity>&p=<property>&v=<value>g=<graph>"
+
+# QUERY the entire graph 
+curl -v -X GET "http://diufpc304.unifr.ch:8080/ers/query_graph?g=<graph>"
+
+# QUERY all the graphs but impose a limit PER graph 
+curl -v -X GET "http://diufpc304.unifr.ch:8080/ers/query_all_graphs?limit=1000"
+
+
+
+# READ return all the entities of one graph or from all provenances if no 'g' parameter is passed 
+curl -v -X GET "http://diufpc304.unifr.ch:8080/ers/read?e=<entity1>&g=<graph>"
