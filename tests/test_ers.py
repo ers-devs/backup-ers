@@ -10,7 +10,6 @@ sys.path.insert(0, ERS_PATH)
 from ers import ERSLocal, ModelS, ModelT
 
 DEFAULT_MODEL = ModelS()
-nt_file = os.path.join(TESTS_PATH, 'data', 'timbl.nt')
 
 def test():
     server = couchdbkit.Server(r'http://admin:admin@127.0.0.1:5984/')
