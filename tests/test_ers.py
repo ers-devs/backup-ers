@@ -14,12 +14,6 @@ DEFAULT_MODEL = ModelS()
 def test():
     server = couchdbkit.Server(r'http://admin:admin@127.0.0.1:5984/')
 
-    def create_ers(dbname, model=DEFAULT_MODEL):
-        if dbname in server:
-            server.delete_db(dbname)           
-        ers_new = ERSLocal(dbname=dbname, model=model)
-        return ers_new
- 
     def test_ers():
         """Model independent tests"""
         assert ers.db.doc_exist('_design/index')
@@ -58,11 +52,11 @@ def test():
     # Test local ers using differend document models
     for model in [ModelS(), ModelT()]:
         dbname = 'ers_' + model.__class__.__name__.lower()
-        ers = create_ers(dbname, model)
+        ers = ERSLocal(dbname=dbname, model=model, reset_database=True)
         test_ers()
 
     # Prepare remote ers
-    ers_remote = create_ers('ers_remote')
+    ers_remote = ERSLocal(dbname='ers_remote')
     for o in remote_objects:
         ers_remote.add_data(entity, p, o, g3)
 
