@@ -23,12 +23,12 @@ def test():
  
     def test_ers():
         """Model independent tests"""
-        ers.import_nt(nt_file, 'timbl')
         assert ers.db.doc_exist('_design/index')
-        assert ers.exist('http://www4.wiwiss.fu-berlin.de/booksMeshup/books/006251587X', 'bad_graph') == False
-        assert ers.exist('http://www4.wiwiss.fu-berlin.de/booksMeshup/books/006251587X', 'timbl') == True
-        ers.delete_entity('http://www4.wiwiss.fu-berlin.de/booksMeshup/books/006251587X', 'timbl')
-        assert ers.exist('http://www4.wiwiss.fu-berlin.de/booksMeshup/books/006251587X', 'timbl') == False
+        ers.add_data(s, p, v, g3)
+        assert ers.exist(s, 'bad_graph') == False
+        assert ers.exist(s, g3) == True
+        ers.delete_entity(s, g3)
+        assert ers.exist(s, g3) == False
         for o in objects:
             ers.add_data(s, p, o, g)
             ers.add_data(s, p2, o, g)
@@ -42,10 +42,10 @@ def test():
         ers.delete_value(entity, p2)
         assert p2 not in ers.get_annotation(entity)
 
-
     # Test data
     s = entity = 'urn:ers:meta:testEntity'
     p = 'urn:ers:meta:predicates:hasValue'
+    v = 'urn:ers:meta:testValue'
     p2 = 'urn:ers:meta:predicates:property'
     g = 'urn:ers:meta:testGraph'
     g2 = 'urn:ers:meta:testGraph2'
