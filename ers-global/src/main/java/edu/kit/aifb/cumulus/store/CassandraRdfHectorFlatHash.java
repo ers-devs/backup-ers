@@ -33,6 +33,7 @@ import org.semanticweb.yars.nx.parser.NxParser;
 import org.semanticweb.yars.nx.parser.ParseException;
 
 import edu.kit.aifb.cumulus.webapp.Listener;
+import me.prettyprint.hector.api.beans.Composite;
 
 public class CassandraRdfHectorFlatHash extends CassandraRdfHectorQuads {
 	private static final String CF_S_PO = "SPO";
@@ -70,7 +71,8 @@ public class CassandraRdfHectorFlatHash extends CassandraRdfHectorQuads {
 	protected List<ColumnFamilyDefinition> createColumnFamiliyDefinitions(String keyspace) {
 		ColumnFamilyDefinition spo = createCfDefFlat(CF_S_PO, null, null, ComparatorType.UTF8TYPE, keyspace);
 		ColumnFamilyDefinition osp = createCfDefFlat(CF_O_SP, null, null, ComparatorType.UTF8TYPE, keyspace);
-		ColumnFamilyDefinition pos = createCfDefFlat(CF_PO_S, Arrays.asList("!p", "!o"), Arrays.asList("!p"), ComparatorType.BYTESTYPE, keyspace);
+		ColumnFamilyDefinition pos = createCfDefFlat(CF_PO_S, Arrays.asList("!p", "!o"), Arrays.asList("!p"),
+                        ComparatorType.BYTESTYPE, keyspace);
 		
 		ArrayList<ColumnFamilyDefinition> li = new ArrayList<ColumnFamilyDefinition>();
 		li.addAll(super.createColumnFamiliyDefinitions(keyspace));
@@ -107,13 +109,24 @@ public class CassandraRdfHectorFlatHash extends CassandraRdfHectorQuads {
 			m.execute();
 		}
 		else {
-			Mutator<String> m = HFactory.createMutator(getExistingKeyspace(keyspace), _ss);
+			//Mutator<String> m = HFactory.createMutator(getExistingKeyspace(keyspace), _ss);
+                        // TM: change to composite keys
+                        Mutator<Composite> m = HFactory.createMutator(getExistingKeyspace(keyspace), _cs);
 			for (Node[] nx : li) {
 				// reorder for the key
 				Node[] reordered = Util.reorder(nx, _maps.get(cf));
-				String rowKey = reordered[0].toN3();
+				//String rowKey = reordered[0].toN3();
+                                // TM: change to composite keys
+                                String URN = new String("TEST_URN");
+                                ByteBuffer bb = ByteBuffer.allocate(reordered[0].toN3().getBytes().length
+                                        + 4 + URN.getBytes().length);
+                                bb.put(reordered[0].toN3().getBytes());
+                                bb.putInt(999);
+                                bb.put(URN.getBytes());
+                                Composite rowKeyc = Composite.fromByteBuffer(bb);
 				String colKey = Nodes.toN3(new Node[] { reordered[1], reordered[2] });
-				m.addInsertion(rowKey, cf, HFactory.createStringColumn(colKey, ""));
+				//m.addInsertion(rowKey, cf, HFactory.createStringColumn(colKey, ""));
+                                m.addInsertion(rowKeyc, cf, HFactory.createStringColumn(colKey, ""));
 			}
 			m.execute();
 		}

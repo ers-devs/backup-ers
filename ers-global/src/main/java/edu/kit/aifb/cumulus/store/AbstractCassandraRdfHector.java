@@ -17,6 +17,7 @@ import me.prettyprint.cassandra.connection.LeastActiveBalancingPolicy;
 import me.prettyprint.cassandra.model.BasicColumnDefinition;
 import me.prettyprint.cassandra.model.BasicColumnFamilyDefinition;
 import me.prettyprint.cassandra.serializers.BytesArraySerializer;
+import me.prettyprint.cassandra.serializers.CompositeSerializer;
 import me.prettyprint.cassandra.serializers.StringSerializer;
 import me.prettyprint.cassandra.service.CassandraHostConfigurator;
 import me.prettyprint.cassandra.service.ThriftCfDef;
@@ -37,7 +38,6 @@ import org.semanticweb.yars.nx.Variable;
 import org.semanticweb.yars.nx.parser.NxParser;
 import org.semanticweb.yars.nx.parser.ParseException;
 
-import me.prettyprint.hector.api.ConsistencyLevelPolicy;
 import me.prettyprint.hector.api.HConsistencyLevel;
 import me.prettyprint.cassandra.service.OperationType;
 
@@ -185,6 +185,7 @@ public abstract class AbstractCassandraRdfHector extends Store {
 	protected int _batchSizeMB = 1;
 
 	protected StringSerializer _ss = StringSerializer.get();
+        protected CompositeSerializer _cs = CompositeSerializer.get();
 	protected BytesArraySerializer _bs = BytesArraySerializer.get();
 
 	protected ExecuteTransactions _transactions;
@@ -207,12 +208,12 @@ public abstract class AbstractCassandraRdfHector extends Store {
 	@Override
 	public void open() throws StoreException {
 		CassandraHostConfigurator config = new CassandraHostConfigurator(_hosts);
-        // before it was 60s, kind of too less if we want to DELETE a DB quite big ...
+                // before it was 60s, kind of too less if we want to DELETE a DB quite big ...
 		config.setCassandraThriftSocketTimeout(1200*1000);
-        // !! IMPORTANT: maxim number of concurrent connections 
-        config.setUseSocketKeepalive(true);
-        config.setMaxActive(1028);
-        //config.setExhaustedPolicy(ExhaustedPolicy.WHEN_EXHAUSTED_GROW);
+                // !! IMPORTANT: maxim number of concurrent connections
+                config.setUseSocketKeepalive(true);
+                config.setMaxActive(1028);
+                //config.setExhaustedPolicy(ExhaustedPolicy.WHEN_EXHAUSTED_GROW);
 		config.setRetryDownedHostsDelayInSeconds(5);
 		config.setRetryDownedHostsQueueSize(128);
 		config.setRetryDownedHosts(true);
@@ -237,8 +238,9 @@ public abstract class AbstractCassandraRdfHector extends Store {
 	// don't use the encoded keyspace; this is used by Listener for initialization
 	public int createKeyspaceInit(String keyspaceName) {
 		if (! existsKeyspace(keyspaceName))  {
-			try { 
-				_cluster.addKeyspace(createKeyspaceDefinition(keyspaceName), true);
+			try {
+                                KeyspaceDefinition def = createKeyspaceDefinition(keyspaceName);
+				_cluster.addKeyspace(def, true);
 			} catch( HectorException ex ) { 
 				ex.printStackTrace(); 	
 				return 3;
@@ -379,12 +381,15 @@ public abstract class AbstractCassandraRdfHector extends Store {
 
 	protected abstract List<ColumnFamilyDefinition> createColumnFamiliyDefinitions(String keyspaceName);
 
-	protected ColumnFamilyDefinition createCfDefFlat(String cfName, List<String> cols, List<String> indexedCols, ComparatorType keyComp, String keyspaceName) {
+	protected ColumnFamilyDefinition createCfDefFlat(String cfName, List<String> cols, List<String> indexedCols,
+                    ComparatorType keyComp, String keyspaceName) {
 		BasicColumnFamilyDefinition cfdef = new BasicColumnFamilyDefinition();
 		cfdef.setKeyspaceName(keyspaceName);
 		cfdef.setName(cfName);
 		cfdef.setColumnType(ColumnType.STANDARD);
-		cfdef.setComparatorType(ComparatorType.UTF8TYPE);
+		//cfdef.setComparatorType(ComparatorType.UTF8TYPE);
+                // TM: change to composite keys
+                cfdef.setComparatorType(ComparatorType.COMPOSITETYPE);
 		cfdef.setKeyValidationClass(keyComp.getClassName());
 		cfdef.setDefaultValidationClass(ComparatorType.UTF8TYPE.getClassName());
 
@@ -394,7 +399,9 @@ public abstract class AbstractCassandraRdfHector extends Store {
 
 		if (cols != null)
 			for (String colName : cols)
-				cfdef.addColumnDefinition(createColDef(colName, ComparatorType.UTF8TYPE.getClassName(), indexedCols.contains(colName), "index_" + colName.substring(1)));
+				cfdef.addColumnDefinition(createColDef(colName, 
+                                    ComparatorType.UTF8TYPE.getClassName(),
+                                    indexedCols.contains(colName), "index_" + colName.substring(1)));
 		
 		return new ThriftCfDef(cfdef);
 	}
