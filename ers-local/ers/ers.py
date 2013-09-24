@@ -26,9 +26,10 @@ DEFAULT_MODEL = ModelS()
 
 
 def merge_annotations(a, b):
-    for key in set(a.keys() + b.keys()):
-        a.setdefault(key, []).extend(b.get(key, []))
-
+    for key, values in b.iteritems():
+        unique_values = set(values)
+        unique_values.update(a.get(key,[]))
+        a[key] = list(unique_values)
 
 class ERSPeerInfo(ServicePeer):
     """
@@ -43,8 +44,7 @@ class ERSPeerInfo(ServicePeer):
         self.peer_type = peer_type
 
     def __str__(self):
-        return "ERS peer '{0}' on {1}(={2}):{3} (dbname={4}, type={5})".format(
-            self.service_name, self.host, self.ip, self.port, self.dbname, self.peer_type)
+        return "ERS peer on {0.host}(={0.ip}):{0.port} (dbname={0.dbname}, type={0.peer_type})".format(self)
 
     def to_json(self):
         return {
@@ -296,7 +296,7 @@ class ERSLocal(ERSReadWrite):
 
             result.append({'server_url': server_url, 'dbname': dbname})
 
-        state_doc = self.db.open_doc('_design/state')
+        state_doc = self.db.open_doc('_local/state')
         for peer in state_doc['peers']:
             result.append({
                 'server_url': r'http://admin:admin@' + peer['ip'] + ':' + str(peer['port']) + '/',

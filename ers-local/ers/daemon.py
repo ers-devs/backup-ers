@@ -8,6 +8,8 @@ import sys
 import time
 import zeroconf
 import gobject
+import logging
+import logging.handlers
 
 from ers import ERS_AVAHI_SERVICE_TYPE, ERS_PEER_TYPES, ERS_DEFAULT_DBNAME, ERS_DEFAULT_PEER_TYPE, DEFAULT_MODEL
 from ers import ERSPeerInfo
@@ -19,6 +21,7 @@ class ERSDaemon:
     dbname = None
     pidfile = None
     tries = None
+    logger = None
 
     _active = False
     _service = None
@@ -29,16 +32,19 @@ class ERSDaemon:
     _peers = None
 
     def __init__(self, peer_type=ERS_DEFAULT_PEER_TYPE, port=5984, dbname=ERS_DEFAULT_DBNAME,
-                 pidfile='/var/run/ers_daemon.pid', tries=10):
+                 pidfile='/var/run/ers_daemon.pid', tries=10, logger=None):
         self.peer_type = peer_type
         self.port = port
         self.dbname = dbname
-        self.pidfile = pidfile
+        self.pidfile = pidfile if pidfile is not None and pidfile.lower() != 'none' else None
         self.tries = max(tries, 1)
+        self.logger = logger if logger is not None else logging.getLogger('ers-daemon')
 
         self._peers = {}
 
     def start(self):
+        self.logger.info("Starting ERS daemon")
+
         self._check_already_running()
         self._init_db_connection()
 
@@ -52,12 +58,13 @@ class ERSDaemon:
         self._monitor = zeroconf.ServiceMonitor(ERS_AVAHI_SERVICE_TYPE, self._on_join, self._on_leave)
         self._monitor.start()
 
-        with file(self.pidfile, 'w+') as f:
-            f.write("{0}\n".format(os.getpid()))
+        self._init_pidfile()
 
         self._active = True
 
         atexit.register(self.stop)
+
+        self.logger.info("ERS daemon started")
 
     def _init_db_connection(self):
         try:
@@ -85,9 +92,23 @@ class ERSDaemon:
         except Exception as e:
             raise RuntimeError("Error connecting to CouchDB: {0}".format(str(e)))
 
+    def _init_pidfile(self):
+        if self.pidfile is not None:
+            with file(self.pidfile, 'w+') as f:
+                f.write("{0}\n".format(os.getpid()))
+
+    def _remove_pidfile(self):
+        if self.pidfile is not None:
+            try:
+                os.remove(self.pidfile)
+            except IOError:
+                pass
+
     def stop(self):
         if not self._active:
             return
+
+        self.logger.info("Stopping ERS daemon")
 
         if self._monitor is not None:
             self._monitor.shutdown()
@@ -95,14 +116,18 @@ class ERSDaemon:
         if self._service is not None:
             self._service.unpublish()
 
-        os.remove(self.pidfile)
+        self._remove_pidfile()
 
         self._active = False
+
+        self.logger.info("ERS daemon stopped")
 
     def _on_join(self, peer):
         ers_peer = ERSPeerInfo.from_service_peer(peer)
         if ers_peer is None:
             return
+
+        self.logger.debug("Peer joined: " + str(ers_peer))
 
         self._peers[ers_peer.service_name] = ers_peer
 
@@ -114,13 +139,16 @@ class ERSDaemon:
             return
 
         ex_peer = self._peers[peer.service_name]
+
+        self.logger.debug("Peer left: " + str(ex_peer))
+
         del self._peers[peer.service_name]
 
         self._update_peers_in_couchdb()
         self._teardown_replication(ex_peer)
 
     def _update_peers_in_couchdb(self):
-        state_doc = self._db.open_doc('_design/state')
+        state_doc = self._db.open_doc('_local/state')
         state_doc['peers'] = [peer.to_json() for peer in self._peers.values()]
         self._db.save_doc(state_doc)
 
@@ -146,28 +174,55 @@ class ERSDaemon:
         self._repl_db.delete_docs([doc['value'] for doc in self._repl_db.temp_view(search_view)])
 
     def _check_already_running(self):
-        if os.path.exists(self.pidfile):
+        if self.pidfile is not None and os.path.exists(self.pidfile):
             raise RuntimeError("The ERS daemon seems to be already running. If this is not the case, " +
                                "delete " + self.pidfile + " and try again.")
+
+LOG_LEVELS = ['debug', 'info', 'warning', 'error', 'critical']
+
+
+def setup_logging(args):
+    logger = logging.getLogger('ers-daemon')
+    logger.setLevel(10 + 10 * LOG_LEVELS.index(args.loglevel))
+
+    if args.logtype == 'file':
+        handler = logging.FileHandler(args.logfile)
+        handler.setFormatter(logging.Formatter("[%(asctime)s] %(levelname)s: %(message)s"))
+    elif args.logtype == 'syslog':
+        handler = logging.handlers.SysLogHandler(address='/dev/log')
+        handler.setFormatter(logging.Formatter("%(message)s"))
+    else:
+        handler = None
+
+    if handler is not None:
+        logger.addHandler(handler)
+
+    return logger
 
 
 def run():
     parser = argparse.ArgumentParser()
     parser.add_argument("-p", "--port", help="CouchDB port", type=int, default=5984)
-    parser.add_argument("-d", "--dbname", help="CouchDB dbname", type=str, default=ERS_DEFAULT_DBNAME)
+    parser.add_argument("-d", "--dbname", help="CouchDB database name", type=str, default=ERS_DEFAULT_DBNAME)
     parser.add_argument("-t", "--type", help="Type of instance", type=str, default=ERS_DEFAULT_PEER_TYPE,
                         choices=ERS_PEER_TYPES)
-    parser.add_argument("--pidfile", help="PID file for ERS instance", type=str, default='/var/run/ers_daemon.pid')
+    parser.add_argument("--pidfile", help="PID file for this ERS daemon instance (or 'none')",
+                        type=str, default='/var/run/ers_daemon.pid')
     parser.add_argument("--tries", help="Number of tries to connect to CouchDB", type=int, default=10)
+    parser.add_argument("--logtype", help="The log type (own file vs. syslog)", type=str, default='file',
+                        choices=['file', 'syslog'])
+    parser.add_argument("--logfile", help="The log file to use", type=str, default='/var/log/ers_daemon.log')
+    parser.add_argument("--loglevel", help="Log messages of this level and above", type=str, default='info',
+                        choices=LOG_LEVELS)
     args = parser.parse_args()
 
-    print "Starting ERS daemon..."
-    daemon = None
-    try:
-        daemon = ERSDaemon(args.type, args.port, args.dbname, args.pidfile, args.tries)
+    logger = setup_logging(args)
 
+    daemon = None
+    failed = False
+    try:
+        daemon = ERSDaemon(args.type, args.port, args.dbname, args.pidfile, args.tries, logger)
         daemon.start()
-        print "Started ERS daemon"
 
         def sig_handler(sig, frame):
             mainloop.quit()
@@ -176,15 +231,16 @@ def run():
 
         mainloop = gobject.MainLoop()
         mainloop.run()
-
-        print "Stopping ERS daemon..."
     except (KeyboardInterrupt, SystemExit):
         pass
     except RuntimeError as e:
-        sys.stderr.write('Error: '+str(e)+"\n")
+        logger.critical(str(e))
+        failed = True
 
     if daemon is not None:
         daemon.stop()
+
+    sys.exit(os.EX_SOFTWARE if failed else os.EX_OK)
 
 
 if __name__ == '__main__':
