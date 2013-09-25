@@ -12,7 +12,6 @@ import org.semanticweb.yars.nx.Variable;
 import org.semanticweb.yars.nx.parser.NxParser;
 import org.semanticweb.yars.nx.parser.ParseException;
 
-import edu.kit.aifb.cumulus.store.StoreException;
 import edu.kit.aifb.cumulus.webapp.Listener;
 
 import org.apache.commons.codec.digest.DigestUtils;
@@ -165,7 +164,9 @@ public abstract class Store {
 	public abstract boolean contains(Node s, String keyspace) throws StoreException;
 	
 	public abstract Iterator<Node[]> query(Node[] query, String keyspace) throws StoreException;
+        public abstract Iterator<Node[]> queryVersioning(Node[] query, String keyspace) throws StoreException;
 	public abstract Iterator<Node[]> query(Node[] query, int limit, String keyspace) throws StoreException;
+        public abstract Iterator<Node[]> queryVersioning(Node[] query, int limit, String keyspace) throws StoreException;
 
 	 private Node getNode(String value, String varName) throws ParseException {
 	        if (value != null && value.trim().length() > 2)
