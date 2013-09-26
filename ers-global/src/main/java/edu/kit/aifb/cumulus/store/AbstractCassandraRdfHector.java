@@ -17,6 +17,7 @@ import me.prettyprint.cassandra.connection.LeastActiveBalancingPolicy;
 import me.prettyprint.cassandra.model.BasicColumnDefinition;
 import me.prettyprint.cassandra.model.BasicColumnFamilyDefinition;
 import me.prettyprint.cassandra.serializers.BytesArraySerializer;
+import me.prettyprint.cassandra.serializers.CompositeSerializer;
 import me.prettyprint.cassandra.serializers.StringSerializer;
 import me.prettyprint.cassandra.service.CassandraHostConfigurator;
 import me.prettyprint.cassandra.service.ThriftCfDef;
@@ -37,7 +38,6 @@ import org.semanticweb.yars.nx.Variable;
 import org.semanticweb.yars.nx.parser.NxParser;
 import org.semanticweb.yars.nx.parser.ParseException;
 
-import me.prettyprint.hector.api.ConsistencyLevelPolicy;
 import me.prettyprint.hector.api.HConsistencyLevel;
 import me.prettyprint.cassandra.service.OperationType;
 
@@ -174,6 +174,8 @@ public abstract class AbstractCassandraRdfHector extends Store {
 	protected List<String> _cfs;
 	protected Set<String> _cols;
 	protected Map<String,int[]> _maps;
+        // extended map (to make room for ID and URN)
+        protected Map<String,int[]> _maps_ext;
 	// used by BulkRun (br)
 	protected Map<String,int[]> _maps_br;
 	// update is composed of delete+insert, thus we need different ordering for the two ops
@@ -185,6 +187,7 @@ public abstract class AbstractCassandraRdfHector extends Store {
 	protected int _batchSizeMB = 1;
 
 	protected StringSerializer _ss = StringSerializer.get();
+        protected CompositeSerializer _cs = CompositeSerializer.get();
 	protected BytesArraySerializer _bs = BytesArraySerializer.get();
 
 	protected ExecuteTransactions _transactions;
@@ -192,6 +195,7 @@ public abstract class AbstractCassandraRdfHector extends Store {
 	protected AbstractCassandraRdfHector(String hosts) {
 		_hosts = hosts;
 		_maps = new HashMap<String,int[]>();
+                _maps_ext = new HashMap<String,int[]>();
 		_maps_br = new HashMap<String,int[]>();
 		_maps_br_update_d = new HashMap<String,int[]>();
 		_maps_br_update_i = new HashMap<String,int[]>();
@@ -207,12 +211,12 @@ public abstract class AbstractCassandraRdfHector extends Store {
 	@Override
 	public void open() throws StoreException {
 		CassandraHostConfigurator config = new CassandraHostConfigurator(_hosts);
-        // before it was 60s, kind of too less if we want to DELETE a DB quite big ...
+                // before it was 60s, kind of too less if we want to DELETE a DB quite big ...
 		config.setCassandraThriftSocketTimeout(1200*1000);
-        // !! IMPORTANT: maxim number of concurrent connections 
-        config.setUseSocketKeepalive(true);
-        config.setMaxActive(1028);
-        //config.setExhaustedPolicy(ExhaustedPolicy.WHEN_EXHAUSTED_GROW);
+                // !! IMPORTANT: maxim number of concurrent connections
+                config.setUseSocketKeepalive(true);
+                config.setMaxActive(1028);
+                //config.setExhaustedPolicy(ExhaustedPolicy.WHEN_EXHAUSTED_GROW);
 		config.setRetryDownedHostsDelayInSeconds(5);
 		config.setRetryDownedHostsQueueSize(128);
 		config.setRetryDownedHosts(true);
@@ -237,8 +241,9 @@ public abstract class AbstractCassandraRdfHector extends Store {
 	// don't use the encoded keyspace; this is used by Listener for initialization
 	public int createKeyspaceInit(String keyspaceName) {
 		if (! existsKeyspace(keyspaceName))  {
-			try { 
-				_cluster.addKeyspace(createKeyspaceDefinition(keyspaceName), true);
+			try {
+                                KeyspaceDefinition def = createKeyspaceDefinitionVersioning(keyspaceName);
+				_cluster.addKeyspace(def, true);
 			} catch( HectorException ex ) { 
 				ex.printStackTrace(); 	
 				return 3;
@@ -269,7 +274,7 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		String encoded_keyspaceName = Store.encodeKeyspace(keyspaceName);
 		if (! existsKeyspace(encoded_keyspaceName)) 
 			try { 
-				_cluster.addKeyspace(createKeyspaceDefinition(encoded_keyspaceName), true);
+				_cluster.addKeyspace(createKeyspaceDefinitionVersioning(encoded_keyspaceName), true);
 			} catch( HectorException ex ) { 
 				ex.printStackTrace(); 	
 				_log.severe("ERS exception: "+ex.getMessage() );
@@ -372,15 +377,59 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		_batchSizeMB = batchSizeMB;
 	}
 	
-	protected KeyspaceDefinition createKeyspaceDefinition(String keyspaceName) {
+	protected KeyspaceDefinition createKeyspaceDefinitionVersioning(String keyspaceName) {
 		return HFactory.createKeyspaceDefinition(keyspaceName, "org.apache.cassandra.locator.SimpleStrategy", 
+			Listener.DEFAULT_REPLICATION_FACTOR, createColumnFamiliyDefinitionsVersioning(keyspaceName));
+	}
+
+        protected KeyspaceDefinition createKeyspaceDefinition(String keyspaceName) {
+		return HFactory.createKeyspaceDefinition(keyspaceName, "org.apache.cassandra.locator.SimpleStrategy",
 			Listener.DEFAULT_REPLICATION_FACTOR, createColumnFamiliyDefinitions(keyspaceName));
 	}
 
+        protected abstract List<ColumnFamilyDefinition> createColumnFamiliyDefinitionsVersioning(String keyspaceName);
+
 	protected abstract List<ColumnFamilyDefinition> createColumnFamiliyDefinitions(String keyspaceName);
 
-	protected ColumnFamilyDefinition createCfDefFlat(String cfName, List<String> cols, List<String> indexedCols, ComparatorType keyComp, String keyspaceName) {
+	protected ColumnFamilyDefinition createCfDefFlatVersioning(String cfName, List<String> cols, List<String> indexedCols,
+                    ComparatorType keyComp, String keyspaceName) {
 		BasicColumnFamilyDefinition cfdef = new BasicColumnFamilyDefinition();
+		cfdef.setKeyspaceName(keyspaceName);
+		cfdef.setName(cfName);
+		cfdef.setColumnType(ColumnType.STANDARD);
+		//cfdef.setComparatorType(ComparatorType.UTF8TYPE);
+                // TM: change to composite keys
+                
+                // comparator - simply orders the columns based on the natural ordering specific to the encoding you gave it.
+               // cfdef.setComparatorType(ComparatorType.DYNAMICCOMPOSITETYPE);
+               cfdef.setComparatorType(ComparatorType.COMPOSITETYPE);
+               cfdef.setComparatorTypeAlias("(UTF8Type,UTF8Type,UTF8Type)");
+               
+               /* cfdef.setComparatorTypeAlias("(a=>AsciiType,b=>BytesType,i=>IntegerType,x=>LexicalUUIDType," +
+                        "l=>LongType,t=>TimeUUIDType,s=>UTF8Type,u=>UUIDType)"); */
+                //cfdef.setComparatorTypeAlias(("(IntegerType,IntegerType,IntegerType)"));
+
+                // validator - you're simply asking Cassandra to make sure those bytes are encoded as you desire.
+                cfdef.setKeyValidationClass(ComparatorType.UTF8TYPE.getClassName());
+                //cfdef.setKeyValidationClass("CompositeType(UTF8Type,IntegerType,UTF8Type)");
+		cfdef.setDefaultValidationClass(ComparatorType.UTF8TYPE.getClassName());
+
+		Map<String,String> compressionOptions = new HashMap<String, String>();
+		compressionOptions.put("sstable_compression", "SnappyCompressor");
+		cfdef.setCompressionOptions(compressionOptions);
+
+		if (cols != null)
+			for (String colName : cols)
+				cfdef.addColumnDefinition(createColDef(colName, 
+                                    ComparatorType.UTF8TYPE.getClassName(),
+                                    indexedCols.contains(colName), "index_" + colName.substring(1)));
+		
+		return new ThriftCfDef(cfdef);
+	}
+
+        protected ColumnFamilyDefinition createCfDefFlat(String cfName, List<String> cols, List<String> indexedCols,
+                    ComparatorType keyComp, String keyspaceName) {
+                BasicColumnFamilyDefinition cfdef = new BasicColumnFamilyDefinition();
 		cfdef.setKeyspaceName(keyspaceName);
 		cfdef.setName(cfName);
 		cfdef.setColumnType(ColumnType.STANDARD);
@@ -395,7 +444,7 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		if (cols != null)
 			for (String colName : cols)
 				cfdef.addColumnDefinition(createColDef(colName, ComparatorType.UTF8TYPE.getClassName(), indexedCols.contains(colName), "index_" + colName.substring(1)));
-		
+
 		return new ThriftCfDef(cfdef);
 	}
 	
@@ -719,6 +768,11 @@ public abstract class AbstractCassandraRdfHector extends Store {
 	@Override
 	public Iterator<Node[]> query(Node[] query, String keyspace) throws StoreException {
 		return query(query, Integer.MAX_VALUE, keyspace);
+	}
+
+        @Override
+	public Iterator<Node[]> queryVersioning(Node[] query, String keyspace) throws StoreException {
+		return queryVersioning(query, Integer.MAX_VALUE, keyspace);
 	}
 
 	private Node urlDecode(Node n) {

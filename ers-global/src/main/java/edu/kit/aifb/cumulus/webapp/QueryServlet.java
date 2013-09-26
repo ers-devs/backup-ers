@@ -119,16 +119,19 @@ public class QueryServlet extends AbstractHttpServlet {
 			      k.equals(Listener.GRAPHS_NAMES_KEYSPACE) )
 				continue;
 			try {
-				Iterator<Node[]> it = crdf.query(query, limit, k);
+                    		Iterator<Node[]> it = crdf.queryVersioning(query, limit, k);
 				if (it.hasNext()) {
+
+_log.info("[dataset] QUERY " + Nodes.toN3(query) + " " + " HAS NEXT !!!! BE CAREFUL, CODE COMMENTED HERE!!! ");
+
 					resp.setContentType(formatter.getContentType());
-					triples = formatter.print(it, out, crdf.decodeKeyspace(k));
+					triples = formatter.print(it, out, "REAL_KESPACE_COMMENTED");////crdf.decodeKeyspace(k));
 					found = true;
 					total_triples += triples;
 					limit -= triples;
 					if( limit == 0 ) 
 						break;
-				}
+				} 
 			} catch (StoreException ex) {
 				_log.severe(ex.getMessage());
 				resp.sendError(500, ex.getMessage());

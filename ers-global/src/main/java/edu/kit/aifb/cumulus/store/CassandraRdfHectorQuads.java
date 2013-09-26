@@ -42,7 +42,12 @@ public class CassandraRdfHectorQuads extends AbstractCassandraRdfHector {
 		ColumnFamilyDefinition redirects = createCfDefFlat(CF_REDIRECTS, null, null, ComparatorType.UTF8TYPE, keyspace);
 		return Arrays.asList(cspo, redirects);
 	}
-	
+
+        @Override
+        protected List<ColumnFamilyDefinition> createColumnFamiliyDefinitionsVersioning(String keyspaceName) {
+            throw new UnsupportedOperationException("Not supported yet.");
+        }
+
 	// Only supported: ?s ?p ?o :c
 	public Iterator<Node[]> query(Node[] query, int limit, String keyspace) throws StoreException {
 //		_log.info("query: " + Nodes.toN3(query) + " idx: CSPO");
@@ -77,7 +82,12 @@ public class CassandraRdfHectorQuads extends AbstractCassandraRdfHector {
 		}
 		return it;
 	}
-	
+
+        @Override
+        public Iterator<Node[]> queryVersioning(Node[] query, int limit, String keyspace) throws StoreException {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
 	public void loadRedirects(InputStream fis, String keyspace) throws IOException, InterruptedException {
 		_log.info("bulk loading " + CF_REDIRECTS);
 		Iterator<Node[]> nxp = new NxParser(fis);
@@ -218,4 +228,5 @@ public class CassandraRdfHectorQuads extends AbstractCassandraRdfHector {
 	protected void batchRun(String cf, List<Node[]> list, String keyspace){
 		//_log.severe("CassandraRdfHectorQuads does not implement batchRun() method");
 	}
+
 }

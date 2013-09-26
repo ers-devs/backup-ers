@@ -266,9 +266,11 @@ public class Listener implements ServletContextListener {
 			_log.info("ers keyspaces prefix: " + Listener.DEFAULT_ERS_KEYSPACES_PREFIX );
 			_log.info("storage layout: " + layout);
                         _log.info("transactional locking granularity level: " + Listener.DEFAULT_TRANS_LOCKING_GRANULARITY);
-			
+
+                        // hierarhical layout
 			if (LAYOUT_SUPER.equals(layout))
 				_crdf = new CassandraRdfHectorHierHash(hosts);
+                        // flat layout
 			else if (LAYOUT_FLAT.equals(layout))
 				_crdf = new CassandraRdfHectorFlatHash(hosts);
 			else

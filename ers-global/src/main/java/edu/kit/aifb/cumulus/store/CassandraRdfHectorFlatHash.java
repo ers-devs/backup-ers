@@ -33,6 +33,8 @@ import org.semanticweb.yars.nx.parser.NxParser;
 import org.semanticweb.yars.nx.parser.ParseException;
 
 import edu.kit.aifb.cumulus.webapp.Listener;
+import me.prettyprint.cassandra.serializers.CompositeSerializer;
+import me.prettyprint.hector.api.beans.Composite;
 
 public class CassandraRdfHectorFlatHash extends CassandraRdfHectorQuads {
 	private static final String CF_S_PO = "SPO";
@@ -47,35 +49,56 @@ public class CassandraRdfHectorFlatHash extends CassandraRdfHectorQuads {
 		_cfs.add(CF_S_PO);
 		_cfs.add(CF_O_SP);
 		_cfs.add(CF_PO_S);
-		_maps.put(CF_S_PO, new int[] { 0, 1, 2 });
+                _maps.put(CF_S_PO, new int[] { 0, 1, 2});
 		_maps.put(CF_O_SP, new int[] { 2, 0, 1 });
 		_maps.put(CF_PO_S, new int[] { 1, 2, 0 });
-         // used to create another triple before loading into different CF for expressing the link
-        _maps.put("link", new int[] { 2, 1, 0});
+
+                _maps_ext.put(CF_S_PO, new int[] { 0, 1, 2, 3, 4});
+		_maps_ext.put(CF_O_SP, new int[] { 2, 0, 1, 3, 4});
+		_maps_ext.put(CF_PO_S, new int[] { 1, 2, 0, 3, 4});
+
+                
+                 // used to create another triple before loading into different CF for expressing the link
+                _maps.put("link", new int[] { 2, 1, 0});
 		_maps_br.put(CF_S_PO, new int[] { 0, 1, 2, 3 });
 		_maps_br.put(CF_O_SP, new int[] { 2, 0, 1, 3 });
 		_maps_br.put(CF_PO_S, new int[] { 1, 2, 0, 3 });
-        _maps_br.put("link", new int[] { 2, 1, 0, 3 });
+                _maps_br.put("link", new int[] { 2, 1, 0, 3 });
 		_maps_br_update_d.put(CF_S_PO, new int[] { 0, 1, 2, 3, 4 });
 		_maps_br_update_d.put(CF_O_SP, new int[] { 2, 0, 1, 3, 4 });
 		_maps_br_update_d.put(CF_PO_S, new int[] { 1, 2, 0, 3, 4 });
-        _maps_br_update_d.put("link", new int[] { 2, 1, 0, 3, 4 });
+                _maps_br_update_d.put("link", new int[] { 2, 1, 0, 3, 4 });
 		_maps_br_update_i.put(CF_S_PO, new int[] { 0, 1, 4, 3, 2 });
 		_maps_br_update_i.put(CF_O_SP, new int[] { 4, 0, 1, 3, 2 });
 		_maps_br_update_i.put(CF_PO_S, new int[] { 1, 4, 0, 3, 2 });
-        _maps_br_update_i.put("link", new int[] { 4, 1, 0, 3, 2 });
+                _maps_br_update_i.put("link", new int[] { 4, 1, 0, 3, 2 });
 	}
+
+        @Override
+	protected List<ColumnFamilyDefinition> createColumnFamiliyDefinitionsVersioning(String keyspace) {
+                ColumnFamilyDefinition spo = createCfDefFlatVersioning(CF_S_PO, null, null, ComparatorType.COMPOSITETYPE, keyspace);
+                ColumnFamilyDefinition osp = createCfDefFlatVersioning(CF_O_SP, null, null, ComparatorType.COMPOSITETYPE, keyspace);
+                //TODO: add POS column family !!
+		/*ColumnFamilyDefinition pos = createCfDefFlatVersioning(CF_PO_S, Arrays.asList("!p", "!o"), Arrays.asList("!p"),
+                        ComparatorType.BYTESTYPE, keyspace);*/
+
+		ArrayList<ColumnFamilyDefinition> li = new ArrayList<ColumnFamilyDefinition>();
+                // TM : create SPO, Redirects; TODO: do we need these?!
+		//li.addAll(super.createColumnFamiliyDefinitions(keyspace));
+		li.addAll(Arrays.asList(spo, osp));//, pos));
+		return li;
+	}
+
 		
 	@Override
 	protected List<ColumnFamilyDefinition> createColumnFamiliyDefinitions(String keyspace) {
 		ColumnFamilyDefinition spo = createCfDefFlat(CF_S_PO, null, null, ComparatorType.UTF8TYPE, keyspace);
-		ColumnFamilyDefinition osp = createCfDefFlat(CF_O_SP, null, null, ComparatorType.UTF8TYPE, keyspace);
-		ColumnFamilyDefinition pos = createCfDefFlat(CF_PO_S, Arrays.asList("!p", "!o"), Arrays.asList("!p"), ComparatorType.BYTESTYPE, keyspace);
-		
-		ArrayList<ColumnFamilyDefinition> li = new ArrayList<ColumnFamilyDefinition>();
+                ColumnFamilyDefinition osp = createCfDefFlat(CF_O_SP, null, null, ComparatorType.UTF8TYPE, keyspace);
+                ColumnFamilyDefinition pos = createCfDefFlat(CF_PO_S, Arrays.asList("!p", "!o"), Arrays.asList("!p"),
+                        ComparatorType.BYTESTYPE, keyspace);
+                ArrayList<ColumnFamilyDefinition> li = new ArrayList<ColumnFamilyDefinition>();
 		li.addAll(super.createColumnFamiliyDefinitions(keyspace));
 		li.addAll(Arrays.asList(spo, osp, pos));
-		
 		return li;
 	}
 
@@ -87,12 +110,15 @@ public class CassandraRdfHectorFlatHash extends CassandraRdfHectorQuads {
 		return key;
 	}
 
-	@Override
-	protected void batchInsert(String cf, List<Node[]> li, String keyspace) {
+	protected void batchInsertVersioning(String cf, List<Node[]> li, String keyspace,
+                String URN_author) {
 		if (cf.equals(CF_C_SPO)) {
-			super.batchInsert(cf, li, keyspace);
+// TM
+//			super.batchInsert(cf, li, keyspace);
 		}
 		else if (cf.equals(CF_PO_S)) {
+// TM
+/*
 			Mutator<byte[]> m = HFactory.createMutator(getExistingKeyspace(keyspace), _bs);
 			for (Node[] nx : li) {
 				// reorder for the key
@@ -105,18 +131,95 @@ public class CassandraRdfHectorFlatHash extends CassandraRdfHectorQuads {
 				m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn("!o", reordered[1].toN3()));
 			}
 			m.execute();
+ **/
 		}
 		else {
-			Mutator<String> m = HFactory.createMutator(getExistingKeyspace(keyspace), _ss);
+                        // TM: change to composite keys
+                        // insert 's-ID'
+                        Mutator<String> m = HFactory.createMutator(getExistingKeyspace(keyspace), _ss);
+			for (Node[] nx : li) {
+				// reorder for the key
+				Node[] reordered = Util.reorder(nx, _maps.get(cf));
+				//String rowKey = reordered[0].toN3();
+                                String rowKey = new Resource(reordered[0].toString() + "-ID").toN3();
+                                // TM: change to composite keys
+                                String URN = new String("TEST_URN");
+
+                                // ID, URN
+                                Composite colKey = new Composite();
+                                colKey.addComponent("999", StringSerializer.get());
+                                colKey.addComponent(URN, StringSerializer.get());
+                                String colKey_s = Nodes.toN3(new Node[] { reordered[1], reordered[2] });
+                                colKey.addComponent(colKey_s, StringSerializer.get());
+
+
+                                HColumn<Composite, String> hColumnObj_itemID =
+                                        HFactory.createColumn(colKey, "", new CompositeSerializer(),
+                                        StringSerializer.get());
+                                m.addInsertion(rowKey, cf, hColumnObj_itemID);
+    			}
+                        m.execute();
+
+
+                        // insert 's-URN'
+                        m = HFactory.createMutator(getExistingKeyspace(keyspace), _ss);
+			for (Node[] nx : li) {
+				// reorder for the key
+				Node[] reordered = Util.reorder(nx, _maps.get(cf));
+				//String rowKey = reordered[0].toN3();
+                                String rowKey = new Resource(reordered[0].toString() + "-URN").toN3();
+                                // TM: change to composite keys
+                                String URN = new String("TEST_URN");
+
+                                // URN, ID
+                                Composite colKey = new Composite();
+                                colKey.addComponent(URN, StringSerializer.get());
+                                colKey.addComponent("999", StringSerializer.get());
+                                String colKey_s = Nodes.toN3(new Node[] { reordered[1], reordered[2] });
+                                colKey.addComponent(colKey_s, StringSerializer.get());
+
+
+                                HColumn<Composite, String> hColumnObj_itemID =
+                                        HFactory.createColumn(colKey, "", new CompositeSerializer(),
+                                        StringSerializer.get());
+                                m.addInsertion(rowKey, cf, hColumnObj_itemID);
+    			}
+                        m.execute();
+		}
+	}
+
+        @Override
+	protected void batchInsert(String cf, List<Node[]> li, String keyspace) {
+            batchInsertVersioning(cf, li, keyspace, COL_S);
+            /*
+		if (cf.equals(CF_C_SPO)) {
+			super.batchInsert(cf, li, keyspace);
+		}
+		else if (cf.equals(CF_PO_S)) {
+			Mutator<byte[]> m = HFactory.createMutator(getExistingKeyspace(keyspace), _bs);
+			for (Node[] nx : li) {
+				// reorder for the key
+				Node[] reordered = Util.reorder(nx, _maps.get(cf));
+
+				ByteBuffer rowKey = createKey(new Node[] { reordered[0], reordered[1] });
+				String colKey = reordered[2].toN3();
+				m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn(colKey, ""));
+				m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn("!p", reordered[0].toN3()));
+				m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn("!o", reordered[1].toN3()));
+			}
+			m.execute();
+		}
+		else {
+                        Mutator<String> m = HFactory.createMutator(getExistingKeyspace(keyspace), _ss);
 			for (Node[] nx : li) {
 				// reorder for the key
 				Node[] reordered = Util.reorder(nx, _maps.get(cf));
 				String rowKey = reordered[0].toN3();
-				String colKey = Nodes.toN3(new Node[] { reordered[1], reordered[2] });
-				m.addInsertion(rowKey, cf, HFactory.createStringColumn(colKey, ""));
-			}
-			m.execute();
-		}
+                                String colKey = Nodes.toN3(new Node[] { reordered[1], reordered[2] });
+                                m.addInsertion(rowKey, cf, HFactory.createStringColumn(colKey, ""));
+    			}
+                        m.execute();
+		}*/
 	}
 	
 	// TM
@@ -435,8 +538,7 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 		return CF_S_PO;
 	}
 
-	@Override
-	public Iterator<Node[]> query(Node[] query, int limit, String keyspace) throws StoreException {
+	public Iterator<Node[]> queryVersioning(Node[] query, int limit, String keyspace) throws StoreException {
 		Iterator<Node[]> it = super.query(query, limit, keyspace);
 		if (it != null) {
 			return it;
@@ -445,7 +547,6 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 		String columnFamily = selectColumnFamily(query);
 		int[] map = _maps.get(columnFamily);
 		Node[] q = Util.reorder(query, map);
-
 //		_log.info("query: " + Nodes.toN3(query) + " idx: " + columnFamily + " reordered: " + Nodes.toN3(q));
 		
 		if (isVariable(q[0])) {
@@ -454,8 +555,8 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 		}
 		else {
 			if (columnFamily.equals(CF_PO_S)) {
-				if (isVariable(q[1])) {
-
+			/*	UNCOMMENT THIS!!!
+                                if (isVariable(q[1])) {
 					// we use a secondary index for P only when no other constant is given
 					IndexedSlicesQuery<byte[],String,String> isq = HFactory.createIndexedSlicesQuery(getExistingKeyspace(keyspace), _bs, _ss, _ss)
 						.setColumnFamily(columnFamily)
@@ -491,7 +592,7 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 
 					it = new ColumnSliceIterator<byte[]>(sq, nxKey, "<", "", map, limit, 1);
 				}
-				
+			*/
 			}
 			else {
 				String startRange = "", endRange = "";
@@ -507,16 +608,146 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 				}
 
 				// SPO, OSP cfs have one node as key and two nodes as colname
-				Node[] nxKey = new Node[] { q[0] };
-				String key = q[0].toN3();
+				Node[] nxKey = new Node[] { new Resource(q[0].toString()+"-ID") };
+                                String key_ID = nxKey[0].toN3();
+                                //Node[] nxKey = new Node[] { q[0] };
+				//String key = q[0].toN3();
 				int colNameTupleLength = 2;
 				
-				SliceQuery<String,String,String> sq = HFactory.createSliceQuery(getExistingKeyspace(keyspace), _ss, _ss, _ss)
+				/*SliceQuery<String,String,String> sq = HFactory.createSliceQuery(
+                                        getExistingKeyspace(keyspace), _ss, _ss, _ss)
 					.setColumnFamily(columnFamily)
 					.setKey(key);
 				
-				it = new ColumnSliceIterator<String>(sq, nxKey, startRange, endRange, map, limit, colNameTupleLength);
+				it = new ColumnSliceIterator<String>(sq, nxKey,
+                                        startRange, endRange, map, limit, colNameTupleLength);*/
+
+
+                                  /* TM: query composite */
+                                SliceQuery<String, Composite, String> query_comp = HFactory.createSliceQuery(getExistingKeyspace(keyspace),
+                                         StringSerializer.get(), CompositeSerializer.get(), StringSerializer.get());
+                                Composite columnStart = new Composite();
+                                Composite columnEnd = new Composite();
+                                columnStart.addComponent(0, "999", Composite.ComponentEquality.EQUAL);
+                                columnStart.addComponent(1, "TEST_URN", Composite.ComponentEquality.EQUAL);
+                                columnEnd.addComponent(0, "999", Composite.ComponentEquality.EQUAL);
+                                columnEnd.addComponent(1, "TEST_URN", Composite.ComponentEquality.GREATER_THAN_EQUAL);
+
+                                query_comp.setColumnFamily(columnFamily).setKey(key_ID);
+
+                                _log.info("QUERY COMPOSITE ........ on key  " + key_ID);
+
+                                // use the extended map
+                                map = _maps_ext.get(columnFamily);
+                                it = new ColumnSliceIteratorComposite<String>(query_comp, nxKey,
+                                        columnStart, columnEnd, map, limit, colNameTupleLength);
+
+
+
+                                // TO BE DELETED
+                                /*query_comp.setRange(columnStart, columnEnd, false, limit);
+                                QueryResult<ColumnSlice<Composite, String>> qr = query_comp.execute();
+                                System.out.println("size = " + qr.get().getColumns().size());
+                                Iterator<HColumn<Composite, String>> iter = qr.get().getColumns().iterator();
+                                while (iter.hasNext()) {
+                                    HColumn<Composite, String> column = iter.next();
+                                    System.out.print(column.getName().get(0, StringSerializer.get()));
+                                    System.out.print("::::");
+                                    System.out.print(column.getName().get(1, StringSerializer.get()));
+                                    System.out.print("%%%%");
+                                    System.out.print(column.getName().get(2, StringSerializer.get()));
+                                    System.out.println("=" + column.getValue());
+                                }*/
+                                /* TM: query composite */
+                                //ColumnSlice<Composite, String> result = query.execute().get();
+                        }
+			
+		}
+		return it;
+	}
+
+        @Override
+	public Iterator<Node[]> query(Node[] query, int limit, String keyspace) throws StoreException {
+		Iterator<Node[]> it = super.query(query, limit, keyspace);
+		if (it != null) {
+			return it;
+		}
+
+		String columnFamily = selectColumnFamily(query);
+		int[] map = _maps.get(columnFamily);
+		Node[] q = Util.reorder(query, map);
+//		_log.info("query: " + Nodes.toN3(query) + " idx: " + columnFamily + " reordered: " + Nodes.toN3(q));
+
+		if (isVariable(q[0])) {
+			// scan over all
+			throw new UnsupportedOperationException("triple patterns must have at least one constant");
+		}
+		else {
+			if (columnFamily.equals(CF_PO_S)) {
+                                if (isVariable(q[1])) {
+					// we use a secondary index for P only when no other constant is given
+					IndexedSlicesQuery<byte[],String,String> isq = HFactory.createIndexedSlicesQuery(getExistingKeyspace(keyspace), _bs, _ss, _ss)
+						.setColumnFamily(columnFamily)
+						.addEqualsExpression("!p", q[0].toN3())
+						.setReturnKeysOnly();
+
+					it = new HashIndexedSlicesQueryIterator(isq, map, limit, columnFamily, getExistingKeyspace(keyspace));
+				}
+				else {
+					// here we always have a PO lookup, POS (=SPO) is handled by OSP or SPO
+					// we retrieve all columns from a single row
+					// in POS the keys are hashes, we retrieve P and O from columns !p and !o
+
+					ByteBuffer key = createKey(new Node[] { q[0], q[1] });
+
+					SliceQuery<byte[],String,String> sq = HFactory.createSliceQuery(getExistingKeyspace(keyspace), _bs, _ss, _ss)
+						.setColumnFamily(columnFamily)
+						.setKey(key.array())
+						.setRange("!o", "!p", false, 2);
+					QueryResult<ColumnSlice<String,String>> res = sq.execute();
+
+					if (res.get().getColumns().size() == 0)
+						return new ArrayList<Node[]>().iterator();
+
+					Node[] nxKey = new Node[2];
+					try {
+						nxKey[0] = NxParser.parseNode(res.get().getColumnByName("!p").getValue());
+						nxKey[1] = NxParser.parseNode(res.get().getColumnByName("!o").getValue());
+					}
+					catch (ParseException e) {
+						e.printStackTrace();
+					}
+
+					it = new ColumnSliceIterator<byte[]>(sq, nxKey, "<", "", map, limit, 1);
+				}
 			}
+			else {
+				String startRange = "", endRange = "";
+				if (!isVariable(q[1])) {
+					// if there is more than one constant, we need to modify the range
+					startRange = q[1].toN3();
+					endRange = startRange + "_";
+
+					if (!isVariable(q[2])) {
+						startRange = Nodes.toN3(new Node[] { q[1], q[2] });
+						endRange = startRange;
+					}
+				}
+
+				// SPO, OSP cfs have one node as key and two nodes as colname
+				Node[] nxKey = new Node[] { q[0] };
+				String key = q[0].toN3();
+				int colNameTupleLength = 2;
+
+				SliceQuery<String,String,String> sq = HFactory.createSliceQuery(
+                                        getExistingKeyspace(keyspace), _ss, _ss, _ss)
+					.setColumnFamily(columnFamily)
+					.setKey(key);
+
+				it = new ColumnSliceIterator<String>(sq, nxKey,
+                                        startRange, endRange, map, limit, colNameTupleLength);
+                        }
+
 		}
 		return it;
 	}
