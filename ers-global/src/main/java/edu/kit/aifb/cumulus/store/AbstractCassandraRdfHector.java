@@ -242,7 +242,7 @@ public abstract class AbstractCassandraRdfHector extends Store {
 	public int createKeyspaceInit(String keyspaceName) {
 		if (! existsKeyspace(keyspaceName))  {
 			try {
-                                KeyspaceDefinition def = createKeyspaceDefinitionVersioning(keyspaceName);
+                                KeyspaceDefinition def = createKeyspaceDefinition(keyspaceName);
 				_cluster.addKeyspace(def, true);
 			} catch( HectorException ex ) { 
 				ex.printStackTrace(); 	
@@ -270,11 +270,15 @@ public abstract class AbstractCassandraRdfHector extends Store {
 
 	// create a keyspace if it does not exist yet and add 
 	//NOTE: pass NON-encoded keyspace
-	public int createKeyspace(String keyspaceName) {
+        //TM: CHANGE-POINT for versioning
+	public int createKeyspace(String keyspaceName, boolean enableVersioning) {
 		String encoded_keyspaceName = Store.encodeKeyspace(keyspaceName);
 		if (! existsKeyspace(encoded_keyspaceName)) 
-			try { 
+			try {
+                            if(enableVersioning)
 				_cluster.addKeyspace(createKeyspaceDefinitionVersioning(encoded_keyspaceName), true);
+                            else
+                                _cluster.addKeyspace(createKeyspaceDefinition(encoded_keyspaceName), true);
 			} catch( HectorException ex ) { 
 				ex.printStackTrace(); 	
 				_log.severe("ERS exception: "+ex.getMessage() );
@@ -286,6 +290,8 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		// also add an entry into Listener.GRAPHS_NAMES_KEYSPACE to keep a mapping of hashed keyspace name and the real one 
 		this.addData("\""+encoded_keyspaceName+"\"", "\"hashValue\"", 
                         "\""+keyspaceName+"\"", Listener.GRAPHS_NAMES_KEYSPACE, 0);
+                this.addData("\""+encoded_keyspaceName+"\"", "\"versioningEnabled\"",
+                        "\""+(enableVersioning==true?"1":"0")+"\"", Listener.GRAPHS_NAMES_KEYSPACE, 0);
 		return 0;
 	}
 
@@ -397,18 +403,9 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		cfdef.setKeyspaceName(keyspaceName);
 		cfdef.setName(cfName);
 		cfdef.setColumnType(ColumnType.STANDARD);
-		//cfdef.setComparatorType(ComparatorType.UTF8TYPE);
-                // TM: change to composite keys
-                
-                // comparator - simply orders the columns based on the natural ordering specific to the encoding you gave it.
-               // cfdef.setComparatorType(ComparatorType.DYNAMICCOMPOSITETYPE);
-               cfdef.setComparatorType(ComparatorType.COMPOSITETYPE);
-               cfdef.setComparatorTypeAlias("(UTF8Type,UTF8Type,UTF8Type)");
+                cfdef.setComparatorType(ComparatorType.COMPOSITETYPE);
+                cfdef.setComparatorTypeAlias("(UTF8Type,UTF8Type,UTF8Type)");
                
-               /* cfdef.setComparatorTypeAlias("(a=>AsciiType,b=>BytesType,i=>IntegerType,x=>LexicalUUIDType," +
-                        "l=>LongType,t=>TimeUUIDType,s=>UTF8Type,u=>UUIDType)"); */
-                //cfdef.setComparatorTypeAlias(("(IntegerType,IntegerType,IntegerType)"));
-
                 // validator - you're simply asking Cassandra to make sure those bytes are encoded as you desire.
                 cfdef.setKeyValidationClass(ComparatorType.UTF8TYPE.getClassName());
                 //cfdef.setKeyValidationClass("CompositeType(UTF8Type,IntegerType,UTF8Type)");
@@ -461,9 +458,47 @@ public abstract class AbstractCassandraRdfHector extends Store {
 	}
 	
 	protected abstract void batchInsert(String cf, List<Node[]> li, String keyspace);
+        protected abstract void batchInsertVersioning(String cf, List<Node[]> li, String keyspace, 
+                String URN_author, boolean updateVerNum);
+        
 	protected abstract void batchDelete(String cf, List<Node[]> li, String keyspace);
 	protected abstract void batchDeleteRow(String cf, List<Node[]> li, String keyspace);
 	protected abstract void batchRun(String cf, List<Node[]> li, String keyspace);
+
+        public Node getNode(String value, String varName) throws ParseException {
+		if (value != null && value.trim().length() > 2)
+			return NxParser.parseNode(value);
+		else
+			return new Variable(varName);
+	}
+
+
+        // check if a given keyspace has versioning enabled
+        public boolean keyspaceEnabledVersioning(String keyspaceName) {
+                Node[] query = new Node[3];
+		try {
+			query[0] = getNode("\""+encodeKeyspace(keyspaceName)+"\"", "s");
+			query[1] = getNode("\"versioningEnabled\"", "p");
+			query[2] = getNode(null, "o");
+		}
+		catch (ParseException ex) {
+			_log.severe(ex.getMessage());
+			return false;
+		}
+                Iterator<Node[]> it;
+                try {
+                    it = this.query(query, 1, Listener.GRAPHS_NAMES_KEYSPACE);
+                    if (it.hasNext()) {
+                        Node[] next = (Node[])it.next();
+                        //_log.info("VERSIONING ENABLED: " + next[2].toString());
+                        if( next[2].toString().equals("1") )
+                            return true;
+                    }
+                } catch (StoreException ex) {
+                    Logger.getLogger(AbstractCassandraRdfHector.class.getName()).log(Level.SEVERE, null, ex);
+                }
+                return false;
+        }
 
 	protected boolean isVariable(Node n) {
 		return n instanceof Variable;
@@ -485,6 +520,49 @@ public abstract class AbstractCassandraRdfHector extends Store {
                 return -1;
             }
 	}
+
+        public void updateToNextVersion(String keyspaceName, String entity_w_brackets,
+                String URN_author, int old_version) {
+                String e = "<"+keyspaceName+ "-" + entity_w_brackets+">";
+                String p = "\""+URN_author+"-lastID\"";
+                // delete the old one and put the new oneADD
+                deleteData(e, p, "\""+old_version+"\"", Listener.GRAPHS_VERSIONS_KEYSPACE, 0);
+                addData(e, p, "\""+(old_version+1)+"\"", Listener.GRAPHS_VERSIONS_KEYSPACE, 0);
+        }
+
+        // get the last versioning number for a given keyspace and entity
+        public int lastVersioningNumber(String keyspaceName, String entity_w_brackets,
+                String URN_author) {
+                Node[] query = new Node[3];
+                String e = "<"+keyspaceName+ "-" + entity_w_brackets+">";
+                String p = "\""+URN_author+"-lastID\"";
+		try {
+			query[0] = getNode(e, "s");
+			query[1] = getNode(p, "p");
+			query[2] = getNode(null, "o");
+		}
+		catch (ParseException ex) {
+			_log.severe(ex.getMessage());
+			return -1;
+		}
+                Iterator<Node[]> it;
+                try {
+                    it = this.query(query, 1, Listener.GRAPHS_VERSIONS_KEYSPACE);
+                    if (it.hasNext()) {
+                        Node[] next = (Node[])it.next();
+                        return new Integer(next[2].toString());
+                    }
+                    else {
+                        // insert an initial version number
+                        addData(e, p, "\"0\"", Listener.GRAPHS_VERSIONS_KEYSPACE, 0);
+                        return 0;
+                    }
+                } catch (StoreException ex) {
+                    Logger.getLogger(AbstractCassandraRdfHector.class.getName()).log(Level.SEVERE, null, ex);
+                }
+                return -1;
+        }
+
 
 	@Override
 	public int addData(Iterator<Node[]> it, String keyspace, Integer linkFlag) throws StoreException {
@@ -519,6 +597,63 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		return count;
 	}
 
+        @Override
+        public int addDataVersioning(Iterator<Node[]> it, String keyspace,
+                Integer linkFlag, String URN_author) throws StoreException {
+		// check firstly if keyspace exists, if not, return error
+		if( !existsKeyspace(keyspace) ) {
+			return -1;
+		}
+		List<Node[]> batch = new ArrayList<Node[]>();
+		int batchSize = 0;
+		int count = 0;
+		while (it.hasNext()) {
+			Node[] nx = it.next();
+			//_log.info("addData  " + nx[0].toString() + " " + nx[1].toString() + " " + nx[2].toString());
+                        batch.add(nx);
+                         // add the back link as well
+                        if( linkFlag != 0 && nx[2] instanceof Resource )
+                                batch.add(Util.reorderForLink(nx, _maps.get("link")));
+
+                        batchSize += nx[0].toN3().getBytes().length + nx[1].toN3().getBytes().length + nx[2].toN3().getBytes().length;
+			count++;
+			if (batchSize >= _batchSizeMB * 1048576) {
+				_log.finer("insert batch of size " + batchSize + " (" + batch.size() + " tuples)");
+				/*for (String cf : _cfs)
+					batchInsertVersioning(cf, batch, keyspace, URN_author);*/
+                                for(int i=0; i<_cfs.size(); ++i ) {
+                                    String cf = _cfs.get(i);
+                                    // update the versions number on the ERS_versions only once, at the end
+                                    if( i == _cfs.size() -1 )
+                                        batchInsertVersioning(cf, batch, keyspace,
+                                                URN_author, true);
+                                    else
+                                        batchInsertVersioning(cf, batch, keyspace,
+                                                URN_author, false);
+                                }
+
+				batch = new ArrayList<Node[]>();
+				batchSize = 0;
+			}
+		}
+		if (batch.size() > 0) {
+			/*for (String cf : _cfs)
+				batchInsertVersioning(cf, batch, keyspace, URN_author);*/
+                        for(int i=0; i<_cfs.size(); ++i ) {
+                                    String cf = _cfs.get(i);
+                                    // update the versions number on the ERS_versions only once, at the end
+                                    if( i == _cfs.size() -1 )
+                                        batchInsertVersioning(cf, batch, keyspace,
+                                                URN_author, true);
+                                    else
+                                        batchInsertVersioning(cf, batch, keyspace,
+                                                URN_author, false);
+                                }
+                }
+		return count;
+	}
+
+
         // <e> <INVERTED_..> <v> <g> => <v> is generated by this function 
         // basically it represnets the source graph concatenated with the source entity
         // reason: a clone operation can be run inter-graphs
@@ -527,12 +662,14 @@ public abstract class AbstractCassandraRdfHector extends Store {
         }
 
 	// TM: add just one record
+        @Override
 	public int addData(String e, String p, String v, String keyspace,
                 Integer linkFlag) {
 		if( !existsKeyspace(keyspace) ) { 
 			return -2; 
 		}
-		String triple = e + " " + p + " " + v + " ."; 
+		String triple = e + " " + p + " " + v + " .";
+                //_log.info("ADD DATA " + triple);
 		try { 
 			Node[] nx = NxParser.parseNodes(triple);	
 	 		List<Node[]> batch = new ArrayList<Node[]>();
@@ -546,6 +683,44 @@ public abstract class AbstractCassandraRdfHector extends Store {
 			return 0;
 		} 
 		catch( ParseException ex ) { 
+			ex.printStackTrace();
+			_log.severe(ex.getMessage());
+			return -1;
+		}
+	}
+
+        // TM: add just one record
+        @Override
+	public int addDataVersioning(String e, String p, String v, String keyspace,
+                Integer linkFlag, String URN_author) {
+		if( !existsKeyspace(keyspace) ) {
+			return -2;
+		}               
+		String triple = e + " " + p + " " + v + " .";
+		try {
+			Node[] nx = NxParser.parseNodes(triple);
+	 		List<Node[]> batch = new ArrayList<Node[]>();
+			batch.add(nx);
+                        if( linkFlag != 0 )
+                            // add the back link as well
+                            if( nx[2] instanceof Resource )
+                                batch.add(Util.reorderForLink(nx, _maps.get("link")));
+			/*for (String cf : _cfs)
+                            batchInsertVersioning(cf, batch, keyspace, URN_author);*/
+                        for(int i=0; i<_cfs.size(); ++i ) {
+                            String cf = _cfs.get(i);
+                            // update the version on the ERS_versions keyspace only once, at the end 
+                            if( i == _cfs.size() -1 )
+                                batchInsertVersioning(cf, batch, keyspace,
+                                        URN_author, true);
+                            else
+                                batchInsertVersioning(cf, batch, keyspace,
+                                        URN_author, false);
+                        }
+				
+			return 0;
+		}
+		catch( ParseException ex ) {
 			ex.printStackTrace();
 			_log.severe(ex.getMessage());
 			return -1;
@@ -771,8 +946,37 @@ public abstract class AbstractCassandraRdfHector extends Store {
 	}
 
         @Override
-	public Iterator<Node[]> queryVersioning(Node[] query, String keyspace) throws StoreException {
-		return queryVersioning(query, Integer.MAX_VALUE, keyspace);
+	public Iterator<Node[]> queryVersioning(Node[] query, String keyspace,
+                String ID, String URN) throws StoreException {
+                int situation;
+                if( ID == null ) { 
+                    if( URN == null )  
+                        // *:*:* query 
+                        situation = 5;
+                    else
+                        // URN:*:*
+                        situation = 2;
+                }
+                else {
+                    if( URN == null ) 
+                        // ID:*:* 
+                        situation = 1;
+                    else {
+                        if (!isVariable(query[1])) {
+                            // ID:URN:prop
+                            situation = 6;
+                            if( !isVariable(query[2]))
+                                // ID:URN:prop-value
+                                situation = 7;
+                        }
+                        else
+                            // ID:URN:* or URN:ID:*
+                            situation = 3; // or 4
+                    }
+                }
+                _log.info("QueryVersioning situation " + situation);
+                return queryVersioning(query, Integer.MAX_VALUE, keyspace, 
+                        situation, ID, URN);
 	}
 
 	private Node urlDecode(Node n) {

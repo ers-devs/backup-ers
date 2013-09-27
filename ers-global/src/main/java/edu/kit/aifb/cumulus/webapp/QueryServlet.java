@@ -51,6 +51,9 @@ public class QueryServlet extends AbstractHttpServlet {
 		String v = req.getParameter("v");
 		String a = req.getParameter("g");
 		String l = req.getParameter("limit");
+                // params regarding versioning
+                String URN = req.getParameter("urn");
+                String version_ID = req.getParameter("verID");
 		// some checks
 		if( e != null && !e.isEmpty() && (!e.startsWith("<") || !e.endsWith(">")) ) {
 			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please pass a resource (e.g. "+resource+") as entity");
@@ -77,6 +80,10 @@ public class QueryServlet extends AbstractHttpServlet {
 				sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please pass a number as limit or nothing at all.");
 			}
 		}
+                if( version_ID != null && version_ID.isEmpty() )
+                    version_ID = null;
+                if( URN != null && URN.isEmpty() )
+                    URN = null;
 		Node[] query = new Node[3];
 		try {
 			query[0] = getNode(e, "s");
@@ -116,23 +123,29 @@ public class QueryServlet extends AbstractHttpServlet {
 			String k = (String)it_k.next();
 			// skip keyspaces that do not use our pre-defined prefix or the authors one
 			if( ! k.startsWith(Listener.DEFAULT_ERS_KEYSPACES_PREFIX) || 
-			      k.equals(Listener.GRAPHS_NAMES_KEYSPACE) )
+			      k.equals(Listener.GRAPHS_NAMES_KEYSPACE) ||
+                              k.equals(Listener.GRAPHS_VERSIONS_KEYSPACE) )
 				continue;
 			try {
-                    		Iterator<Node[]> it = crdf.queryVersioning(query, limit, k);
-				if (it.hasNext()) {
-
-_log.info("[dataset] QUERY " + Nodes.toN3(query) + " " + " HAS NEXT !!!! BE CAREFUL, CODE COMMENTED HERE!!! ");
-
-					resp.setContentType(formatter.getContentType());
-					triples = formatter.print(it, out, "REAL_KESPACE_COMMENTED");////crdf.decodeKeyspace(k));
-					found = true;
-					total_triples += triples;
-					limit -= triples;
-					if( limit == 0 ) 
-						break;
-				} 
-			} catch (StoreException ex) {
+                            Iterator<Node[]> it;
+                            // is verioning enabled for this keyspace?
+                            if( crdf.keyspaceEnabledVersioning(crdf.decodeKeyspace(k)) ) {
+                                //_log.info("Query the versioning keyspace " + k );
+                    		it = crdf.queryVersioning(query, k, version_ID, URN);
+                            }
+                            else
+                                it = crdf.query(query, k);
+                            if (it.hasNext()) {
+                                    resp.setContentType(formatter.getContentType());
+                                    triples = formatter.print(it, out, 
+                                            crdf.decodeKeyspace(k), true);
+                                    found = true;
+                                    total_triples += triples;
+                                    limit -= triples;
+                                    if( limit == 0 )
+                                            break;
+                            }
+                        } catch (StoreException ex) {
 				_log.severe(ex.getMessage());
 				resp.sendError(500, ex.getMessage());
 			}

@@ -4,8 +4,6 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Iterator;
 import java.util.logging.Logger;
-import java.util.StringTokenizer;
-import java.util.HashMap;
 import java.util.List;
 import java.util.ArrayList;
 
@@ -16,8 +14,6 @@ import javax.servlet.http.HttpServletResponse;
 
 import org.semanticweb.yars.nx.Node;
 import org.semanticweb.yars.nx.Resource;
-import org.semanticweb.yars.nx.parser.NxParser;
-import org.semanticweb.yars.nx.parser.ParseException;
 
 import edu.kit.aifb.cumulus.store.Store;
 import edu.kit.aifb.cumulus.store.AbstractCassandraRdfHector;

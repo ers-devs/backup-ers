@@ -88,6 +88,7 @@ public class Listener implements ServletContextListener {
 	public static String DEFAULT_ERS_KEYSPACES_PREFIX = "ERS_";
 	//public static final String AUTHOR_KEYSPACE = "ERS_authors";
 	public static final String GRAPHS_NAMES_KEYSPACE = "ERS_graphs";
+        public static final String GRAPHS_VERSIONS_KEYSPACE = "ERS_versions";
 	private static String DEFAULT_RUN_ON_OPENSHIFT = "no";
         public static String DEFAULT_TRANS_LOCKING_GRANULARITY = "3";
 
@@ -277,10 +278,9 @@ public class Listener implements ServletContextListener {
 				throw new IllegalArgumentException("unknown storage layout");
 			// set some cluster wide parameters 
 			_crdf.open();
-   			// create the Authors keyspace
-			//_crdf.createKeyspaceInit(AUTHOR_KEYSPACE);
-			// create the Graph names keyspace
+			// create the Graph names keyspace; don't use versioning for this
 			_crdf.createKeyspaceInit(GRAPHS_NAMES_KEYSPACE);
+                        _crdf.createKeyspaceInit(GRAPHS_VERSIONS_KEYSPACE);
 			ctx.setAttribute(STORE, _crdf);
 		} catch (Exception e) {
 			_log.severe(e.getMessage());

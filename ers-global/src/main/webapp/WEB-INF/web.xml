@@ -25,7 +25,7 @@
 	<!-- NOTE: just one of the two following parameters can be set true !! not both in the same time -->
 	<context-param>	
 		<param-name>start-embedded</param-name> 
-		<param-value>no</param-value>  <!-- possible values: yes,no; if 'yes', the replication is set to 1 -->
+		<param-value>yes</param-value>  <!-- possible values: yes,no; if 'yes', the replication is set to 1 -->
 	</context-param>
 	<context-param>	
 		<param-name>run-on-openshift</param-name> 
@@ -39,6 +39,7 @@
 -		<param-value>127.0.0.1:9171</param-value> 
  	</context-param> 
 
+   <!-- DO NOT CHANGE IT unless you know what you do :) -->
   	<context-param>
  		<param-name>storage-layout</param-name> 
   		<param-value>flat</param-value>
@@ -52,7 +53,7 @@
 	<!-- IF embedded or Openshift version is selected, this would be inforced to be 1; -->
 	<context-param>	
 		<param-name>default-replication-factor</param-name>
-		<param-value>2</param-value>
+		<param-value>1</param-value>
 	</context-param>
 
 	<!-- to easily recognize the ERS' keyspaces, all of them are prepended by this prefix -->
@@ -72,7 +73,7 @@
    <!-- if not set, default value is 0 -->
    <context-param> 
       <param-name>ers-transactional-locking-zookeeper</param-name>
-      <param-value>1</param-value>
+      <param-value>0</param-value>
    </context-param>
 
    <!-- if set to yes, any operation will also handle links  -->

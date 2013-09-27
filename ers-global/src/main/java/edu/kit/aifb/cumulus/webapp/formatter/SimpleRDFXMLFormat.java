@@ -21,8 +21,13 @@ public class SimpleRDFXMLFormat implements SerializationFormat {
 		return "application/rdf+xml";
 	}
 	
+        @Override
+        public int print(Iterator<Node[]> it, Writer out, String author) throws IOException {
+            return print(it, out, author, false);
+        }
+
 	@Override
-	public int print(Iterator<Node[]> it, Writer out, String author) throws IOException {
+	public int print(Iterator<Node[]> it, Writer out, String author, boolean cutSuffixes) throws IOException {
 		out.write("<?xml version='1.0'?>");
 		out.write("<rdf:RDF xmlns:rdf='http://www.w3.org/1999/02/22-rdf-syntax-ns#'>");
 

@@ -136,7 +136,7 @@ public class Load {
 			System.out.println("Default storage layout: FLAT");
 			crdf = new CassandraRdfHectorFlatHash(hosts);
 		}
-		crdf.createKeyspace(keyspace);
+		crdf.createKeyspace(keyspace, false);
 
 	
 		int batchSizeMB = 1;

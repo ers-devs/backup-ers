@@ -20,6 +20,7 @@
       Graph: <input name="g_id" size="30" value="" id="g_id" />
       Property : <input name="g_p" size="30" value="" id="g_p" />
       Value : <input name="g_v" size="30" value="" id="g_v" />
+      Enable versioning (default false): <input name="ver" type="checkbox" value="y" />
       <input type="submit" value="Add"/>
     </form>
 
@@ -142,10 +143,12 @@
 
     <form action="./query" method="get" name="query_entity">
       Entity: <input name="e" size="30" value="" id="e8"/>
-      Property: <input name="p" size="30" value="" id="p8"/>
+      Property (if versioning, give ID and URN): <input name="p" size="30" value="" id="p8"/>
       Value: <input name="v" size="30" value="" id="v8"/>
       Graph: <input name="g" size=15" value="" id="g8"/>
-      Limit (optional): <input name="limit" size="5" value="" id="limit" />
+      Limit (optional): <input name="limit" size="5" value="" id="limit" /> <br/>
+      Version ID (default 'all'; type 'last' for last version): <input name="verID" value="" id="verID" /> 
+      URN source (default 'all'): <input name="urn" value="" id="URN" />
       <input type="submit" value="Query"/>
     </form>
     

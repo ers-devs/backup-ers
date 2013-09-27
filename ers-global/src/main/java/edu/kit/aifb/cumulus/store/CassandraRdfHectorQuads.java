@@ -83,11 +83,6 @@ public class CassandraRdfHectorQuads extends AbstractCassandraRdfHector {
 		return it;
 	}
 
-        @Override
-        public Iterator<Node[]> queryVersioning(Node[] query, int limit, String keyspace) throws StoreException {
-        throw new UnsupportedOperationException("Not supported yet.");
-    }
-
 	public void loadRedirects(InputStream fis, String keyspace) throws IOException, InterruptedException {
 		_log.info("bulk loading " + CF_REDIRECTS);
 		Iterator<Node[]> nxp = new NxParser(fis);
@@ -190,6 +185,7 @@ public class CassandraRdfHectorQuads extends AbstractCassandraRdfHector {
 		}
 	}
 
+      
 	// TM
 	@Override
 	protected void batchDelete(String cf, List<Node[]> li, String keyspace) {
@@ -229,4 +225,13 @@ public class CassandraRdfHectorQuads extends AbstractCassandraRdfHector {
 		//_log.severe("CassandraRdfHectorQuads does not implement batchRun() method");
 	}
 
+        @Override
+        protected void batchInsertVersioning(String cf, List<Node[]> li, String keyspace, String URN_author, boolean updateVerNum) {
+            throw new UnsupportedOperationException("Not supported yet.");
+        }
+
+        @Override
+        public Iterator<Node[]> queryVersioning(Node[] query, int limit, String keyspace, int situation, String ID, String URN) throws StoreException {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
 }

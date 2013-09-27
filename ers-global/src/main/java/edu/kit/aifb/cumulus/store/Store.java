@@ -113,9 +113,14 @@ public abstract class Store {
 
 	public abstract int addData(Iterator<Node[]> it, String keyspace, Integer
                 linkFlag) throws StoreException;
+        public abstract int addDataVersioning(Iterator<Node[]> it, String keyspace, Integer
+                linkFlag, String URN_author) throws StoreException;
+
 	// add (e,p,v,g); if insertLink != 0, then create the link as well
 	public abstract int addData(String e, String p, String v, String keyspace,
                 Integer linkFlag);
+        public abstract int addDataVersioning(String e, String p, String v, String keyspace,
+                Integer linkFlag, String URN_author);
 
 	// update/replace (e,p,v_old,g) with (e,p,v_new,g);
 
@@ -151,12 +156,14 @@ public abstract class Store {
 	public abstract int dropKeyspace(String keyspace, boolean force);
         public abstract int truncateKeyspace(String keyspace);
 	// create a keyspace / graph 
-	public abstract int createKeyspace(String keyspace);
+	public abstract int createKeyspace(String keyspace, boolean enableVersioning);
 	public abstract int createKeyspaceInit(String keyspace);
 	// test if a keyspace / graph exists
 	public abstract boolean existsKeyspace(String keyspace);
 	// test if a keyspace / graph is empty or not 
 	public abstract boolean emptyKeyspace(String keyspace);
+
+        public abstract boolean keyspaceEnabledVersioning(String keyspaceName);
 	
 	// run transactions 
 	public abstract int runTransaction(Transaction t);
@@ -164,9 +171,11 @@ public abstract class Store {
 	public abstract boolean contains(Node s, String keyspace) throws StoreException;
 	
 	public abstract Iterator<Node[]> query(Node[] query, String keyspace) throws StoreException;
-        public abstract Iterator<Node[]> queryVersioning(Node[] query, String keyspace) throws StoreException;
+        public abstract Iterator<Node[]> queryVersioning(Node[] query, String keyspace,
+                String ID, String URN) throws StoreException;
 	public abstract Iterator<Node[]> query(Node[] query, int limit, String keyspace) throws StoreException;
-        public abstract Iterator<Node[]> queryVersioning(Node[] query, int limit, String keyspace) throws StoreException;
+        public abstract Iterator<Node[]> queryVersioning(Node[] query, int limit, 
+                String keyspace, int situation, String ID, String URN) throws StoreException;
 
 	 private Node getNode(String value, String varName) throws ParseException {
 	        if (value != null && value.trim().length() > 2)
@@ -206,13 +215,6 @@ public abstract class Store {
 			_log.severe("ERS exception: " + ex.getMessage());
 		}	
 		 return null;
-		/*
-	         try {
-                         return new String(Hex.decodeHex(keyspace.substring(Listener.DEFAULT_ERS_KEYSPACES_PREFIX.length()).toCharArray()));
-                 } catch( DecoderException ex) {
-                         ex.printStackTrace();
-                         return "ERS: Decode Exception!";
-                 } */
 	}
 	
 	public int queryEntireKeyspace(String keyspace, Writer out, int limit) throws IOException { 
