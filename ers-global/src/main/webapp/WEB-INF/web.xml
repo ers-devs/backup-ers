@@ -167,7 +167,10 @@
 	<servlet-name>last_sync_seq</servlet-name>
 	<servlet-class>edu.kit.aifb.cumulus.webapp.LastSyncSeqServlet</servlet-class>
   </servlet>
-
+  <servlet>
+	<servlet-name>query_bridges</servlet-name>
+	<servlet-class>edu.kit.aifb.cumulus.webapp.QueryBridgesStatsServlet</servlet-class>
+  </servlet>
 
   <servlet>
   	<servlet-name>query</servlet-name>
@@ -218,6 +221,10 @@
   <servlet-mapping>
     <servlet-name>query</servlet-name>
     <url-pattern>/query</url-pattern>
+  </servlet-mapping>
+  <servlet-mapping>
+    <servlet-name>query_bridges</servlet-name>
+    <url-pattern>/query_bridges</url-pattern>
   </servlet-mapping>
   <servlet-mapping>
     <servlet-name>query_graph</servlet-name>

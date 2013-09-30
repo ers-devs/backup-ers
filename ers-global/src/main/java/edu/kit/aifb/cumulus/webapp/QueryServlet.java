@@ -121,10 +121,9 @@ public class QueryServlet extends AbstractHttpServlet {
 		BufferedWriter bw = new BufferedWriter(out);
 		for(Iterator it_k = keyspaces.iterator(); it_k.hasNext(); ) { 
 			String k = (String)it_k.next();
-			// skip keyspaces that do not use our pre-defined prefix or the authors one
+			// skip keyspaces that do not use our pre-defined prefix or that are in the blacklist
 			if( ! k.startsWith(Listener.DEFAULT_ERS_KEYSPACES_PREFIX) || 
-			      k.equals(Listener.GRAPHS_NAMES_KEYSPACE) ||
-                              k.equals(Listener.GRAPHS_VERSIONS_KEYSPACE) )
+			      Listener.BLACKLIST_KEYSPACES.contains(k) )
 				continue;
 			try {
                             Iterator<Node[]> it;

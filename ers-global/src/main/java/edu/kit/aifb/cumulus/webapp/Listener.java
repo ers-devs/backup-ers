@@ -30,6 +30,8 @@ import edu.kit.aifb.cumulus.webapp.formatter.NTriplesFormat;
 import edu.kit.aifb.cumulus.webapp.formatter.SerializationFormat;
 import edu.kit.aifb.cumulus.webapp.formatter.StaxRDFXMLFormat;
 
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.retry.ExponentialBackoffRetry;
@@ -89,6 +91,10 @@ public class Listener implements ServletContextListener {
 	//public static final String AUTHOR_KEYSPACE = "ERS_authors";
 	public static final String GRAPHS_NAMES_KEYSPACE = "ERS_graphs";
         public static final String GRAPHS_VERSIONS_KEYSPACE = "ERS_versions";
+        public static final String BRIDGES_KEYSPACE = "ERS_bridges";
+        // keep here a blacklist of the keyspaces that do not need to be queried  for normal use 
+        public static List<String> BLACKLIST_KEYSPACES = new ArrayList<String>();
+
 	private static String DEFAULT_RUN_ON_OPENSHIFT = "no";
         public static String DEFAULT_TRANS_LOCKING_GRANULARITY = "3";
 
@@ -276,11 +282,15 @@ public class Listener implements ServletContextListener {
 				_crdf = new CassandraRdfHectorFlatHash(hosts);
 			else
 				throw new IllegalArgumentException("unknown storage layout");
+                        BLACKLIST_KEYSPACES.add(GRAPHS_NAMES_KEYSPACE);
+                        BLACKLIST_KEYSPACES.add(GRAPHS_VERSIONS_KEYSPACE);
+                        BLACKLIST_KEYSPACES.add(BRIDGES_KEYSPACE);
 			// set some cluster wide parameters 
 			_crdf.open();
 			// create the Graph names keyspace; don't use versioning for this
 			_crdf.createKeyspaceInit(GRAPHS_NAMES_KEYSPACE);
                         _crdf.createKeyspaceInit(GRAPHS_VERSIONS_KEYSPACE);
+                        _crdf.createKeyspaceInit(BRIDGES_KEYSPACE);
 			ctx.setAttribute(STORE, _crdf);
 		} catch (Exception e) {
 			_log.severe(e.getMessage());

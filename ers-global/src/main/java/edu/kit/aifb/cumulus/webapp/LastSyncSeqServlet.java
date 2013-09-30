@@ -48,10 +48,10 @@ public class LastSyncSeqServlet extends AbstractHttpServlet {
 
 		String a = req.getParameter("g");
 		// some checks
-        if( a == null || a.isEmpty() ) {
-			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please pass the graph name as g parameter.");
-			return;
-        }
+                if( a == null || a.isEmpty() ) {
+                    sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please pass the graph name as g parameter.");
+                    return;
+                }
 		if( a!=null && !a.isEmpty() && (!a.startsWith("<") || !a.endsWith(">")) && (!a.startsWith("\"") || !a.endsWith("\"")) ) {
 			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please pass a resource (e.g. "+resource+") as graph name.");
 			return;
@@ -79,24 +79,24 @@ public class LastSyncSeqServlet extends AbstractHttpServlet {
 		if( a != null && ! a.isEmpty() ) {
 			if( ! crdf.existsKeyspace(Store.encodeKeyspace(a)) ) { 
 				sendResponse(ctx, req, resp, HttpServletResponse.SC_CONFLICT, "Graph "+graph+" does not exist.");
-                return;
-            }
+                            return;
+                        }
 		}
 
 		BufferedWriter bw = new BufferedWriter(out);
 		try {
 			Iterator<Node[]> it = crdf.query(query, 1, Listener.GRAPHS_NAMES_KEYSPACE);
 			if (it.hasNext()) {
-                Node[] n = (Node[])it.next();
-				resp.setContentType(formatter.getContentType());
-    			resp.getWriter().println(n[2]);
-	    		out.close();
-			}
-            else {
-		        int r = crdf.addData("\""+Store.encodeKeyspace(a)+"\"", Listener.SEQ_NUMBER_PROPERTY, "\"0\"", 
-                            Listener.GRAPHS_NAMES_KEYSPACE, 0);
-                resp.getWriter().println(0);
-            }
+                        Node[] n = (Node[])it.next();
+                                        resp.setContentType(formatter.getContentType());
+                                resp.getWriter().println(n[2]);
+                                out.close();
+                                }
+                        else {
+                                int r = crdf.addData("\""+Store.encodeKeyspace(a)+"\"", Listener.SEQ_NUMBER_PROPERTY, "\"0\"",
+                                    Listener.GRAPHS_NAMES_KEYSPACE, 0);
+                            resp.getWriter().println(0);
+                            }
 		} catch (StoreException ex) {
 			_log.severe(ex.getMessage());
 			resp.sendError(500, ex.getMessage());

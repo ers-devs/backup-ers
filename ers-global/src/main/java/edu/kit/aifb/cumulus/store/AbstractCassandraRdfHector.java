@@ -995,7 +995,9 @@ public abstract class AbstractCassandraRdfHector extends Store {
 }
 
 	// parses input file, creates the RunThread/s and waits for them to finish
-	public void bulkRun(InputStream fis, String format, String columnFamily, int threadCount, String keyspace) throws IOException, InterruptedException {
+	public void bulkRun(InputStream fis, String format, String columnFamily,
+                int threadCount, String keyspace, String IP_address)
+                throws IOException, InterruptedException, StoreException {
 		_log.info("run batch for CF " + columnFamily);
 		List<RunThread> threads = new ArrayList<RunThread>();
 		if (threadCount < 0) {
@@ -1020,6 +1022,8 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		int batchSize = 0;
 		long data = 0;
 		int cnt=0;
+                int total_triples=0;
+                int total_bytes=0;
 		while (nxp.hasNext()) {
 			Node[] nx = nxp.next();
 			if( nx.length < 4 ) {
@@ -1040,16 +1044,23 @@ public abstract class AbstractCassandraRdfHector extends Store {
 				_log.info("batch ready: " + operations.size() + " triples, size: " + batchSize + ", thread: " + curThread);
 				data += batchSize;
 				threads.get(curThread).enqueue(operations);
+                                total_triples += operations.size();
 				operations = new ArrayList<Node[]>();
 				batchSize = 0;
 				curThread = (curThread + 1) % threads.size();
 			}
 			if (i % 200000 == 0)
-				_log.info(i + " into " + columnFamily + " in " +  (System.currentTimeMillis() - start) + " ms (" + ((double)i / (System.currentTimeMillis() - start) * 1000) + " quads/s) (" + ((double)data / 1000 / (System.currentTimeMillis() - start) * 1000) + " kbytes/s)"); 
+				_log.info(i + " into " + columnFamily + " in " +  
+                                        (System.currentTimeMillis() - start) + " ms (" +
+                                        ((double)i / (System.currentTimeMillis() - start) * 1000) + " " +
+                                        "quads/s) (" + ((double)data / 1000 / (System.currentTimeMillis()
+                                        - start) * 1000) + " kbytes/s)");
 		}
 		_log.info("NO OF NOT LOADED QUADS DUE TO PARSING ERROR: " + cnt);
 		if (operations.size() > 0) {
 			threads.get(curThread).enqueue(operations);
+                        total_triples += operations.size();
+                        data += batchSize;
 		}
 		_log.info("waiting for threads to finish....");
 		for (RunThread t : threads) {
@@ -1059,10 +1070,66 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		}
 		long time = (System.currentTimeMillis() - start);
 		_log.info(i + " triples inserted into " + columnFamily + " in " + time + " ms (" + ((double)i / time * 1000) + " triples/s)");
+
+                // insert STATS for this bridge, but do it only for one column family
+                if( columnFamily.equals(CassandraRdfHectorFlatHash.CF_S_PO) ) {
+                    String timestamp = String.valueOf(System.currentTimeMillis());
+                    
+                    // add <keyspace_NUM> "timestamp" "number_triples"
+                    this.addData("<"+keyspace+"_NUM>", "\""+timestamp+"\"", "\""+total_triples+"\"",
+                            Store.encodeKeyspace(Listener.BRIDGES_KEYSPACE+"_"+IP_address), 0);
+                    // add <keyspace_BYTES> "timestamp" "number_bytes"
+                    this.addData("<"+keyspace+"_BYTES>", "\""+timestamp+"\"", "\""+data+"\"",
+                            Store.encodeKeyspace(Listener.BRIDGES_KEYSPACE+"_"+IP_address), 0);
+
+                    // get total number synched entities for given keyspace by this bridge
+                    Node[] query = new Node[3];
+                    try {
+                        query[0] = getNode("<"+IP_address+"_TOTAL_NUM>", "s");
+                        query[1] = getNode("\""+keyspace+"\"", "p");
+                        query[2] = getNode(null, "o");
+                    }
+                    catch (ParseException ex) {
+                        _log.severe(ex.getMessage());
+                    }
+                    Iterator<Node[]> it = this.query(query, Listener.BRIDGES_KEYSPACE);
+                    int total_number = 0;
+                    if( it.hasNext() ) {
+                        Node[] response = (Node[])it.next();
+                        total_number = Integer.valueOf(response[2].toString());
+                    }
+                    int new_total = total_number + total_triples;
+                    // update previous record
+                    this.updateData("<"+IP_address+"_TOTAL_NUM>", "\""+keyspace+"\"",
+                            "\""+total_number+"\"", "\""+new_total+"\"", Listener.BRIDGES_KEYSPACE, 0);
+
+                    // get total size of synched entities for given keyspace by this bridge
+                    query = new Node[3];
+                    try {
+                        query[0] = getNode("<"+IP_address+"_TOTAL_BYTES>", "s");
+                        query[1] = getNode("\""+keyspace+"\"", "p");
+                        query[2] = getNode(null, "o");
+                    }
+                    catch (ParseException ex) {
+                        _log.severe(ex.getMessage());
+                    }
+                    it = this.query(query, Listener.BRIDGES_KEYSPACE);
+                    total_number = 0;
+                    if( it.hasNext() ) {
+                        Node[] response = (Node[])it.next();
+                        total_number = Integer.valueOf(response[2].toString());
+                    }
+                    new_total = (int) (total_number + data);
+                    // update previous record
+                    this.updateData("<"+IP_address+"_TOTAL_BYTES>", "\""+keyspace+"\"",
+                            "\""+total_number+"\"", "\""+new_total+"\"", Listener.BRIDGES_KEYSPACE, 0);
+                }
 	}
 
+
 	// used by BatchRun servlet to load a given file of operations (not only inserts)
-	public int bulkRun(File file, String format, int threads, String keyspace) throws StoreException, IOException {
+	public int bulkRun(File file, String format, int threads, String keyspace,
+                String bridgeIP) throws StoreException, IOException {
 		try {
 			// check firstly if keyspace exists, if not, return error 
 			if( !existsKeyspace(keyspace) ) { 
@@ -1071,7 +1138,7 @@ public abstract class AbstractCassandraRdfHector extends Store {
 			// run the batch for each column family
 			for (String cf : _cfs) {
 				FileInputStream fis = new FileInputStream(file);
-				bulkRun(fis, format, cf, threads, keyspace);
+				bulkRun(fis, format, cf, threads, keyspace, bridgeIP);
 				fis.close();
 			}			
 		} catch (InterruptedException e) {
@@ -1228,4 +1295,36 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		
 		return sb.toString();
 	}
+
+        // return false if the brige has been previously registered
+        public boolean isBridgeRegistered(String IP_address) throws StoreException {
+            Node[] query = new Node[3];
+            try {
+                    query[0] = getNode("<bridges>", "s");
+                    query[1] = getNode("\""+IP_address+"\"", "p");
+                    query[2] = getNode(null, "o");
+            }
+            catch (ParseException ex) {
+                    _log.severe(ex.getMessage());
+                    return false;
+            }
+            Iterator<Node[]> it = this.query(query, Listener.BRIDGES_KEYSPACE);
+            if( it.hasNext() )
+                return true;
+            return false;
+        }
+
+        // adds a new bridge to the list if it has not been already added
+        public void addNewBridge(String IP_address) throws StoreException {
+            //check firstly if the new bridge already exists or not
+           if( isBridgeRegistered(IP_address) )
+               return;
+
+           // add data into ERS_bridges
+           this.addData("<bridges>", "\""+IP_address+"\"", "\""+System.currentTimeMillis()+"\"",
+                   Listener.BRIDGES_KEYSPACE, 0);
+
+           // create the keysace that will keep the stats for this bridge
+           this.createKeyspace(Listener.BRIDGES_KEYSPACE+"_"+IP_address, false);
+        }
 }

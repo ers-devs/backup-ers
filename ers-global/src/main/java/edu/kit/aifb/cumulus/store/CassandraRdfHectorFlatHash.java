@@ -39,7 +39,7 @@ import me.prettyprint.cassandra.serializers.CompositeSerializer;
 import me.prettyprint.hector.api.beans.Composite;
 
 public class CassandraRdfHectorFlatHash extends CassandraRdfHectorQuads {
-	private static final String CF_S_PO = "SPO";
+	public static final String CF_S_PO = "SPO";
 	private static final String CF_O_SP = "OSP";
 	private static final String CF_PO_S = "POS";
 	
