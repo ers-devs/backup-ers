@@ -23,6 +23,7 @@ import org.semanticweb.yars.nx.parser.NxParser;
 
 import com.google.common.base.Function;
 import com.google.common.collect.Iterators;
+import me.prettyprint.hector.api.beans.HColumn;
 
 public class CassandraRdfHectorQuads extends AbstractCassandraRdfHector {
 	static final String CF_C_SPO = "CSPO";
@@ -232,6 +233,11 @@ public class CassandraRdfHectorQuads extends AbstractCassandraRdfHector {
 
         @Override
         public Iterator<Node[]> queryVersioning(Node[] query, int limit, String keyspace, int situation, String ID, String URN) throws StoreException {
-        throw new UnsupportedOperationException("Not supported yet.");
-    }
+            throw new UnsupportedOperationException("Not supported yet.");
+        }
+
+        @Override
+        public Iterator<HColumn<String,String>> queryBrigesTimeStats(Node[] query, String keyspace, String start_time, String end_time) throws StoreException {
+            throw new UnsupportedOperationException("Not supported yet.");
+        }
 }

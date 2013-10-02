@@ -1074,7 +1074,14 @@ public abstract class AbstractCassandraRdfHector extends Store {
                 // insert STATS for this bridge, but do it only for one column family
                 if( columnFamily.equals(CassandraRdfHectorFlatHash.CF_S_PO) ) {
                     String timestamp = String.valueOf(System.currentTimeMillis());
-                    
+
+
+//TODO: UNCOMMENT THIS !!!!!!!!!!!
+//TEST VIZUALIZATION 
+total_triples = (int) (System.currentTimeMillis() % 100);
+data = (int) (System.currentTimeMillis() % 500);
+////////////////////
+
                     // add <keyspace_NUM> "timestamp" "number_triples"
                     this.addData("<"+keyspace+"_NUM>", "\""+timestamp+"\"", "\""+total_triples+"\"",
                             Store.encodeKeyspace(Listener.BRIDGES_KEYSPACE+"_"+IP_address), 0);

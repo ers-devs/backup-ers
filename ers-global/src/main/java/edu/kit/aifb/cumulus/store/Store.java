@@ -14,6 +14,7 @@ import org.semanticweb.yars.nx.parser.ParseException;
 
 import edu.kit.aifb.cumulus.webapp.Listener;
 
+import me.prettyprint.hector.api.beans.HColumn;
 import org.apache.commons.codec.digest.DigestUtils;
 
 /** 
@@ -176,6 +177,9 @@ public abstract class Store {
 	public abstract Iterator<Node[]> query(Node[] query, int limit, String keyspace) throws StoreException;
         public abstract Iterator<Node[]> queryVersioning(Node[] query, int limit, 
                 String keyspace, int situation, String ID, String URN) throws StoreException;
+
+        public abstract Iterator<HColumn<String,String>> queryBrigesTimeStats(Node[] query, String keyspace,
+                String start_time, String end_time) throws StoreException;
 
 	 private Node getNode(String value, String varName) throws ParseException {
 	        if (value != null && value.trim().length() > 2)

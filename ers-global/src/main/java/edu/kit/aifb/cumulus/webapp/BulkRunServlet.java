@@ -141,15 +141,13 @@ public class BulkRunServlet extends AbstractHttpServlet {
                                  // add this new bridge to our list, if it has not been added already
     //TODO: UNCOMMENT THIS PART !!!!
                                 //String IP_address = req.getRemoteAddr();
-                                String time = String.valueOf(System.currentTimeMillis());
-                                String tmp = String.valueOf(Integer.valueOf(time.substring(time.length()-3))%255);
-                                time = String.valueOf(System.currentTimeMillis());
-                                String tmp2 = String.valueOf(Integer.valueOf(time.substring(time.length()-3))%255);
-                                time = String.valueOf(System.currentTimeMillis());
-                                String tmp3 = String.valueOf(Integer.valueOf(time.substring(time.length()-3))%255);
-                                time = String.valueOf(System.currentTimeMillis());
-                                String tmp4 = String.valueOf(Integer.valueOf(time.substring(time.length()-3))%255);
-                                String IP_address = tmp+"."+tmp2+"."+tmp3+"."+tmp4;
+    //TEST FOR VIZUALIZATION 
+    String IP_address;
+    if( System.currentTimeMillis()%2 == 0 )
+        IP_address = "62.62.62.22";
+    else
+        IP_address = "82.62.62.22";
+    ////////////////////////
 
                                 crdf.addNewBridge(IP_address);
 

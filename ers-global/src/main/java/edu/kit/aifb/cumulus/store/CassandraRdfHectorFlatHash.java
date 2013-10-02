@@ -252,7 +252,7 @@ public class CassandraRdfHectorFlatHash extends CassandraRdfHectorQuads {
         @Override
 	protected void batchInsert(String cf, List<Node[]> li, String keyspace) {
 		if (cf.equals(CF_C_SPO)) {
-			super.batchInsert(cf, li, keyspace);
+                        super.batchInsert(cf, li, keyspace);
 		}
 		else if (cf.equals(CF_PO_S)) {
 			Mutator<byte[]> m = HFactory.createMutator(getExistingKeyspace(keyspace), _bs);
@@ -274,8 +274,18 @@ public class CassandraRdfHectorFlatHash extends CassandraRdfHectorQuads {
 				// reorder for the key
 				Node[] reordered = Util.reorder(nx, _maps.get(cf));
 				String rowKey = reordered[0].toN3();
-                                String colKey = Nodes.toN3(new Node[] { reordered[1], reordered[2] });
-                                m.addInsertion(rowKey, cf, HFactory.createStringColumn(colKey, ""));
+
+                                // for ERS_bridges_.. keyspaces, use the column value; it is easier for querying afterwards
+                                // few keyspacs such as ERS_graphs cannot be decoded
+                                String keyspace_decoded = this.decodeKeyspace(keyspace);
+                                if( keyspace_decoded != null && keyspace_decoded.startsWith(Listener.BRIDGES_KEYSPACE+"_") ) {
+                                    String colKey = reordered[1].toN3();
+                                    m.addInsertion(rowKey, cf, HFactory.createStringColumn(colKey, reordered[2].toN3()));
+                                }
+                                else {
+                                    String colKey = Nodes.toN3(new Node[] { reordered[1], reordered[2] });
+                                    m.addInsertion(rowKey, cf, HFactory.createStringColumn(colKey, ""));
+                                }
     			}
                         m.execute();
 		}
@@ -880,6 +890,26 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 
 		}
 		return it;
+	}
+
+        @Override
+	public Iterator<HColumn<String,String>> queryBrigesTimeStats(Node[] query, String keyspace,
+                String start_time, String end_time) throws StoreException {
+             
+                // SPO, OSP cfs have one node as key and two nodes as colname
+                Node[] nxKey = new Node[] { query[0] };
+                String key = query[0].toN3();
+                int colNameTupleLength = 1;
+
+                SliceQuery<String,String,String> sq = HFactory.createSliceQuery(
+                        getExistingKeyspace(keyspace), _ss, _ss, _ss)
+                        .setColumnFamily(CF_S_PO)
+                        .setRange(start_time, end_time, false, Integer.MAX_VALUE)
+                        .setKey(key);
+                QueryResult<ColumnSlice<String,String>> results = sq.execute();
+                List<HColumn<String,String>> columns = results.get().getColumns();
+                Iterator<HColumn<String,String>> it_columns = columns.iterator();
+		return it_columns;
 	}
 
 	//TM: added for supporting (?,?,?,g) queries
