@@ -123,7 +123,7 @@ public class QueryBridgesStatsServlet extends AbstractHttpServlet {
                             _log.severe(ex.getMessage());
                             sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST,
                                     "Could not parse query string.");
-                            return;
+                            break;
                     }
                     Iterator<HColumn<String,String>> it_st;
                     try {
