@@ -149,7 +149,7 @@ public class QueryBridgesStatsServlet extends AbstractHttpServlet {
                 out.close();
                 resp.getWriter().print(buffer.toString());
                 // header needed to allow local javascript http requests
-                resp.addHeader("Access-Control-Allow-Origin", req.getHeader("Origin"));
+                resp.addHeader("Access-Control-Allow-Origin", "*");
 		_log.info("[dataset] QUERY BRIDGE STATS " + (System.currentTimeMillis() - start) + "ms ");
 	}
 
