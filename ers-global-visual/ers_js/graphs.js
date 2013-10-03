@@ -40,8 +40,8 @@ function chart(ip, span, stat) {
        // Split the lines
        var lines = data.split('\n');
        if( lines[0].length == 0 ) {
-         var text = "No data to plot for the last " + span + " minutes for bridge " + ip;
-         text += "<br/> Try a different time span or bridge. ";
+         var text = "<i>No data to plot for the last " + span + " minutes for bridge " + ip;
+         text += "<br/> Try a different time span or bridge.</i> ";
          document.getElementById("plot").innerHTML = text;
          return;
        }

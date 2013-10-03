@@ -23,28 +23,59 @@
          <td style="width:60%;">
                <div id="map-canvas" \>
          </td>
-         <td style="width:40%; border-left:2px #bbbbbb dashed; padding:5px;">
-            <div style="height:20%;">
-               <div id="bridge_details" style="float:left;heigth:20%">Click on one bridge to get info.</div>
-               <div id="bridge_stats" style="float:left;heigth:20%;margin-left:10px"></div>
+         <td style="width:40%; border-left:2px #bbbbbb dashed; padding:5px; border-right: 2px #bbbbbb dashed;">
+            <div style="height:20%; width:100%;">
+               <div style="float:left;heigth:25%; width:50%;"> 
+                  <div style=""> 
+                     <div style="text-align:center; font-weight:bold; padding:5px;">Bridge geolocation info: </div>
+                        <div id="bridge_details"><i>Please choose one of the bridges from the map.</i> </div>
+                  </div>
+               </div>
+
+               <div style="float:left;heigth:25%; margin-left:10px; width:45%;"> 
+                  <div style=""> 
+                     <div style="text-align:center; font-weight:bold; padding:5px;">Bridge total statistics: </div>
+                     <div id="bridge_stats"></div>
+                  </div>
+               </div>
+
                <div style="float:clear;"></div>
             </div>
-            <div style="height:20%"> 
-               <form name="plot_options">
-                  Bytes<input type="radio" name="plot_type" value="BYTES"> <br>
-                  Entities<input type="radio" name="plot_type" value="NUM" checked> <br>
-                  Time span<select name="history" id="history">
-                     <option value="1">last min</option>
-                     <option value="5" selected="selected">last 5mins</option>
-                     <option value="60">last hour</option>
-                     <option value="3600">last day</option>
-                     <option value="86400">last week</option> 
-                  </select><br>
-                  <input type="hidden" value="" name="hidden_ip" id="hidden_ip" />
-                  <input type="button" value="Render plot" onclick="updatePlot()" />
-               </form>
-            </div>
-            <div style="height:60%" id="plot"></div>
+
+            <div style="height:20%; border-top:2px #bbbbbb dashed; heigth:100%; padding:5px;"> 
+               <div style="vertical-align:middle; text-align: center;">
+                       <form name="plot_options">
+                          <div style="padding: 5px;">  
+                             <div style="float:left; width:120px;">Sycnhed bytes: </div>
+                             <div style="float:left;"><input type="radio" name="plot_type" value="BYTES"/></div>
+                             <br>
+                          </div>
+                          <div style="padding: 5px;">  
+                             <div style="float:left; width: 120px;">Synched entities: </div>
+                             <div style="float:left;"><input type="radio" name="plot_type" value="NUM" checked></div>
+                             <br>
+                          </div>
+                          <div style="padding: 5px;">  
+                             <div style="float:left; width: 120px;">Time span: </div>
+                             <div style="float:left;">
+                                   <select name="history" id="history">
+                                      <option value="1">last min</option>
+                                      <option value="5" selected="selected">last 5mins</option>
+                                      <option value="60">last hour</option>
+                                      <option value="3600">last day</option>
+                                      <option value="86400">last week</option> 
+                                </select><br>
+                               <input type="hidden" value="" name="hidden_ip" id="hidden_ip" />
+                             </div>
+                             <br>
+                          </div>
+                          <div style="width: 30%; padding:5px;">
+                                <input type="button" value="Render plot" onclick="updatePlot()" />
+                          </div>
+                       </form>
+                  </div>
+              </div>
+            <div style="height:60%; padding:5px; " id="plot"></div>
          </td>
        </tr>
       </table>

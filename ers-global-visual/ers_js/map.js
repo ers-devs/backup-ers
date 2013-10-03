@@ -83,7 +83,7 @@ function initialize() {
           infoWindowAr[this.idx].open(map, markerAr[this.idx]);
           google.maps.event.addListener(infoWindowAr[this.idx],'closeclick',function(){
             document.getElementById("plot").innerHTML="";
-            document.getElementById("bridge_details").innerHTML="Click on one bridge to get info.";
+            document.getElementById("bridge_details").innerHTML="<i>Please choose one of the bridges from the map.</i>";
             document.getElementById("bridge_stats").innerHTML="";
           });
           getBridgeGeolocationDetails(this.ip, this.first_sync, this.title);
@@ -135,6 +135,10 @@ function getTotals(ip) {
 
 function updatePlot() {
    var ip = document.getElementById("hidden_ip").value;
+   if( ip.length == 0 ) {
+      alert("Please firstly choose a bridge from the map.");
+      return;
+   }
    var timespan = document.getElementById("history").value;
    var rads = document.getElementsByName("plot_type");
    var plot_type;
