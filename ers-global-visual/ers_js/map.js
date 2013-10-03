@@ -1,5 +1,10 @@
 var map;
 
+var SERVER_IP="82.196.15.149";
+var ERS_SERVER_PORT="8080";
+var ERS_GEO_PORT="80";
+var ERS_PATH="ers";
+
 function convertTimestampToDate(unix_timestamp) { 
    // create a new javascript Date object based on the timestamp
    // multiplied by 1000 so that the argument is in milliseconds, not seconds
@@ -42,7 +47,7 @@ function initialize() {
    map = new google.maps.Map(document.getElementById('map-canvas'), mapOptions);
 
    // get all the ips of all bridges
-   response = httpGet("http://localhost:8888/query_bridges");
+   response = httpGet("http://"+SERVER_IP+":"+ERS_SERVER_PORT+"/"+ERS_PATH+"/query_bridges");
    ips = response.split(/\r?\n/);
 
    var infoWindowAr = new Array(); 
@@ -52,7 +57,7 @@ function initialize() {
        ip = ip_timestamp[0]; 
        timestamp = ip_timestamp[1];
        // now ge tthe lat,lng for this ip 
-       response = httpGet("http://localhost/geolocation.php?ip="+ip);
+       response = httpGet("http://"+SERVER_IP+":"+ERS_GEO_PORT+"/geolocation.php?ip="+ip);
        if ( response.length < 4 ) 
           continue;
        latlngct = response.split(' '); 
@@ -98,7 +103,7 @@ function initialize() {
 //google.maps.event.addDomListener(window, 'load', initialize);
 
 function getBridgeGeolocationDetails(ip, first_sync, title) { 
-   response = httpGet("http://localhost/geolocation.php?ip="+ip+"&all");
+   response = httpGet("http://"+SERVER_IP+":"+ERS_GEO_PORT+"/geolocation.php?ip="+ip+"&all");
    geo_d = response.split(','); 
    var showDetails = '<div>'+
          'Bridge name: '+title+
@@ -119,7 +124,7 @@ function getBridgeGeolocationDetails(ip, first_sync, title) {
 }
 
 function getTotals(ip) { 
-   response = httpGet("http://localhost:8888/query_bridges?ip="+ip);
+   response = httpGet("http://"+SERVER_IP+":"+ERS_SERVER_PORT+"/"+ERS_PATH+"/query_bridges?ip="+ip);
    bridge_total_stats = response.split(/\r?\n/)[0].split(' ');
 
    total_keyspaces = bridge_total_stats[2];

@@ -36,7 +36,7 @@ function chart(ip, span, stat) {
              series: []
         }; 
 
-   $.get('http://localhost:8888/query_bridges_stats?ip='+ip+'&span='+span+'&stat='+stat, function(data) {
+   $.get('http://'+SERVER_IP+':'+ERS_SERVER_PORT+'/'+ERS_PATH+'/query_bridges_stats?ip='+ip+'&span='+span+'&stat='+stat, function(data) {
        // Split the lines
        var lines = data.split('\n');
        if( lines[0].length == 0 ) {
