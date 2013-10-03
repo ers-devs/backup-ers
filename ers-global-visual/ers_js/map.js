@@ -107,7 +107,7 @@ function getBridgeGeolocationDetails(ip, first_sync, title) {
    geo_d = response.split(','); 
    var showDetails = '<div>'+
          'Bridge name: '+title+
-         '<br/>First synch date (UTC): '+first_sync;
+         '<br/>First sync date (UTC): '+first_sync;
    if( geo_d[1].length > 0 )
          showDetails += '<br/>Country name: '+geo_d[1];
    if( geo_d[2].length > 0 )
@@ -131,9 +131,9 @@ function getTotals(ip) {
    total_entities = bridge_total_stats[3];
    total_bytes = bridge_total_stats[4];
    var stats = '<div>' + 
-      '<b>Total</b> graphs synched: '+total_keyspaces+
-      '<br/><b>Total</b> entities synched: '+total_entities+
-      '<br/><b>Total</b> bytes synched: '+total_bytes+
+      '<b>Total</b> graphs synced: '+total_keyspaces+
+      '<br/><b>Total</b> entities synced: '+total_entities+
+      '<br/><b>Total</b> bytes synced: '+total_bytes+
       '</div>';
    document.getElementById('bridge_stats').innerHTML = stats;
 }
