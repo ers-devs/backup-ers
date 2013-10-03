@@ -45,6 +45,8 @@ public class QueryBridgesStatsServlet extends AbstractHttpServlet {
 		}
 		int queryLimit = (Integer)ctx.getAttribute(Listener.QUERY_LIMIT);
 		resp.setCharacterEncoding("UTF-8");
+                // header needed to allow local javascript http requests
+                resp.addHeader("Access-Control-Allow-Origin", "*");
 
 		String ip = req.getParameter("ip");
                 String stat = req.getParameter("stat");
@@ -90,8 +92,6 @@ public class QueryBridgesStatsServlet extends AbstractHttpServlet {
                                 "Could not parse query string.");
 			return;
 		}
-		CharArrayWriter buffer = new CharArrayWriter();
-		BufferedWriter out = new BufferedWriter(buffer);
 		AbstractCassandraRdfHector crdf = (AbstractCassandraRdfHector)ctx.getAttribute(Listener.STORE);
 
                 List<String> keyspaces = new ArrayList<String>();
@@ -146,10 +146,7 @@ public class QueryBridgesStatsServlet extends AbstractHttpServlet {
                         Logger.getLogger(QueryBridgesStatsServlet.class.getName()).log(Level.SEVERE, null, ex);
                     }
                 }
-                out.close();
-                resp.getWriter().print(buffer.toString());
-                // header needed to allow local javascript http requests
-                resp.addHeader("Access-Control-Allow-Origin", "*");
+		resp.getWriter().flush();
 		_log.info("[dataset] QUERY BRIDGE STATS " + (System.currentTimeMillis() - start) + "ms ");
 	}
 
