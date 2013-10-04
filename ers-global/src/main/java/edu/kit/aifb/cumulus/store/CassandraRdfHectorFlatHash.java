@@ -79,15 +79,14 @@ public class CassandraRdfHectorFlatHash extends CassandraRdfHectorQuads {
         @Override
 	protected List<ColumnFamilyDefinition> createColumnFamiliyDefinitionsVersioning(String keyspace) {
                 ColumnFamilyDefinition spo = createCfDefFlatVersioning(CF_S_PO, null, null, ComparatorType.COMPOSITETYPE, keyspace);
-                ColumnFamilyDefinition osp = createCfDefFlatVersioning(CF_O_SP, null, null, ComparatorType.COMPOSITETYPE, keyspace);
-                //TODO: add POS column family !!
+                //ColumnFamilyDefinition osp = createCfDefFlatVersioning(CF_O_SP, null, null, ComparatorType.COMPOSITETYPE, keyspace);
 		/*ColumnFamilyDefinition pos = createCfDefFlatVersioning(CF_PO_S, Arrays.asList("!p", "!o"), Arrays.asList("!p"),
-                        ComparatorType.BYTESTYPE, keyspace);*/
+                        ComparatorType.COMPOSITETYPE, keyspace);*/
 
 		ArrayList<ColumnFamilyDefinition> li = new ArrayList<ColumnFamilyDefinition>();
                 // TM : create SPO, Redirects; TODO: do we need these?!
 		//li.addAll(super.createColumnFamiliyDefinitions(keyspace));
-		li.addAll(Arrays.asList(spo, osp));//, pos));
+		li.addAll(Arrays.asList(spo)); //, osp));//, pos));
 		return li;
 	}
 
@@ -120,6 +119,7 @@ public class CassandraRdfHectorFlatHash extends CassandraRdfHectorQuads {
 //			super.batchInsert(cf, li, keyspace);
 		}
 		else {
+                    // FETCH ALL MOST RECENT VERSIONS FOR ALL ENTITIES and add the new triple
                     // get previous versions of all entities involved in this batch
                     Hashtable<String, List<Node[]>> versioned_entities = new Hashtable<String, List<Node[]>>();
                     Hashtable<String, Integer> last_version_numbers  = new Hashtable<String, Integer>();
@@ -152,9 +152,6 @@ public class CassandraRdfHectorFlatHash extends CassandraRdfHectorQuads {
                             query[2] = getNode(null, "o");
                             Iterator<Node[]> last_version = queryVersioning(query,
                                     Integer.MAX_VALUE, keyspace, 3, String.valueOf(last_ver), URN_author);
-                            /*_log.info("QUERY: " + query[0].toN3() + " " + keyspace +
-                                    " ver:" + String.valueOf(last_ver) + " author:" + URN_author);*/
-
                             List<Node[]> all_prop_last_v = new ArrayList<Node[]>();
                             while( last_version.hasNext() ) {
                                 Node[] ent = last_version.next();
@@ -168,72 +165,109 @@ public class CassandraRdfHectorFlatHash extends CassandraRdfHectorQuads {
                             Logger.getLogger(CassandraRdfHectorFlatHash.class.getName()).log(Level.SEVERE, null, ex);
                         }
                     }
+                    // END FETCHING ALL OLD VERSIONS
 
                     if (cf.equals(CF_PO_S)) {
-/* TM
-			Mutator<byte[]> m = HFactory.createMutator(getExistingKeyspace(keyspace), _bs);
-			for (Node[] nx : li) {
-				// reorder for the key
-				Node[] reordered = Util.reorder(nx, _maps.get(cf));
-				
-				ByteBuffer rowKey = createKey(new Node[] { reordered[0], reordered[1] });
-				String colKey = reordered[2].toN3();
-				m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn(colKey, ""));
-				m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn("!p", reordered[0].toN3()));
-				m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn("!o", reordered[1].toN3()));
-			}
-			m.execute();
- **/
+                        //NOTE: we assume that queries like (?PO) or (?P?) will not be run!
+                        //cause: problem with creating the proper column family using COMPOSITE ... 
+                        
+                        // POS
+                        // insert 's-VER' and 's-URN' new versions
+                        /*Mutator<byte[]> m = HFactory.createMutator(getExistingKeyspace(keyspace), _bs);
+                        for( Iterator<String> it=versioned_entities.keySet().iterator(); it.hasNext(); ) {
+                            String row_entity_key = it.next();
+                            // there is a list of properties to be added to the new version of this entity
+                            List<Node[]> entity_old_version = versioned_entities.get(row_entity_key);
+                            Integer old_version_num = last_version_numbers.get(row_entity_key);
+
+                            for(Iterator it_old_v=entity_old_version.iterator(); it_old_v.hasNext(); ) {
+                                Node[] nx = (Node[]) it_old_v.next();
+                                // reorder for the key
+                                Node[] reordered = Util.reorder(nx, _maps.get(cf));
+                                ByteBuffer rowKey = createKey(new Node[] { reordered[0], reordered[1] });//, new Variable("-VER") });
+
+                                // get last version number for this entity
+                                //_log.info("LAST VERSION NUMBER FOR ENTITY " + rowKey + " is " + old_version_num);
+                                int next_ver = old_version_num+1;
+
+                                // VER, URN
+                                Composite colKey = new Composite();
+                                colKey.addComponent(String.valueOf(next_ver), StringSerializer.get());
+                                colKey.addComponent(URN_author, StringSerializer.get());
+                                String colKey_s = reordered[2].toN3();
+                                colKey.addComponent(colKey_s, StringSerializer.get());
+                                HColumn<Composite, String> hColumnObj_itemID = HFactory.createColumn(colKey, "",
+                                        new CompositeSerializer(),
+                                        StringSerializer.get());
+                                m.addInsertion(rowKey.array(), cf, hColumnObj_itemID);
+
+                                // URN, VER
+                                rowKey = createKey(new Node[] { reordered[0], reordered[1] });//, new Variable("-URN") });
+                                colKey = new Composite();
+                                colKey.addComponent(URN_author, StringSerializer.get());
+                                colKey.addComponent(String.valueOf(next_ver), StringSerializer.get());
+                                colKey_s = Nodes.toN3(new Node[] { reordered[1], reordered[2] });
+                                colKey.addComponent(colKey_s, StringSerializer.get());
+
+                                hColumnObj_itemID =HFactory.createColumn(colKey, "",
+                                        new CompositeSerializer(),
+                                        StringSerializer.get());
+                                m.addInsertion(rowKey.array(), cf, hColumnObj_itemID);
+                            }
+                            m.execute();
+                        }*/
                     }
                     else {
-                            //SPO, OSP
-                            // insert 's-VER' and 's-URN' new versions
-                            Mutator<String> m = HFactory.createMutator(getExistingKeyspace(keyspace), _ss);
-                            for( Iterator<String> it=versioned_entities.keySet().iterator(); it.hasNext(); ) {
-                                String row_entity_key = it.next();
-                                // there is a list of properties to be added to the new version of this entity
-                                List<Node[]> entity_old_version = versioned_entities.get(row_entity_key);
-                                Integer old_version_num = last_version_numbers.get(row_entity_key);
+                        //SPO, OSP
+                        // insert 's-VER' and 's-URN' new versions
+                        Mutator<String> m = HFactory.createMutator(getExistingKeyspace(keyspace), _ss);
+                        for( Iterator<String> it=versioned_entities.keySet().iterator(); it.hasNext(); ) {
+                            String row_entity_key = it.next();
+                            // there is a list of properties to be added to the new version of this entity
+                            List<Node[]> entity_old_version = versioned_entities.get(row_entity_key);
+                            Integer old_version_num = last_version_numbers.get(row_entity_key);
 
-                                for(Iterator it_old_v=entity_old_version.iterator(); it_old_v.hasNext(); ) {
-                                    Node[] nx = (Node[]) it_old_v.next();
-                                    // reorder for the key
-                                    Node[] reordered = Util.reorder(nx, _maps.get(cf));
-                                    String rowKey = new Resource(reordered[0].toString()).toN3();
-                                    if( !reordered[0].toString().contains("-VER") )
-                                        rowKey = new Resource(reordered[0].toString() + "-VER").toN3();
+                            for(Iterator it_old_v=entity_old_version.iterator(); it_old_v.hasNext(); ) {
+                                Node[] nx = (Node[]) it_old_v.next();
+                                // reorder for the key
+                                Node[] reordered = Util.reorder(nx, _maps.get(cf));
+                                String rowKey = new Resource(reordered[0].toString()).toN3();
+                                if( !reordered[0].toString().contains("-VER") )
+                                    rowKey = new Resource(reordered[0].toString() + "-VER").toN3();
 
-                                    // get last version number for this entity
-                                    //_log.info("LAST VERSION NUMBER FOR ENTITY " + rowKey + " is " + old_version_num);
-                                    int next_ver = old_version_num+1;
+                                // get last version number for this entity
+                                //_log.info("LAST VERSION NUMBER FOR ENTITY " + rowKey + " is " + old_version_num);
+                                int next_ver = old_version_num+1;
 
-                                    // VER, URN
-                                    Composite colKey = new Composite();
-                                    colKey.addComponent(String.valueOf(next_ver), StringSerializer.get());
-                                    colKey.addComponent(URN_author, StringSerializer.get());
-                                    String colKey_s = Nodes.toN3(new Node[] { reordered[1], reordered[2] });
-                                    colKey.addComponent(colKey_s, StringSerializer.get());
-                                    HColumn<Composite, String> hColumnObj_itemID = HFactory.createColumn(colKey, "",
-                                            new CompositeSerializer(),
-                                            StringSerializer.get());
-                                    m.addInsertion(rowKey, cf, hColumnObj_itemID);
+                                // VER, URN
+                                Composite colKey = new Composite();
+                                colKey.addComponent(String.valueOf(next_ver), StringSerializer.get());
+                                colKey.addComponent(URN_author, StringSerializer.get());
+                                String colKey_s = Nodes.toN3(new Node[] { reordered[1], reordered[2] });
+                                colKey.addComponent(colKey_s, StringSerializer.get());
+                                HColumn<Composite, String> hColumnObj_itemID = HFactory.createColumn(colKey, "",
+                                        new CompositeSerializer(),
+                                        StringSerializer.get());
+                                m.addInsertion(rowKey, cf, hColumnObj_itemID);
 
-                                    // URN, VER
-                                    rowKey = new Resource(reordered[0].toString() + "-URN").toN3();
-                                    colKey = new Composite();
-                                    colKey.addComponent(URN_author, StringSerializer.get());
-                                    colKey.addComponent(String.valueOf(next_ver), StringSerializer.get());
-                                    colKey_s = Nodes.toN3(new Node[] { reordered[1], reordered[2] });
-                                    colKey.addComponent(colKey_s, StringSerializer.get());
+                                // URN, VER
+                                rowKey = new Resource(reordered[0].toString() + "-URN").toN3();
+                                colKey = new Composite();
+                                colKey.addComponent(URN_author, StringSerializer.get());
+                                colKey.addComponent(String.valueOf(next_ver), StringSerializer.get());
+                                colKey_s = Nodes.toN3(new Node[] { reordered[1], reordered[2] });
+                                colKey.addComponent(colKey_s, StringSerializer.get());
 
-                                    hColumnObj_itemID =HFactory.createColumn(colKey, "",
-                                            new CompositeSerializer(),
-                                            StringSerializer.get());
-                                    m.addInsertion(rowKey, cf, hColumnObj_itemID);
-                                }
-                                m.execute();
+                                hColumnObj_itemID =HFactory.createColumn(colKey, "",
+                                        new CompositeSerializer(),
+                                        StringSerializer.get());
+                                m.addInsertion(rowKey, cf, hColumnObj_itemID);
                             }
+                            m.execute();
+                        }
                     }
+                    // only inserting in one column family will update the new version number
+                    // otherwise, if all do that, the number will be updated many times
                     if( updateVerNum ) {
                         for( Iterator<String> it=versioned_entities.keySet().iterator(); it.hasNext(); ) {
                             String row_entity_key = it.next();
@@ -606,6 +640,11 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 		return CF_S_PO;
 	}
 
+        private String selectColumnFamilyVersioning(Node[] q) {
+            // the only existing column family is SPO
+            return CF_S_PO;
+	}
+
         /* situation options:
          *  1. ID:*:*
          *  2. URN:*:*
@@ -618,7 +657,7 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 		if (it != null) {
 			return it;
 		}
-		String columnFamily = selectColumnFamily(query);
+		String columnFamily = selectColumnFamilyVersioning(query);
 		int[] map = _maps.get(columnFamily);
 		Node[] q = Util.reorder(query, map);
 //		_log.info("query: " + Nodes.toN3(query) + " idx: " + columnFamily + " reordered: " + Nodes.toN3(q));
@@ -627,9 +666,10 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 			throw new UnsupportedOperationException("triple patterns must have at least one constant");
 		}
 		else {
+                        //NOTE: we assume that we do not query by (?p?) or (?po) for the versioned entities
+                        //cause: problem with creating the proper column family using COMPOSITE ... 
 			if (columnFamily.equals(CF_PO_S)) {
-			/*	UNCOMMENT THIS!!!
-                                if (isVariable(q[1])) {
+                                /*if (isVariable(q[1])) {
 					// we use a secondary index for P only when no other constant is given
 					IndexedSlicesQuery<byte[],String,String> isq = HFactory.createIndexedSlicesQuery(getExistingKeyspace(keyspace), _bs, _ss, _ss)
 						.setColumnFamily(columnFamily)
@@ -668,11 +708,9 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 			*/
 			}
 			else {
-				// SPO, OSP cfs have one node as key and two nodes as colname
+				// SPO cf has one node as key and two nodes as colname
 				Node[] nxKey = getQueryKeyBySituation(q[0], situation);
                                 String key_ID = nxKey[0].toN3();
-                                //Node[] nxKey = new Node[] { q[0] };
-				//String key = q[0].toN3();
 				int colNameTupleLength = 2;
                                 // check ID and get the latest if neccessary
                                 if( ID != null && ID.contains("last") && URN != null )
@@ -686,13 +724,14 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
                                 Composite columnEnd = getCompositeEnd(ID, URN, situation, q);
                                 query_comp.setColumnFamily(columnFamily).setKey(key_ID);
 
-                    _log.info("QUERY COMPOSITE ........ on key  " + key_ID + " column family " + columnFamily);
+                    /*_log.info("QUERY COMPOSITE ...on CF " + columnFamily + "..... on key  " + key_ID);
                     _log.info("QUERY COMPOSITE " + Nodes.toN3(q) + "--" + Nodes.toN3(new Node[] {q[1], q[2]})) ;
+                    _log.info("QUERY COMPOSITE situation: " + situation );*/
 
                                 // use the extended map
                                 map = _maps_ext.get(columnFamily);
                                 it = new ColumnSliceIteratorComposite<String>(query_comp, nxKey,
-                                        columnStart, columnEnd, map, limit, colNameTupleLength);
+                                        columnStart, columnEnd, map, limit, colNameTupleLength, query);
                         }
 			
 		}

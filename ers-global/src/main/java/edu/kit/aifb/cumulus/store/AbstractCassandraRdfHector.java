@@ -620,7 +620,7 @@ public abstract class AbstractCassandraRdfHector extends Store {
 			if (batchSize >= _batchSizeMB * 1048576) {
 				_log.finer("insert batch of size " + batchSize + " (" + batch.size() + " tuples)");
 				/*for (String cf : _cfs)
-					batchInsertVersioning(cf, batch, keyspace, URN_author);*/
+					batchInsertVersioning(cf, batch, keyspace, URN_author);
                                 for(int i=0; i<_cfs.size(); ++i ) {
                                     String cf = _cfs.get(i);
                                     // update the versions number on the ERS_versions only once, at the end
@@ -630,15 +630,17 @@ public abstract class AbstractCassandraRdfHector extends Store {
                                     else
                                         batchInsertVersioning(cf, batch, keyspace,
                                                 URN_author, false);
-                                }
-
+                                }*/
+                                batchInsertVersioning(CassandraRdfHectorFlatHash.CF_S_PO,
+                                        batch, keyspace, URN_author, true);
+                                
 				batch = new ArrayList<Node[]>();
 				batchSize = 0;
 			}
 		}
 		if (batch.size() > 0) {
 			/*for (String cf : _cfs)
-				batchInsertVersioning(cf, batch, keyspace, URN_author);*/
+				batchInsertVersioning(cf, batch, keyspace, URN_author);
                         for(int i=0; i<_cfs.size(); ++i ) {
                                     String cf = _cfs.get(i);
                                     // update the versions number on the ERS_versions only once, at the end
@@ -648,7 +650,9 @@ public abstract class AbstractCassandraRdfHector extends Store {
                                     else
                                         batchInsertVersioning(cf, batch, keyspace,
                                                 URN_author, false);
-                                }
+                                }*/
+                    batchInsertVersioning(CassandraRdfHectorFlatHash.CF_S_PO,
+                            batch, keyspace, URN_author, true);
                 }
 		return count;
 	}
@@ -706,7 +710,7 @@ public abstract class AbstractCassandraRdfHector extends Store {
                             if( nx[2] instanceof Resource )
                                 batch.add(Util.reorderForLink(nx, _maps.get("link")));
 			/*for (String cf : _cfs)
-                            batchInsertVersioning(cf, batch, keyspace, URN_author);*/
+                            batchInsertVersioning(cf, batch, keyspace, URN_author);
                         for(int i=0; i<_cfs.size(); ++i ) {
                             String cf = _cfs.get(i);
                             // update the version on the ERS_versions keyspace only once, at the end 
@@ -716,7 +720,9 @@ public abstract class AbstractCassandraRdfHector extends Store {
                             else
                                 batchInsertVersioning(cf, batch, keyspace,
                                         URN_author, false);
-                        }
+                        }*/
+                        batchInsertVersioning(CassandraRdfHectorFlatHash.CF_S_PO, 
+                                batch, keyspace, URN_author, true);
 				
 			return 0;
 		}
@@ -974,7 +980,6 @@ public abstract class AbstractCassandraRdfHector extends Store {
                             situation = 3; // or 4
                     }
                 }
-                _log.info("QueryVersioning situation " + situation);
                 return queryVersioning(query, Integer.MAX_VALUE, keyspace, 
                         situation, ID, URN);
 	}
