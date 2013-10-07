@@ -11,7 +11,8 @@ function chart(ip, span, stat) {
             tooltip_text = 'bytes'; 
         }
         var options = {
-            chart: {
+	/* START NORMAL CHART */
+           /* chart: {
                   type: 'spline',
                   renderTo: 'plot'
             },
@@ -33,7 +34,64 @@ function chart(ip, span, stat) {
                         Highcharts.dateFormat('%e. %b ', this.x) +': '+ this.y + tooltip_text;
                 }
              },
-             series: []
+             series: [] */
+	/*END NORMAL CHART */
+
+	/* START ZOOMABLE CHART */
+	 chart: {
+                zoomType: 'x',
+                spacingRight: 20,
+		renderTo: 'plot',
+		type: 'area'
+            },
+            title: {
+              	text: 'Synchronized bytes by brige with IP: '+ip
+            },
+            subtitle: {
+                text: document.ontouchstart === undefined ?
+                    'Click and drag in the plot area to zoom in' :
+                    'Pinch the chart to zoom in'
+            },
+            xAxis: {
+                type: 'datetime',
+                maxZoom: 1 * 60 * 5 *1000, // 5 mins
+                title: {
+                    text: null
+                }
+            },
+            yAxis: {
+                title: {
+                    text: 'Exchange rate'
+                }
+            },
+            tooltip: {
+                shared: false,
+	       formatter: function() {
+                        return '<b>'+ this.series.name +'</b><br/>'+
+                        Highcharts.dateFormat('%e. %b %H:%M:%S ', this.x) +': '+ this.y + tooltip_text;
+                }
+
+            },
+            legend: {
+                enabled: true
+            },
+            plotOptions: {
+                area: {
+                   lineWidth: 1,
+                    marker: {
+                        enabled: false
+                    },
+                    shadow: false,
+                    states: {
+                        hover: {
+                            lineWidth: 1
+                        }
+                    },
+                    threshold: null
+                }
+            },
+	    series: []
+	/*END ZOOMABLE CHART */
         }; 
 
    $.get('http://'+SERVER_IP+':'+ERS_SERVER_PORT+'/'+ERS_PATH+'/query_bridges_stats?ip='+ip+'&span='+span+'&stat='+stat, function(data) {
@@ -45,7 +103,6 @@ function chart(ip, span, stat) {
          document.getElementById("plot").innerHTML = text;
          return;
        }
-
        // Iterate over the lines and add categories or series
        $.each(lines, function(lineNo, line) {
             if( line.length == 0 ) 
@@ -55,7 +112,8 @@ function chart(ip, span, stat) {
             var items = tmp[1].split(' '); 
             var series = {
                 data: [],
-                name: 'Graph '+keyspace.substr(1,keyspace.length-2)
+                name: 'Graph '+keyspace.substr(1,keyspace.length-2),
+                pointInterval: 10 * 1000
             };
             var timestamps = new Array();
             var payload = new Array();
