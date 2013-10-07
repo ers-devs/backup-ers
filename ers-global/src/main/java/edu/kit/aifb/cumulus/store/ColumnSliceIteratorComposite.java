@@ -19,6 +19,7 @@ import me.prettyprint.hector.api.beans.AbstractComposite.ComponentEquality;
 import me.prettyprint.hector.api.beans.Composite;
 import me.prettyprint.hector.api.factory.HFactory;
 import org.semanticweb.yars.nx.Nodes;
+import org.semanticweb.yars.nx.Resource;
 
 
 public class ColumnSliceIteratorComposite<T> implements Iterator<Node[]> {
@@ -33,11 +34,14 @@ public class ColumnSliceIteratorComposite<T> implements Iterator<Node[]> {
 	private int _colCount = 0;
 	private Composite _endRange;
 	private int _colNameTupleLength;
+        private Node[] query;
+        private boolean uses_P;
+        private boolean uses_O;
 
 	private final Logger _log = Logger.getLogger(this.getClass().getName());
 
 	public ColumnSliceIteratorComposite(SliceQuery<T,Composite,String> sq, Node[] key, Composite startRange,
-                Composite endRange, int[] map, int limit, int colNameTupleLength) {
+                Composite endRange, int[] map, int limit, int colNameTupleLength, Node[] query) {
 		_sq = sq;
 		_key = key;
 		_map = map;
@@ -45,45 +49,29 @@ public class ColumnSliceIteratorComposite<T> implements Iterator<Node[]> {
 		_endRange = endRange;
 		_colNameTupleLength = colNameTupleLength;
 		_it = queryIterator(startRange);
+
+                this.query = new Node[3];
+                for( int i=0; i<query.length; ++i)
+                    this.query[i] = query[i];
+                uses_P = false;
+                if( this.query[1] != null && ! this.query[1].toString().equals("p") )
+                    uses_P = true;
+                uses_O = false;
+                if( this.query[2] != null && ! this.query[2].toString().equals("o") )
+                    uses_O = true;
 	}
 
 	private ColumnIteratorComposite queryIterator(Composite start) {
 		if (_colCount > _limit)
 			return null;
-
 		int cols = Math.min(_colInterval, _limit - _colCount);
-
 		/*_log.info("iterator for row " + Nodes.toN3(_key) + " from '" + start +
                         "' to '" + _endRange + "', cols: " + cols + " total: "
                         + _colCount + " limit: " + _limit);*/
 
 		_sq.setRange(start, _endRange, false, cols);
 		QueryResult<ColumnSlice<Composite,String>> result = _sq.execute();
-		List<HColumn<Composite,String>> list = result.get().getColumns();
-
-                /* added to get ID and URN part of results 
-                if( list.size() != 0 ) {
-                    Composite dummy_ID = new Composite();
-                    dummy_ID.addComponent(0, list.get(0).getName().get(0, StringSerializer.get()), ComponentEquality.EQUAL);
-                    dummy_ID.addComponent(1, list.get(0).getName().get(1, StringSerializer.get()), ComponentEquality.EQUAL);
-                    dummy_ID.addComponent(2, "<ID> \"" + list.get(0).getName().get(0, StringSerializer.get()) + "\" . ",
-                            ComponentEquality.EQUAL);
-                    HColumn<Composite,String> dummy_ID_column = HFactory.createColumn(dummy_ID,
-                            list.get(0).getName().getComponent(0).toString(),
-                            CompositeSerializer.get(), StringSerializer.get());
-                    list.add(dummy_ID_column);
-
-                    Composite dummy_URN = new Composite();
-                    dummy_URN.addComponent(0, list.get(0).getName().get(0, StringSerializer.get()), ComponentEquality.EQUAL);
-                    dummy_URN.addComponent(1, list.get(0).getName().get(1, StringSerializer.get()), ComponentEquality.EQUAL);
-                    dummy_URN.addComponent(2, "<URN> \"" + list.get(0).getName().get(1, StringSerializer.get()) + "\" . ",
-                            ComponentEquality.EQUAL);
-                    HColumn<Composite,String> dummy_URN_column = HFactory.createColumn(dummy_URN,
-                            list.get(0).getName().getComponent(1).toString(),
-                            CompositeSerializer.get(), StringSerializer.get());
-                    list.add(dummy_URN_column);
-                }
-                /* end */
+		List<HColumn<Composite,String>> list = result.get().getColumns();          
 
 		ColumnIteratorComposite it = null;
 		if (list.size() > 0) {
@@ -114,12 +102,48 @@ public class ColumnSliceIteratorComposite<T> implements Iterator<Node[]> {
 
 	@Override
 	public Node[] next() {
-		return _it.next();
+           /*Node[] empty = new Node[3];
+            while( true ) {
+                if( !_it.hasNext() )
+                    return empty;
+                Node[] n = _it.next();
+                if( ! filter(n) )
+                    return n;
+            }*/
+            return filter(_it.next());
+	}
+
+        private Node[] filter(Node[] entity) {
+            Node[] empty = new Node[5];
+            Node[] result = new Node[5];
+            // filter by S as in case of using OSP column family and no ID and no URN it may appear false positives
+            String s = entity[0].toString().substring(0, entity[0].toString().length()-4);
+            result[0] = new Resource(s);
+            result[1] = entity[1];
+            result[2] = entity[2];
+            result[3] = entity[3];
+            result[4] = entity[4];
+
+            if( ! s.equals(query[0].toString()) )
+                return empty;
+           
+            // filter by P and O if they were set in the query
+            // filter at output as we cannot query directly (SP?) or (SPO) due to URN and ID
+            if( uses_P && ! entity[1].toString().equals(query[1].toString()) )
+                return empty;
+
+            if( uses_O ) {
+                String o = entity[2].toString();
+                if( ! o.equals(query[2].toString()) )
+                    return empty;
+            }
+            // END FILTERING
+            return result;
 	}
 
 	@Override
 	public void remove() {
-		throw new UnsupportedOperationException("remove not supported");
+            throw new UnsupportedOperationException("remove not supported");
 	}
 
 }

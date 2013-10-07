@@ -77,7 +77,6 @@ public class ColumnIteratorComposite implements Iterator<Node[]> {
 			e.printStackTrace();
 			return null;
 		}
-
 		return Util.reorderReverse(nx, _map);
 	}
 

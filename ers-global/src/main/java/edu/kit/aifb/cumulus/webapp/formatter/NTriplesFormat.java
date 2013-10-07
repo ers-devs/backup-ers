@@ -18,20 +18,19 @@ public class NTriplesFormat implements SerializationFormat {
 
         @Override
         public int print(Iterator<Node[]> it, Writer pw, String author) throws IOException {
-            return print(it, pw, author, false);
+            return print(it, pw, author, -1);
         }
 
 	@Override
-	public int print(Iterator<Node[]> it, Writer pw, String author, boolean cutSuffix) throws IOException {
+	public int print(Iterator<Node[]> it, Writer pw, String author, int cutSuffixPos) throws IOException {
 		int triples = 0;
 		while (it.hasNext()) {
 			Node[] nx = it.next();
 			if (nx[0] != null && nx[1] != null && nx[2] != null) { // don't ask
-                                pw.write("<"+nx[0].toN3().substring(0, nx[0].toN3().length()-5)+"> ");
-                                for( int i=1; i<nx.length; ++i)
+                            for( int i=0; i<nx.length; ++i)
                                     pw.write(nx[i].toN3()+ " ");
-                                pw.write(author + "\n");
-				triples++;
+                            pw.write(author + "\n");
+                            triples++;
 			}
 		}
 		return triples;
