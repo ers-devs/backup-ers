@@ -1,11 +1,8 @@
 package edu.kit.aifb.cumulus.webapp;
 
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.util.Iterator;
 import java.util.logging.Logger;
-import java.util.StringTokenizer;
-import java.util.HashMap;
 import java.util.List;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -19,10 +16,6 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.semanticweb.yars.nx.Node;
-import org.semanticweb.yars.nx.Resource;
-import org.semanticweb.yars.nx.parser.NxParser;
-import org.semanticweb.yars.nx.parser.ParseException;
 
 import edu.kit.aifb.cumulus.store.Store;
 import edu.kit.aifb.cumulus.store.AbstractCassandraRdfHector;
@@ -35,6 +28,7 @@ import org.apache.commons.fileupload.FileUploadException;
 import org.apache.commons.fileupload.disk.DiskFileItemFactory;
 import org.apache.commons.fileupload.FileItem;
 
+import org.apache.commons.math.random.RandomGenerator;
 import static org.apache.commons.lang.StringEscapeUtils.escapeHtml;
 
 /** 
@@ -144,13 +138,27 @@ public class BulkRunServlet extends AbstractHttpServlet {
 				// note3: if there are NOY ONLY inserts, then the results may not be deterministic (as concurrent threads are applying 
 				// note4: ONLY INSERTS, DELETES AND UPDATES ARE RUN !! QUERIES, GET ARE IGNORED
 
-				if( crdf.bulkRun(new File(file), format, threads, Store.encodeKeyspace(a)) == 1 ) 
-					sendError(ctx, req, resp, HttpServletResponse.SC_CONFLICT, "Graph " + graph + " does not exist yet. Please create it before bulk running operations."); 
+                                 // add this new bridge to our list, if it has not been added already
+    //TODO: UNCOMMENT THIS PART !!!!
+                                //String IP_address = req.getRemoteAddr();
+    //TEST FOR VIZUALIZATION 
+    String IP_address;
+    if( System.currentTimeMillis()%2 == 0 )
+        IP_address = "62.62.62.22";
+    else
+        IP_address = "82.62.62.22";
+    ////////////////////////
+
+                                crdf.addNewBridge(IP_address);
+
+				if( crdf.bulkRun(new File(file), format, threads, Store.encodeKeyspace(a), IP_address) == 1 )
+					sendError(ctx, req, resp, HttpServletResponse.SC_CONFLICT, "Graph "
+                                                + graph + " does not exist yet. Please create it before bulk running operations.");
 				else {
-					resp_msg = "Bulkrun execution time: " + (System.currentTimeMillis() - start) + "ms";
-					sendResponse(ctx, req, resp, HttpServletResponse.SC_OK, resp_msg); 
-					_log.info(resp_msg);
-				}
+                                    resp_msg = "Bulkrun execution time: " + (System.currentTimeMillis() - start) + "ms";
+                                    sendResponse(ctx, req, resp, HttpServletResponse.SC_OK, resp_msg);
+                                    _log.info(resp_msg);
+                                }
 			}
 			// delete the tmp file 
 			new File(file).delete();

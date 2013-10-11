@@ -5,13 +5,60 @@ import os
 import signal
 import socket
 import sys
+import re
 import time
 import zeroconf
 import gobject
 import logging
+import logging.handlers
 
-from ers import ERS_AVAHI_SERVICE_TYPE, ERS_PEER_TYPES, ERS_DEFAULT_DBNAME, ERS_DEFAULT_PEER_TYPE, DEFAULT_MODEL
-from ers import ERSPeerInfo
+from utils import ERS_AVAHI_SERVICE_TYPE, ERS_PEER_TYPES, ERS_DEFAULT_DBNAME, ERS_DEFAULT_PEER_TYPE
+from utils import ERS_PEER_TYPE_BRIDGE
+from ers import DEFAULT_MODEL
+
+class ERSPeerInfo(zeroconf.ServicePeer):
+    """
+    This class contains information on an ERS peer.
+    """
+    dbname = None
+    peer_type = None
+
+    def __init__(self, service_name, host, ip, port, dbname=ERS_DEFAULT_DBNAME, peer_type=ERS_DEFAULT_PEER_TYPE):
+        zeroconf.ServicePeer.__init__(self, service_name, ERS_AVAHI_SERVICE_TYPE, host, ip, port)
+        self.dbname = dbname
+        self.peer_type = peer_type
+
+    def __str__(self):
+        return "ERS peer on {0.host}(={0.ip}):{0.port} (dbname={0.dbname}, type={0.peer_type})".format(self)
+
+    def to_json(self):
+        return {
+            'name': self.service_name,
+            'host': self.host,
+            'ip': self.ip,
+            'port': self.port,
+            'dbname': self.dbname,
+            'type': self.peer_type
+        }
+
+    @staticmethod
+    def from_service_peer(svc_peer):
+        dbname = ERS_DEFAULT_DBNAME
+        peer_type = ERS_DEFAULT_PEER_TYPE
+
+        match = re.match(r'ERS on .* [(](.*)[)]$', svc_peer.service_name)
+        if match is None:
+            return None
+
+        for item in match.group(1).split(','):
+            param, sep, value = item.partition('=')
+
+            if param == 'dbname':
+                dbname = value
+            if param == 'type':
+                peer_type = value
+
+        return ERSPeerInfo(svc_peer.service_name, svc_peer.host, svc_peer.ip, svc_peer.port, dbname, peer_type)
 
 
 class ERSDaemon:
@@ -35,7 +82,7 @@ class ERSDaemon:
         self.peer_type = peer_type
         self.port = port
         self.dbname = dbname
-        self.pidfile = pidfile
+        self.pidfile = pidfile if pidfile is not None and pidfile.lower() != 'none' else None
         self.tries = max(tries, 1)
         self.logger = logger if logger is not None else logging.getLogger('ers-daemon')
 
@@ -57,8 +104,7 @@ class ERSDaemon:
         self._monitor = zeroconf.ServiceMonitor(ERS_AVAHI_SERVICE_TYPE, self._on_join, self._on_leave)
         self._monitor.start()
 
-        with file(self.pidfile, 'w+') as f:
-            f.write("{0}\n".format(os.getpid()))
+        self._init_pidfile()
 
         self._active = True
 
@@ -92,6 +138,18 @@ class ERSDaemon:
         except Exception as e:
             raise RuntimeError("Error connecting to CouchDB: {0}".format(str(e)))
 
+    def _init_pidfile(self):
+        if self.pidfile is not None:
+            with file(self.pidfile, 'w+') as f:
+                f.write("{0}\n".format(os.getpid()))
+
+    def _remove_pidfile(self):
+        if self.pidfile is not None:
+            try:
+                os.remove(self.pidfile)
+            except IOError:
+                pass
+
     def stop(self):
         if not self._active:
             return
@@ -104,7 +162,11 @@ class ERSDaemon:
         if self._service is not None:
             self._service.unpublish()
 
-        os.remove(self.pidfile)
+        self._peers = {}
+        self._update_peers_in_couchdb()
+        self._clear_replication()
+
+        self._remove_pidfile()
 
         self._active = False
 
@@ -120,7 +182,7 @@ class ERSDaemon:
         self._peers[ers_peer.service_name] = ers_peer
 
         self._update_peers_in_couchdb()
-        self._setup_replication(ers_peer)
+        self._update_replication_links()
 
     def _on_leave(self, peer):
         if not peer.service_name in self._peers:
@@ -133,36 +195,57 @@ class ERSDaemon:
         del self._peers[peer.service_name]
 
         self._update_peers_in_couchdb()
-        self._teardown_replication(ex_peer)
+        self._update_replication_links()
 
     def _update_peers_in_couchdb(self):
-        state_doc = self._db.open_doc('_design/state')
+        state_doc = self._db.open_doc('_local/state')
         state_doc['peers'] = [peer.to_json() for peer in self._peers.values()]
         self._db.save_doc(state_doc)
 
-    def _replication_id(self, peer):
+    def _replication_doc_id(self, peer):
         return 'ers-auto-local-to-{0}:{1}'.format(peer.ip, peer.port)
 
-    def _setup_replication(self, peer):
-        doc = {
-            '_id': self._replication_id(peer),
+    def _update_replication_links(self):
+        desired_repl_docs = [{
+            '_id': self._replication_doc_id(peer),
             'source': self.dbname,
             'target': r'http://admin:admin@{0}:{1}/{2}'.format(peer.ip, peer.port, peer.dbname),
             'continuous': True
-        }
+        } for peer in self._peers.values()]
 
-        self._repl_db.save_doc(doc)
-
-    def _teardown_replication(self, peer):
-        self._repl_db.delete_doc(self._replication_id(peer))
+        self._apply_desired_repl_docs(desired_repl_docs)
 
     def _clear_replication(self):
+        self._apply_desired_repl_docs([])
+
+    def _apply_desired_repl_docs(self, desired_repl_docs):
+        for desired_doc in desired_repl_docs:
+            if not self._repl_db.doc_exist(desired_doc['_id']):
+                self._repl_db.save_doc(desired_doc)
+                self.logger.debug("Added replication doc: {0}".format(str(desired_doc)))
+                continue
+
+            doc = self._repl_db.open_doc(desired_doc['_id'])
+            if any(doc[key] != desired_doc[key] for key in desired_doc):
+                for key in desired_doc:
+                    doc[key] = desired_doc[key]
+                self._repl_db.save_doc(doc)
+                self.logger.debug("Updated replication doc: {0}".format(str(desired_doc)))
+
+        # Docs that are no longer in the desired list are deleted
+        kept_doc_ids = set(doc['_id'] for doc in desired_repl_docs)
+        for doc in self._replication_docs():
+            if doc['_id'] not in kept_doc_ids:
+                self._repl_db.delete_doc(doc)
+                self.logger.debug("Deleted replication doc: {0}".format(str(doc)))
+
+    def _replication_docs(self):
         search_view = { "map": 'function(doc) { if (doc._id.indexOf("ers-auto-") == 0) emit(doc._id, doc); }' }
 
-        self._repl_db.delete_docs([doc['value'] for doc in self._repl_db.temp_view(search_view)])
+        return [doc['value'] for doc in self._repl_db.temp_view(search_view)]
 
     def _check_already_running(self):
-        if os.path.exists(self.pidfile):
+        if self.pidfile is not None and os.path.exists(self.pidfile):
             raise RuntimeError("The ERS daemon seems to be already running. If this is not the case, " +
                                "delete " + self.pidfile + " and try again.")
 
@@ -173,10 +256,17 @@ def setup_logging(args):
     logger = logging.getLogger('ers-daemon')
     logger.setLevel(10 + 10 * LOG_LEVELS.index(args.loglevel))
 
-    handler = logging.FileHandler(args.logfile)
-    handler.setFormatter(logging.Formatter("[%(asctime)s] %(levelname)s: %(message)s"))
+    if args.logtype == 'file':
+        handler = logging.FileHandler(args.logfile)
+        handler.setFormatter(logging.Formatter("[%(asctime)s] %(levelname)s: %(message)s"))
+    elif args.logtype == 'syslog':
+        handler = logging.handlers.SysLogHandler(address='/dev/log')
+        handler.setFormatter(logging.Formatter("%(message)s"))
+    else:
+        handler = None
 
-    logger.addHandler(handler)
+    if handler is not None:
+        logger.addHandler(handler)
 
     return logger
 
@@ -187,8 +277,11 @@ def run():
     parser.add_argument("-d", "--dbname", help="CouchDB database name", type=str, default=ERS_DEFAULT_DBNAME)
     parser.add_argument("-t", "--type", help="Type of instance", type=str, default=ERS_DEFAULT_PEER_TYPE,
                         choices=ERS_PEER_TYPES)
-    parser.add_argument("--pidfile", help="PID file for this ERS daemon instance", type=str, default='/var/run/ers_daemon.pid')
+    parser.add_argument("--pidfile", help="PID file for this ERS daemon instance (or 'none')",
+                        type=str, default='/var/run/ers_daemon.pid')
     parser.add_argument("--tries", help="Number of tries to connect to CouchDB", type=int, default=10)
+    parser.add_argument("--logtype", help="The log type (own file vs. syslog)", type=str, default='file',
+                        choices=['file', 'syslog'])
     parser.add_argument("--logfile", help="The log file to use", type=str, default='/var/log/ers_daemon.log')
     parser.add_argument("--loglevel", help="Log messages of this level and above", type=str, default='info',
                         choices=LOG_LEVELS)
@@ -198,6 +291,7 @@ def run():
 
     daemon = None
     failed = False
+    mainloop = None
     try:
         daemon = ERSDaemon(args.type, args.port, args.dbname, args.pidfile, args.tries, logger)
         daemon.start()
@@ -210,7 +304,8 @@ def run():
         mainloop = gobject.MainLoop()
         mainloop.run()
     except (KeyboardInterrupt, SystemExit):
-        pass
+        if mainloop is not None:
+            mainloop.quit()
     except RuntimeError as e:
         logger.critical(str(e))
         failed = True

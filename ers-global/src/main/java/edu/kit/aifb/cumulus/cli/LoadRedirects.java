@@ -101,7 +101,7 @@ public class LoadRedirects {
 			crdf = new CassandraRdfHectorFlatHash(hosts);
 
 		crdf.open();
-		crdf.createKeyspace(keyspace); 
+		crdf.createKeyspace(keyspace, false);
 		
 		if (in != null) {
 			try {

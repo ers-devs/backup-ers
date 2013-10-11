@@ -97,6 +97,7 @@ public class GraphServlet extends AbstractHttpServlet {
 		String a_id = req.getParameter("g_id"); //graph id as entity
 		String a_p = req.getParameter("g_p");	//property
 		String a_v = req.getParameter("g_v");	//value
+                String ver = req.getParameter("ver");	//value
 		// some checks
 		if( a_id == null || a_p == null || a_v == null ) { 
 			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please pass data like 'a_id=_&a_p=_&a_v=_'");
@@ -117,7 +118,11 @@ public class GraphServlet extends AbstractHttpServlet {
 		if( (!a_v.startsWith("<") || !a_p.endsWith(">")) && (!a_v.startsWith("\"") || !a_v.endsWith("\"")) ) {
 			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please pass either a resource (e.g. "+resource+") or a literal (e.g. \"literal\") as value");
 			return;
-		}	
+		}
+                boolean enable_versioning = false;
+                if( ver != null ) {
+                    enable_versioning = true;
+		}
 		// escape if the accept header is html
 		String graph = a_id;
 		if ( formatter.getContentType().equals("text/html") )
@@ -125,7 +130,7 @@ public class GraphServlet extends AbstractHttpServlet {
 
 		Store crdf = (Store)ctx.getAttribute(Listener.STORE);
 		// create the associated keyspace with this graph, if it does not exist  
-		int r = crdf.createKeyspace(a_id);
+		int r = crdf.createKeyspace(a_id, enable_versioning);
 
 		String msg = "";
 		if( r == 2 ) 
@@ -173,7 +178,7 @@ public class GraphServlet extends AbstractHttpServlet {
 		if ( formatter.getContentType().equals("text/html") )
 			resource = escapeHtml(resource); 
 
-        String truncate = req.getParameter("truncate");
+                String truncate = req.getParameter("truncate");
 		String a_id = req.getParameter("g");
 		String f = req.getParameter("f");
 		if( a_id == null || a_id.isEmpty() ) { 

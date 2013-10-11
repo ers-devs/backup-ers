@@ -57,7 +57,8 @@ public class CreateServlet extends AbstractHttpServlet {
 		String e = req.getParameter("e"); 	//entity
 		String p = req.getParameter("p");	//property
 		String v = req.getParameter("v");	//value
-		String a = req.getParameter("g");  	//author = keyspace_name 
+		String a = req.getParameter("g");  	//author = keyspace_name
+                String urn = req.getParameter("urn");   //used in case of versioning
 		// some checks
 		if( e == null || p == null || v == null || a == null ) { 
 			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please pass data like 'e=_&p=_&v=_&g=_'");
@@ -91,8 +92,25 @@ public class CreateServlet extends AbstractHttpServlet {
 		PrintWriter out = resp.getWriter();
 		resp.setContentType(formatter.getContentType());
 		Store crdf = (Store)ctx.getAttribute(Listener.STORE);
-		// do the insert here 
-		if( crdf.addData(e,p,v,Store.encodeKeyspace(a), 0) == -2 )
+
+                // check if for given graph versioning is enabled or not
+                boolean enabled = crdf.keyspaceEnabledVersioning(a);
+                int ret = 0;
+                // do the insert here based on versioning flag
+                if( enabled ) {
+                    if( urn == null || urn.isEmpty() ) {
+                        sendError(ctx, req, resp, HttpServletResponse.SC_CONFLICT, 
+                                "Graph " + graph + " has versioning enabled. Please " +
+                                "pass URN as parameter.");
+                        return;
+                    }
+                    ret = crdf.addDataVersioning(e,p,v,Store.encodeKeyspace(a), 
+                            0, urn);
+                }
+                else
+                    ret = crdf.addData(e,p,v,Store.encodeKeyspace(a), 0);
+                
+		if( ret  == -2 )
 			sendError(ctx, req, resp, HttpServletResponse.SC_CONFLICT, "Graph " + graph + " does not exist.");
 		else {
 			String msg = "Quad ("+e+","+p+","+v+","+a+") has been added.";

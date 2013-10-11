@@ -17,6 +17,7 @@ import me.prettyprint.cassandra.connection.LeastActiveBalancingPolicy;
 import me.prettyprint.cassandra.model.BasicColumnDefinition;
 import me.prettyprint.cassandra.model.BasicColumnFamilyDefinition;
 import me.prettyprint.cassandra.serializers.BytesArraySerializer;
+import me.prettyprint.cassandra.serializers.CompositeSerializer;
 import me.prettyprint.cassandra.serializers.StringSerializer;
 import me.prettyprint.cassandra.service.CassandraHostConfigurator;
 import me.prettyprint.cassandra.service.ThriftCfDef;
@@ -37,7 +38,6 @@ import org.semanticweb.yars.nx.Variable;
 import org.semanticweb.yars.nx.parser.NxParser;
 import org.semanticweb.yars.nx.parser.ParseException;
 
-import me.prettyprint.hector.api.ConsistencyLevelPolicy;
 import me.prettyprint.hector.api.HConsistencyLevel;
 import me.prettyprint.cassandra.service.OperationType;
 
@@ -174,6 +174,8 @@ public abstract class AbstractCassandraRdfHector extends Store {
 	protected List<String> _cfs;
 	protected Set<String> _cols;
 	protected Map<String,int[]> _maps;
+        // extended map (to make room for ID and URN)
+        protected Map<String,int[]> _maps_ext;
 	// used by BulkRun (br)
 	protected Map<String,int[]> _maps_br;
 	// update is composed of delete+insert, thus we need different ordering for the two ops
@@ -185,6 +187,7 @@ public abstract class AbstractCassandraRdfHector extends Store {
 	protected int _batchSizeMB = 1;
 
 	protected StringSerializer _ss = StringSerializer.get();
+        protected CompositeSerializer _cs = CompositeSerializer.get();
 	protected BytesArraySerializer _bs = BytesArraySerializer.get();
 
 	protected ExecuteTransactions _transactions;
@@ -192,6 +195,7 @@ public abstract class AbstractCassandraRdfHector extends Store {
 	protected AbstractCassandraRdfHector(String hosts) {
 		_hosts = hosts;
 		_maps = new HashMap<String,int[]>();
+                _maps_ext = new HashMap<String,int[]>();
 		_maps_br = new HashMap<String,int[]>();
 		_maps_br_update_d = new HashMap<String,int[]>();
 		_maps_br_update_i = new HashMap<String,int[]>();
@@ -207,12 +211,12 @@ public abstract class AbstractCassandraRdfHector extends Store {
 	@Override
 	public void open() throws StoreException {
 		CassandraHostConfigurator config = new CassandraHostConfigurator(_hosts);
-        // before it was 60s, kind of too less if we want to DELETE a DB quite big ...
+                // before it was 60s, kind of too less if we want to DELETE a DB quite big ...
 		config.setCassandraThriftSocketTimeout(1200*1000);
-        // !! IMPORTANT: maxim number of concurrent connections 
-        config.setUseSocketKeepalive(true);
-        config.setMaxActive(1028);
-        //config.setExhaustedPolicy(ExhaustedPolicy.WHEN_EXHAUSTED_GROW);
+                // !! IMPORTANT: maxim number of concurrent connections
+                config.setUseSocketKeepalive(true);
+                config.setMaxActive(1028);
+                //config.setExhaustedPolicy(ExhaustedPolicy.WHEN_EXHAUSTED_GROW);
 		config.setRetryDownedHostsDelayInSeconds(5);
 		config.setRetryDownedHostsQueueSize(128);
 		config.setRetryDownedHosts(true);
@@ -237,8 +241,9 @@ public abstract class AbstractCassandraRdfHector extends Store {
 	// don't use the encoded keyspace; this is used by Listener for initialization
 	public int createKeyspaceInit(String keyspaceName) {
 		if (! existsKeyspace(keyspaceName))  {
-			try { 
-				_cluster.addKeyspace(createKeyspaceDefinition(keyspaceName), true);
+			try {
+                                KeyspaceDefinition def = createKeyspaceDefinition(keyspaceName);
+				_cluster.addKeyspace(def, true);
 			} catch( HectorException ex ) { 
 				ex.printStackTrace(); 	
 				return 3;
@@ -265,11 +270,15 @@ public abstract class AbstractCassandraRdfHector extends Store {
 
 	// create a keyspace if it does not exist yet and add 
 	//NOTE: pass NON-encoded keyspace
-	public int createKeyspace(String keyspaceName) {
+        //TM: CHANGE-POINT for versioning
+	public int createKeyspace(String keyspaceName, boolean enableVersioning) {
 		String encoded_keyspaceName = Store.encodeKeyspace(keyspaceName);
 		if (! existsKeyspace(encoded_keyspaceName)) 
-			try { 
-				_cluster.addKeyspace(createKeyspaceDefinition(encoded_keyspaceName), true);
+			try {
+                            if(enableVersioning)
+				_cluster.addKeyspace(createKeyspaceDefinitionVersioning(encoded_keyspaceName), true);
+                            else
+                                _cluster.addKeyspace(createKeyspaceDefinition(encoded_keyspaceName), true);
 			} catch( HectorException ex ) { 
 				ex.printStackTrace(); 	
 				_log.severe("ERS exception: "+ex.getMessage() );
@@ -281,6 +290,8 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		// also add an entry into Listener.GRAPHS_NAMES_KEYSPACE to keep a mapping of hashed keyspace name and the real one 
 		this.addData("\""+encoded_keyspaceName+"\"", "\"hashValue\"", 
                         "\""+keyspaceName+"\"", Listener.GRAPHS_NAMES_KEYSPACE, 0);
+                this.addData("\""+encoded_keyspaceName+"\"", "\"versioningEnabled\"",
+                        "\""+(enableVersioning==true?"1":"0")+"\"", Listener.GRAPHS_NAMES_KEYSPACE, 0);
 		return 0;
 	}
 
@@ -372,15 +383,50 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		_batchSizeMB = batchSizeMB;
 	}
 	
-	protected KeyspaceDefinition createKeyspaceDefinition(String keyspaceName) {
+	protected KeyspaceDefinition createKeyspaceDefinitionVersioning(String keyspaceName) {
 		return HFactory.createKeyspaceDefinition(keyspaceName, "org.apache.cassandra.locator.SimpleStrategy", 
+			Listener.DEFAULT_REPLICATION_FACTOR, createColumnFamiliyDefinitionsVersioning(keyspaceName));
+	}
+
+        protected KeyspaceDefinition createKeyspaceDefinition(String keyspaceName) {
+		return HFactory.createKeyspaceDefinition(keyspaceName, "org.apache.cassandra.locator.SimpleStrategy",
 			Listener.DEFAULT_REPLICATION_FACTOR, createColumnFamiliyDefinitions(keyspaceName));
 	}
 
+        protected abstract List<ColumnFamilyDefinition> createColumnFamiliyDefinitionsVersioning(String keyspaceName);
+
 	protected abstract List<ColumnFamilyDefinition> createColumnFamiliyDefinitions(String keyspaceName);
 
-	protected ColumnFamilyDefinition createCfDefFlat(String cfName, List<String> cols, List<String> indexedCols, ComparatorType keyComp, String keyspaceName) {
+	protected ColumnFamilyDefinition createCfDefFlatVersioning(String cfName, List<String> cols, List<String> indexedCols,
+                    ComparatorType keyComp, String keyspaceName) {
 		BasicColumnFamilyDefinition cfdef = new BasicColumnFamilyDefinition();
+		cfdef.setKeyspaceName(keyspaceName);
+		cfdef.setName(cfName);
+		cfdef.setColumnType(ColumnType.STANDARD);
+                cfdef.setComparatorType(ComparatorType.COMPOSITETYPE);
+                cfdef.setComparatorTypeAlias("(UTF8Type,UTF8Type,UTF8Type)");
+               
+                // validator - you're simply asking Cassandra to make sure those bytes are encoded as you desire.
+                cfdef.setKeyValidationClass(ComparatorType.UTF8TYPE.getClassName());
+                //cfdef.setKeyValidationClass("CompositeType(UTF8Type,IntegerType,UTF8Type)");
+		cfdef.setDefaultValidationClass(ComparatorType.UTF8TYPE.getClassName());
+
+		Map<String,String> compressionOptions = new HashMap<String, String>();
+		compressionOptions.put("sstable_compression", "SnappyCompressor");
+		cfdef.setCompressionOptions(compressionOptions);
+
+		if (cols != null)
+			for (String colName : cols)
+				cfdef.addColumnDefinition(createColDef(colName, 
+                                    ComparatorType.UTF8TYPE.getClassName(),
+                                    indexedCols.contains(colName), "index_" + colName.substring(1)));
+		
+		return new ThriftCfDef(cfdef);
+	}
+
+        protected ColumnFamilyDefinition createCfDefFlat(String cfName, List<String> cols, List<String> indexedCols,
+                    ComparatorType keyComp, String keyspaceName) {
+                BasicColumnFamilyDefinition cfdef = new BasicColumnFamilyDefinition();
 		cfdef.setKeyspaceName(keyspaceName);
 		cfdef.setName(cfName);
 		cfdef.setColumnType(ColumnType.STANDARD);
@@ -395,7 +441,7 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		if (cols != null)
 			for (String colName : cols)
 				cfdef.addColumnDefinition(createColDef(colName, ComparatorType.UTF8TYPE.getClassName(), indexedCols.contains(colName), "index_" + colName.substring(1)));
-		
+
 		return new ThriftCfDef(cfdef);
 	}
 	
@@ -412,9 +458,47 @@ public abstract class AbstractCassandraRdfHector extends Store {
 	}
 	
 	protected abstract void batchInsert(String cf, List<Node[]> li, String keyspace);
+        protected abstract void batchInsertVersioning(String cf, List<Node[]> li, String keyspace, 
+                String URN_author, boolean updateVerNum);
+        
 	protected abstract void batchDelete(String cf, List<Node[]> li, String keyspace);
 	protected abstract void batchDeleteRow(String cf, List<Node[]> li, String keyspace);
 	protected abstract void batchRun(String cf, List<Node[]> li, String keyspace);
+
+        public Node getNode(String value, String varName) throws ParseException {
+		if (value != null && value.trim().length() > 2)
+			return NxParser.parseNode(value);
+		else
+			return new Variable(varName);
+	}
+
+
+        // check if a given keyspace has versioning enabled
+        public boolean keyspaceEnabledVersioning(String keyspaceName) {
+                Node[] query = new Node[3];
+		try {
+			query[0] = getNode("\""+encodeKeyspace(keyspaceName)+"\"", "s");
+			query[1] = getNode("\"versioningEnabled\"", "p");
+			query[2] = getNode(null, "o");
+		}
+		catch (ParseException ex) {
+			_log.severe(ex.getMessage());
+			return false;
+		}
+                Iterator<Node[]> it;
+                try {
+                    it = this.query(query, 1, Listener.GRAPHS_NAMES_KEYSPACE);
+                    if (it.hasNext()) {
+                        Node[] next = (Node[])it.next();
+                        //_log.info("VERSIONING ENABLED: " + next[2].toString());
+                        if( next[2].toString().equals("1") )
+                            return true;
+                    }
+                } catch (StoreException ex) {
+                    Logger.getLogger(AbstractCassandraRdfHector.class.getName()).log(Level.SEVERE, null, ex);
+                }
+                return false;
+        }
 
 	protected boolean isVariable(Node n) {
 		return n instanceof Variable;
@@ -436,6 +520,49 @@ public abstract class AbstractCassandraRdfHector extends Store {
                 return -1;
             }
 	}
+
+        public void updateToNextVersion(String keyspaceName, String entity_w_brackets,
+                String URN_author, int old_version) {
+                String e = "<"+keyspaceName+ "-" + entity_w_brackets+">";
+                String p = "\""+URN_author+"-lastID\"";
+                // delete the old one and put the new oneADD
+                deleteData(e, p, "\""+old_version+"\"", Listener.GRAPHS_VERSIONS_KEYSPACE, 0);
+                addData(e, p, "\""+(old_version+1)+"\"", Listener.GRAPHS_VERSIONS_KEYSPACE, 0);
+        }
+
+        // get the last versioning number for a given keyspace and entity
+        public int lastVersioningNumber(String keyspaceName, String entity_w_brackets,
+                String URN_author) {
+                Node[] query = new Node[3];
+                String e = "<"+keyspaceName+ "-" + entity_w_brackets+">";
+                String p = "\""+URN_author+"-lastID\"";
+		try {
+			query[0] = getNode(e, "s");
+			query[1] = getNode(p, "p");
+			query[2] = getNode(null, "o");
+		}
+		catch (ParseException ex) {
+			_log.severe(ex.getMessage());
+			return -1;
+		}
+                Iterator<Node[]> it;
+                try {
+                    it = this.query(query, 1, Listener.GRAPHS_VERSIONS_KEYSPACE);
+                    if (it.hasNext()) {
+                        Node[] next = (Node[])it.next();
+                        return new Integer(next[2].toString());
+                    }
+                    else {
+                        // insert an initial version number
+                        addData(e, p, "\"0\"", Listener.GRAPHS_VERSIONS_KEYSPACE, 0);
+                        return 0;
+                    }
+                } catch (StoreException ex) {
+                    Logger.getLogger(AbstractCassandraRdfHector.class.getName()).log(Level.SEVERE, null, ex);
+                }
+                return -1;
+        }
+
 
 	@Override
 	public int addData(Iterator<Node[]> it, String keyspace, Integer linkFlag) throws StoreException {
@@ -470,6 +597,67 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		return count;
 	}
 
+        @Override
+        public int addDataVersioning(Iterator<Node[]> it, String keyspace,
+                Integer linkFlag, String URN_author) throws StoreException {
+		// check firstly if keyspace exists, if not, return error
+		if( !existsKeyspace(keyspace) ) {
+			return -1;
+		}
+		List<Node[]> batch = new ArrayList<Node[]>();
+		int batchSize = 0;
+		int count = 0;
+		while (it.hasNext()) {
+			Node[] nx = it.next();
+			//_log.info("addData  " + nx[0].toString() + " " + nx[1].toString() + " " + nx[2].toString());
+                        batch.add(nx);
+                         // add the back link as well
+                        if( linkFlag != 0 && nx[2] instanceof Resource )
+                                batch.add(Util.reorderForLink(nx, _maps.get("link")));
+
+                        batchSize += nx[0].toN3().getBytes().length + nx[1].toN3().getBytes().length + nx[2].toN3().getBytes().length;
+			count++;
+			if (batchSize >= _batchSizeMB * 1048576) {
+				_log.finer("insert batch of size " + batchSize + " (" + batch.size() + " tuples)");
+				/*for (String cf : _cfs)
+					batchInsertVersioning(cf, batch, keyspace, URN_author);
+                                for(int i=0; i<_cfs.size(); ++i ) {
+                                    String cf = _cfs.get(i);
+                                    // update the versions number on the ERS_versions only once, at the end
+                                    if( i == _cfs.size() -1 )
+                                        batchInsertVersioning(cf, batch, keyspace,
+                                                URN_author, true);
+                                    else
+                                        batchInsertVersioning(cf, batch, keyspace,
+                                                URN_author, false);
+                                }*/
+                                batchInsertVersioning(CassandraRdfHectorFlatHash.CF_S_PO,
+                                        batch, keyspace, URN_author, true);
+                                
+				batch = new ArrayList<Node[]>();
+				batchSize = 0;
+			}
+		}
+		if (batch.size() > 0) {
+			/*for (String cf : _cfs)
+				batchInsertVersioning(cf, batch, keyspace, URN_author);
+                        for(int i=0; i<_cfs.size(); ++i ) {
+                                    String cf = _cfs.get(i);
+                                    // update the versions number on the ERS_versions only once, at the end
+                                    if( i == _cfs.size() -1 )
+                                        batchInsertVersioning(cf, batch, keyspace,
+                                                URN_author, true);
+                                    else
+                                        batchInsertVersioning(cf, batch, keyspace,
+                                                URN_author, false);
+                                }*/
+                    batchInsertVersioning(CassandraRdfHectorFlatHash.CF_S_PO,
+                            batch, keyspace, URN_author, true);
+                }
+		return count;
+	}
+
+
         // <e> <INVERTED_..> <v> <g> => <v> is generated by this function 
         // basically it represnets the source graph concatenated with the source entity
         // reason: a clone operation can be run inter-graphs
@@ -478,12 +666,14 @@ public abstract class AbstractCassandraRdfHector extends Store {
         }
 
 	// TM: add just one record
+        @Override
 	public int addData(String e, String p, String v, String keyspace,
                 Integer linkFlag) {
 		if( !existsKeyspace(keyspace) ) { 
 			return -2; 
 		}
-		String triple = e + " " + p + " " + v + " ."; 
+		String triple = e + " " + p + " " + v + " .";
+                //_log.info("ADD DATA " + triple);
 		try { 
 			Node[] nx = NxParser.parseNodes(triple);	
 	 		List<Node[]> batch = new ArrayList<Node[]>();
@@ -497,6 +687,46 @@ public abstract class AbstractCassandraRdfHector extends Store {
 			return 0;
 		} 
 		catch( ParseException ex ) { 
+			ex.printStackTrace();
+			_log.severe(ex.getMessage());
+			return -1;
+		}
+	}
+
+        // TM: add just one record
+        @Override
+	public int addDataVersioning(String e, String p, String v, String keyspace,
+                Integer linkFlag, String URN_author) {
+		if( !existsKeyspace(keyspace) ) {
+			return -2;
+		}               
+		String triple = e + " " + p + " " + v + " .";
+		try {
+			Node[] nx = NxParser.parseNodes(triple);
+	 		List<Node[]> batch = new ArrayList<Node[]>();
+			batch.add(nx);
+                        if( linkFlag != 0 )
+                            // add the back link as well
+                            if( nx[2] instanceof Resource )
+                                batch.add(Util.reorderForLink(nx, _maps.get("link")));
+			/*for (String cf : _cfs)
+                            batchInsertVersioning(cf, batch, keyspace, URN_author);
+                        for(int i=0; i<_cfs.size(); ++i ) {
+                            String cf = _cfs.get(i);
+                            // update the version on the ERS_versions keyspace only once, at the end 
+                            if( i == _cfs.size() -1 )
+                                batchInsertVersioning(cf, batch, keyspace,
+                                        URN_author, true);
+                            else
+                                batchInsertVersioning(cf, batch, keyspace,
+                                        URN_author, false);
+                        }*/
+                        batchInsertVersioning(CassandraRdfHectorFlatHash.CF_S_PO, 
+                                batch, keyspace, URN_author, true);
+				
+			return 0;
+		}
+		catch( ParseException ex ) {
 			ex.printStackTrace();
 			_log.severe(ex.getMessage());
 			return -1;
@@ -721,6 +951,39 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		return query(query, Integer.MAX_VALUE, keyspace);
 	}
 
+        @Override
+	public Iterator<Node[]> queryVersioning(Node[] query, String keyspace,
+                String ID, String URN) throws StoreException {
+                int situation;
+                if( ID == null ) { 
+                    if( URN == null )  
+                        // *:*:* query 
+                        situation = 5;
+                    else
+                        // URN:*:*
+                        situation = 2;
+                }
+                else {
+                    if( URN == null ) 
+                        // ID:*:* 
+                        situation = 1;
+                    else {
+                        if (!isVariable(query[1])) {
+                            // ID:URN:prop
+                            situation = 6;
+                            if( !isVariable(query[2]))
+                                // ID:URN:prop-value
+                                situation = 7;
+                        }
+                        else
+                            // ID:URN:* or URN:ID:*
+                            situation = 3; // or 4
+                    }
+                }
+                return queryVersioning(query, Integer.MAX_VALUE, keyspace, 
+                        situation, ID, URN);
+	}
+
 	private Node urlDecode(Node n) {
 		if (n instanceof Resource)
 			try {
@@ -737,7 +1000,9 @@ public abstract class AbstractCassandraRdfHector extends Store {
 }
 
 	// parses input file, creates the RunThread/s and waits for them to finish
-	public void bulkRun(InputStream fis, String format, String columnFamily, int threadCount, String keyspace) throws IOException, InterruptedException {
+	public void bulkRun(InputStream fis, String format, String columnFamily,
+                int threadCount, String keyspace, String IP_address)
+                throws IOException, InterruptedException, StoreException {
 		_log.info("run batch for CF " + columnFamily);
 		List<RunThread> threads = new ArrayList<RunThread>();
 		if (threadCount < 0) {
@@ -762,6 +1027,8 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		int batchSize = 0;
 		long data = 0;
 		int cnt=0;
+                int total_triples=0;
+                int total_bytes=0;
 		while (nxp.hasNext()) {
 			Node[] nx = nxp.next();
 			if( nx.length < 4 ) {
@@ -782,16 +1049,23 @@ public abstract class AbstractCassandraRdfHector extends Store {
 				_log.info("batch ready: " + operations.size() + " triples, size: " + batchSize + ", thread: " + curThread);
 				data += batchSize;
 				threads.get(curThread).enqueue(operations);
+                                total_triples += operations.size();
 				operations = new ArrayList<Node[]>();
 				batchSize = 0;
 				curThread = (curThread + 1) % threads.size();
 			}
 			if (i % 200000 == 0)
-				_log.info(i + " into " + columnFamily + " in " +  (System.currentTimeMillis() - start) + " ms (" + ((double)i / (System.currentTimeMillis() - start) * 1000) + " quads/s) (" + ((double)data / 1000 / (System.currentTimeMillis() - start) * 1000) + " kbytes/s)"); 
+				_log.info(i + " into " + columnFamily + " in " +  
+                                        (System.currentTimeMillis() - start) + " ms (" +
+                                        ((double)i / (System.currentTimeMillis() - start) * 1000) + " " +
+                                        "quads/s) (" + ((double)data / 1000 / (System.currentTimeMillis()
+                                        - start) * 1000) + " kbytes/s)");
 		}
 		_log.info("NO OF NOT LOADED QUADS DUE TO PARSING ERROR: " + cnt);
 		if (operations.size() > 0) {
 			threads.get(curThread).enqueue(operations);
+                        total_triples += operations.size();
+                        data += batchSize;
 		}
 		_log.info("waiting for threads to finish....");
 		for (RunThread t : threads) {
@@ -801,10 +1075,73 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		}
 		long time = (System.currentTimeMillis() - start);
 		_log.info(i + " triples inserted into " + columnFamily + " in " + time + " ms (" + ((double)i / time * 1000) + " triples/s)");
+
+                // insert STATS for this bridge, but do it only for one column family
+                if( columnFamily.equals(CassandraRdfHectorFlatHash.CF_S_PO) ) {
+                    String timestamp = String.valueOf(System.currentTimeMillis());
+
+
+//TODO: UNCOMMENT THIS !!!!!!!!!!!
+//TEST VIZUALIZATION 
+total_triples = (int) (System.currentTimeMillis() % 100);
+data = (int) (System.currentTimeMillis() % 500);
+////////////////////
+
+                    // add <keyspace_NUM> "timestamp" "number_triples"
+                    this.addData("<"+keyspace+"_NUM>", "\""+timestamp+"\"", "\""+total_triples+"\"",
+                            Store.encodeKeyspace(Listener.BRIDGES_KEYSPACE+"_"+IP_address), 0);
+                    // add <keyspace_BYTES> "timestamp" "number_bytes"
+                    this.addData("<"+keyspace+"_BYTES>", "\""+timestamp+"\"", "\""+data+"\"",
+                            Store.encodeKeyspace(Listener.BRIDGES_KEYSPACE+"_"+IP_address), 0);
+
+                    // get total number synched entities for given keyspace by this bridge
+                    Node[] query = new Node[3];
+                    try {
+                        query[0] = getNode("<"+IP_address+"_TOTAL_NUM>", "s");
+                        query[1] = getNode("\""+keyspace+"\"", "p");
+                        query[2] = getNode(null, "o");
+                    }
+                    catch (ParseException ex) {
+                        _log.severe(ex.getMessage());
+                    }
+                    Iterator<Node[]> it = this.query(query, Listener.BRIDGES_KEYSPACE);
+                    int total_number = 0;
+                    if( it.hasNext() ) {
+                        Node[] response = (Node[])it.next();
+                        total_number = Integer.valueOf(response[2].toString());
+                    }
+                    int new_total = total_number + total_triples;
+                    // update previous record
+                    this.updateData("<"+IP_address+"_TOTAL_NUM>", "\""+keyspace+"\"",
+                            "\""+total_number+"\"", "\""+new_total+"\"", Listener.BRIDGES_KEYSPACE, 0);
+
+                    // get total size of synched entities for given keyspace by this bridge
+                    query = new Node[3];
+                    try {
+                        query[0] = getNode("<"+IP_address+"_TOTAL_BYTES>", "s");
+                        query[1] = getNode("\""+keyspace+"\"", "p");
+                        query[2] = getNode(null, "o");
+                    }
+                    catch (ParseException ex) {
+                        _log.severe(ex.getMessage());
+                    }
+                    it = this.query(query, Listener.BRIDGES_KEYSPACE);
+                    total_number = 0;
+                    if( it.hasNext() ) {
+                        Node[] response = (Node[])it.next();
+                        total_number = Integer.valueOf(response[2].toString());
+                    }
+                    new_total = (int) (total_number + data);
+                    // update previous record
+                    this.updateData("<"+IP_address+"_TOTAL_BYTES>", "\""+keyspace+"\"",
+                            "\""+total_number+"\"", "\""+new_total+"\"", Listener.BRIDGES_KEYSPACE, 0);
+                }
 	}
 
+
 	// used by BatchRun servlet to load a given file of operations (not only inserts)
-	public int bulkRun(File file, String format, int threads, String keyspace) throws StoreException, IOException {
+	public int bulkRun(File file, String format, int threads, String keyspace,
+                String bridgeIP) throws StoreException, IOException {
 		try {
 			// check firstly if keyspace exists, if not, return error 
 			if( !existsKeyspace(keyspace) ) { 
@@ -813,7 +1150,7 @@ public abstract class AbstractCassandraRdfHector extends Store {
 			// run the batch for each column family
 			for (String cf : _cfs) {
 				FileInputStream fis = new FileInputStream(file);
-				bulkRun(fis, format, cf, threads, keyspace);
+				bulkRun(fis, format, cf, threads, keyspace, bridgeIP);
 				fis.close();
 			}			
 		} catch (InterruptedException e) {
@@ -970,4 +1307,36 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		
 		return sb.toString();
 	}
+
+        // return false if the brige has been previously registered
+        public boolean isBridgeRegistered(String IP_address) throws StoreException {
+            Node[] query = new Node[3];
+            try {
+                    query[0] = getNode("<bridges>", "s");
+                    query[1] = getNode("\""+IP_address+"\"", "p");
+                    query[2] = getNode(null, "o");
+            }
+            catch (ParseException ex) {
+                    _log.severe(ex.getMessage());
+                    return false;
+            }
+            Iterator<Node[]> it = this.query(query, Listener.BRIDGES_KEYSPACE);
+            if( it.hasNext() )
+                return true;
+            return false;
+        }
+
+        // adds a new bridge to the list if it has not been already added
+        public void addNewBridge(String IP_address) throws StoreException {
+            //check firstly if the new bridge already exists or not
+           if( isBridgeRegistered(IP_address) )
+               return;
+
+           // add data into ERS_bridges
+           this.addData("<bridges>", "\""+IP_address+"\"", "\""+System.currentTimeMillis()+"\"",
+                   Listener.BRIDGES_KEYSPACE, 0);
+
+           // create the keysace that will keep the stats for this bridge
+           this.createKeyspace(Listener.BRIDGES_KEYSPACE+"_"+IP_address, false);
+        }
 }

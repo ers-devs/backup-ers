@@ -51,6 +51,9 @@ public class QueryServlet extends AbstractHttpServlet {
 		String v = req.getParameter("v");
 		String a = req.getParameter("g");
 		String l = req.getParameter("limit");
+                // params regarding versioning
+                String URN = req.getParameter("urn");
+                String version_ID = req.getParameter("verID");
 		// some checks
 		if( e != null && !e.isEmpty() && (!e.startsWith("<") || !e.endsWith(">")) ) {
 			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please pass a resource (e.g. "+resource+") as entity");
@@ -74,9 +77,20 @@ public class QueryServlet extends AbstractHttpServlet {
 				limit = Integer.parseInt(l);
 			} catch( NumberFormatException ex ) { 
 				_log.severe("Exception: " + ex.getMessage() );
-				sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please pass a number as limit or nothing at all.");
+				sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST,
+                                        "Please pass a number as limit or nothing at all.");
 			}
 		}
+                if( version_ID != null && version_ID.isEmpty() )
+                    version_ID = null;
+                if( URN != null && URN.isEmpty() )
+                    URN = null;
+                if( version_ID != null && version_ID.equals("last") && URN == null ) {
+                    sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST,
+                            "In case of using 'last' version, please give URN as well. ID is defined per URN.");
+                    return;
+                }
+
 		Node[] query = new Node[3];
 		try {
 			query[0] = getNode(e, "s");
@@ -109,27 +123,47 @@ public class QueryServlet extends AbstractHttpServlet {
 		else 
 			keyspaces = crdf.getAllKeyspaces(); 
 
+                int cutSuffixPos = 0;
+                // (S,?,?) or (S,?,V) 
+                if( (p == null || p.isEmpty()) && ( v!= null && !v.isEmpty()) )
+                    cutSuffixPos = 2;
+
 		boolean found = false;
 		int total_triples=0;
 		BufferedWriter bw = new BufferedWriter(out);
 		for(Iterator it_k = keyspaces.iterator(); it_k.hasNext(); ) { 
 			String k = (String)it_k.next();
-			// skip keyspaces that do not use our pre-defined prefix or the authors one
+			// skip keyspaces that do not use our pre-defined prefix or that are in the blacklist
 			if( ! k.startsWith(Listener.DEFAULT_ERS_KEYSPACES_PREFIX) || 
-			      k.equals(Listener.GRAPHS_NAMES_KEYSPACE) )
+			      Listener.BLACKLIST_KEYSPACES.contains(k) )
 				continue;
 			try {
-				Iterator<Node[]> it = crdf.query(query, limit, k);
-				if (it.hasNext()) {
-					resp.setContentType(formatter.getContentType());
-					triples = formatter.print(it, out, crdf.decodeKeyspace(k));
-					found = true;
-					total_triples += triples;
-					limit -= triples;
-					if( limit == 0 ) 
-						break;
-				}
-			} catch (StoreException ex) {
+                            Iterator<Node[]> it;
+                            // is verioning enabled for this keyspace?
+                            if( crdf.keyspaceEnabledVersioning(crdf.decodeKeyspace(k)) ) {
+                                if( e == null || e.isEmpty() ) {
+                                    sendResponse(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST,
+                                            "A versioned graph cannot be querying without passing the entity key!.");
+                                    return;
+                                }
+                                //_log.info("Query the versioning keyspace " + k );
+                    		it = crdf.queryVersioning(query, k, version_ID, URN);
+            //formatter = new NTriplesVersioningFormat(query);
+                            }
+                            else
+                                it = crdf.query(query, k);
+                            
+                            if (it.hasNext()) {
+                                    resp.setContentType(formatter.getContentType());
+                                    triples = formatter.print(it, out, 
+                                            crdf.decodeKeyspace(k), cutSuffixPos);
+                                    found = true;
+                                    total_triples += triples;
+                                    limit -= triples;
+                                    if( limit == 0 )
+                                            break;
+                            }
+                        } catch (StoreException ex) {
 				_log.severe(ex.getMessage());
 				resp.sendError(500, ex.getMessage());
 			}

@@ -17,8 +17,13 @@ public class HTMLFormat implements SerializationFormat {
 		return "text/html";
 	}
 
+        @Override
+        public int print(Iterator<Node[]> it, Writer pw, String author) throws IOException {
+            return print(it, pw, author, -1);
+        }
+
 	@Override
-	public int print(Iterator<Node[]> it, Writer pw, String author) throws IOException {
+	public int print(Iterator<Node[]> it, Writer pw, String author, int cutSuffixPos) throws IOException {
 		pw.write("<html><head></head><body>");
 		
 		int triples = 0;

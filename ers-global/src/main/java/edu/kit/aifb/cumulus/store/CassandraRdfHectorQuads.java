@@ -23,6 +23,7 @@ import org.semanticweb.yars.nx.parser.NxParser;
 
 import com.google.common.base.Function;
 import com.google.common.collect.Iterators;
+import me.prettyprint.hector.api.beans.HColumn;
 
 public class CassandraRdfHectorQuads extends AbstractCassandraRdfHector {
 	static final String CF_C_SPO = "CSPO";
@@ -42,7 +43,12 @@ public class CassandraRdfHectorQuads extends AbstractCassandraRdfHector {
 		ColumnFamilyDefinition redirects = createCfDefFlat(CF_REDIRECTS, null, null, ComparatorType.UTF8TYPE, keyspace);
 		return Arrays.asList(cspo, redirects);
 	}
-	
+
+        @Override
+        protected List<ColumnFamilyDefinition> createColumnFamiliyDefinitionsVersioning(String keyspaceName) {
+            throw new UnsupportedOperationException("Not supported yet.");
+        }
+
 	// Only supported: ?s ?p ?o :c
 	public Iterator<Node[]> query(Node[] query, int limit, String keyspace) throws StoreException {
 //		_log.info("query: " + Nodes.toN3(query) + " idx: CSPO");
@@ -77,7 +83,7 @@ public class CassandraRdfHectorQuads extends AbstractCassandraRdfHector {
 		}
 		return it;
 	}
-	
+
 	public void loadRedirects(InputStream fis, String keyspace) throws IOException, InterruptedException {
 		_log.info("bulk loading " + CF_REDIRECTS);
 		Iterator<Node[]> nxp = new NxParser(fis);
@@ -180,6 +186,7 @@ public class CassandraRdfHectorQuads extends AbstractCassandraRdfHector {
 		}
 	}
 
+      
 	// TM
 	@Override
 	protected void batchDelete(String cf, List<Node[]> li, String keyspace) {
@@ -218,4 +225,19 @@ public class CassandraRdfHectorQuads extends AbstractCassandraRdfHector {
 	protected void batchRun(String cf, List<Node[]> list, String keyspace){
 		//_log.severe("CassandraRdfHectorQuads does not implement batchRun() method");
 	}
+
+        @Override
+        protected void batchInsertVersioning(String cf, List<Node[]> li, String keyspace, String URN_author, boolean updateVerNum) {
+            throw new UnsupportedOperationException("Not supported yet.");
+        }
+
+        @Override
+        public Iterator<Node[]> queryVersioning(Node[] query, int limit, String keyspace, int situation, String ID, String URN) throws StoreException {
+            throw new UnsupportedOperationException("Not supported yet.");
+        }
+
+        @Override
+        public Iterator<HColumn<String,String>> queryBrigesTimeStats(Node[] query, String keyspace, String start_time, String end_time) throws StoreException {
+            throw new UnsupportedOperationException("Not supported yet.");
+        }
 }

@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import me.prettyprint.cassandra.model.IndexedSlicesQuery;
@@ -33,9 +34,12 @@ import org.semanticweb.yars.nx.parser.NxParser;
 import org.semanticweb.yars.nx.parser.ParseException;
 
 import edu.kit.aifb.cumulus.webapp.Listener;
+import java.util.Hashtable;
+import me.prettyprint.cassandra.serializers.CompositeSerializer;
+import me.prettyprint.hector.api.beans.Composite;
 
 public class CassandraRdfHectorFlatHash extends CassandraRdfHectorQuads {
-	private static final String CF_S_PO = "SPO";
+	public static final String CF_S_PO = "SPO";
 	private static final String CF_O_SP = "OSP";
 	private static final String CF_PO_S = "POS";
 	
@@ -47,35 +51,55 @@ public class CassandraRdfHectorFlatHash extends CassandraRdfHectorQuads {
 		_cfs.add(CF_S_PO);
 		_cfs.add(CF_O_SP);
 		_cfs.add(CF_PO_S);
-		_maps.put(CF_S_PO, new int[] { 0, 1, 2 });
+                _maps.put(CF_S_PO, new int[] { 0, 1, 2});
 		_maps.put(CF_O_SP, new int[] { 2, 0, 1 });
 		_maps.put(CF_PO_S, new int[] { 1, 2, 0 });
-         // used to create another triple before loading into different CF for expressing the link
-        _maps.put("link", new int[] { 2, 1, 0});
+
+                _maps_ext.put(CF_S_PO, new int[] { 0, 1, 2, 3, 4});
+		_maps_ext.put(CF_O_SP, new int[] { 2, 0, 1, 3, 4});
+		_maps_ext.put(CF_PO_S, new int[] { 1, 2, 0, 3, 4});
+
+                
+                 // used to create another triple before loading into different CF for expressing the link
+                _maps.put("link", new int[] { 2, 1, 0});
 		_maps_br.put(CF_S_PO, new int[] { 0, 1, 2, 3 });
 		_maps_br.put(CF_O_SP, new int[] { 2, 0, 1, 3 });
 		_maps_br.put(CF_PO_S, new int[] { 1, 2, 0, 3 });
-        _maps_br.put("link", new int[] { 2, 1, 0, 3 });
+                _maps_br.put("link", new int[] { 2, 1, 0, 3 });
 		_maps_br_update_d.put(CF_S_PO, new int[] { 0, 1, 2, 3, 4 });
 		_maps_br_update_d.put(CF_O_SP, new int[] { 2, 0, 1, 3, 4 });
 		_maps_br_update_d.put(CF_PO_S, new int[] { 1, 2, 0, 3, 4 });
-        _maps_br_update_d.put("link", new int[] { 2, 1, 0, 3, 4 });
+                _maps_br_update_d.put("link", new int[] { 2, 1, 0, 3, 4 });
 		_maps_br_update_i.put(CF_S_PO, new int[] { 0, 1, 4, 3, 2 });
 		_maps_br_update_i.put(CF_O_SP, new int[] { 4, 0, 1, 3, 2 });
 		_maps_br_update_i.put(CF_PO_S, new int[] { 1, 4, 0, 3, 2 });
-        _maps_br_update_i.put("link", new int[] { 4, 1, 0, 3, 2 });
+                _maps_br_update_i.put("link", new int[] { 4, 1, 0, 3, 2 });
 	}
+
+        @Override
+	protected List<ColumnFamilyDefinition> createColumnFamiliyDefinitionsVersioning(String keyspace) {
+                ColumnFamilyDefinition spo = createCfDefFlatVersioning(CF_S_PO, null, null, ComparatorType.COMPOSITETYPE, keyspace);
+                //ColumnFamilyDefinition osp = createCfDefFlatVersioning(CF_O_SP, null, null, ComparatorType.COMPOSITETYPE, keyspace);
+		/*ColumnFamilyDefinition pos = createCfDefFlatVersioning(CF_PO_S, Arrays.asList("!p", "!o"), Arrays.asList("!p"),
+                        ComparatorType.COMPOSITETYPE, keyspace);*/
+
+		ArrayList<ColumnFamilyDefinition> li = new ArrayList<ColumnFamilyDefinition>();
+                // TM : create SPO, Redirects; TODO: do we need these?!
+		//li.addAll(super.createColumnFamiliyDefinitions(keyspace));
+		li.addAll(Arrays.asList(spo)); //, osp));//, pos));
+		return li;
+	}
+
 		
 	@Override
 	protected List<ColumnFamilyDefinition> createColumnFamiliyDefinitions(String keyspace) {
 		ColumnFamilyDefinition spo = createCfDefFlat(CF_S_PO, null, null, ComparatorType.UTF8TYPE, keyspace);
-		ColumnFamilyDefinition osp = createCfDefFlat(CF_O_SP, null, null, ComparatorType.UTF8TYPE, keyspace);
-		ColumnFamilyDefinition pos = createCfDefFlat(CF_PO_S, Arrays.asList("!p", "!o"), Arrays.asList("!p"), ComparatorType.BYTESTYPE, keyspace);
-		
-		ArrayList<ColumnFamilyDefinition> li = new ArrayList<ColumnFamilyDefinition>();
+                ColumnFamilyDefinition osp = createCfDefFlat(CF_O_SP, null, null, ComparatorType.UTF8TYPE, keyspace);
+                ColumnFamilyDefinition pos = createCfDefFlat(CF_PO_S, Arrays.asList("!p", "!o"), Arrays.asList("!p"),
+                        ComparatorType.BYTESTYPE, keyspace);
+                ArrayList<ColumnFamilyDefinition> li = new ArrayList<ColumnFamilyDefinition>();
 		li.addAll(super.createColumnFamiliyDefinitions(keyspace));
 		li.addAll(Arrays.asList(spo, osp, pos));
-		
 		return li;
 	}
 
@@ -87,17 +111,189 @@ public class CassandraRdfHectorFlatHash extends CassandraRdfHectorQuads {
 		return key;
 	}
 
-	@Override
+        @Override
+	protected void batchInsertVersioning(String cf, List<Node[]> li, String keyspace,
+                String URN_author, boolean updateVerNum) {
+		if (cf.equals(CF_C_SPO)) {
+// TM
+//			super.batchInsert(cf, li, keyspace);
+		}
+		else {
+                    // FETCH ALL MOST RECENT VERSIONS FOR ALL ENTITIES and add the new triple
+                    // get previous versions of all entities involved in this batch
+                    Hashtable<String, List<Node[]>> versioned_entities = new Hashtable<String, List<Node[]>>();
+                    Hashtable<String, Integer> last_version_numbers  = new Hashtable<String, Integer>();
+                    for (Node[] nx : li) {
+                        // reorder for the key
+                        Node[] reordered = Util.reorder(nx, _maps.get(cf));
+                        String rowKey = new Resource(reordered[0].toString() + "-VER").toN3();
+                        // if the previous version has been fetched, then add the new prop-value
+                        if( versioned_entities.contains(rowKey) ) {
+                            List<Node[]> all_props = versioned_entities.get(rowKey);
+                            all_props.add(nx);
+                            versioned_entities.put(rowKey, all_props);
+                            continue;
+                        }
+                        // else, fetch the old version and add the current one to the list
+                        String version_key = nx[0].toString();
+                        int last_ver;
+                        if( last_version_numbers.contains(rowKey) )
+                            last_ver = last_version_numbers.get(rowKey);
+                        else {
+                            last_ver = lastVersioningNumber(keyspace, version_key.replaceAll("<", "").
+                                replaceAll(">", ""), URN_author);
+                            last_version_numbers.put(rowKey, last_ver);
+                        }
+
+                        Node[] query = new Node[3];
+                        try {
+                            query[0] = getNode(nx[0].toN3(), "s");
+                            query[1] = getNode(null, "p");
+                            query[2] = getNode(null, "o");
+                            Iterator<Node[]> last_version = queryVersioning(query,
+                                    Integer.MAX_VALUE, keyspace, 3, String.valueOf(last_ver), URN_author);
+                            List<Node[]> all_prop_last_v = new ArrayList<Node[]>();
+                            while( last_version.hasNext() ) {
+                                Node[] ent = last_version.next();
+                                ent[0] = new Resource( ent[0].toString().replaceAll("-VER", "") );
+                                all_prop_last_v.add(ent);
+                            }
+                            all_prop_last_v.add(nx);
+                            // add it to the hashtable
+                            versioned_entities.put(rowKey, all_prop_last_v);
+                        } catch (Exception ex) {
+                            Logger.getLogger(CassandraRdfHectorFlatHash.class.getName()).log(Level.SEVERE, null, ex);
+                        }
+                    }
+                    // END FETCHING ALL OLD VERSIONS
+
+                    if (cf.equals(CF_PO_S)) {
+                        //NOTE: we assume that queries like (?PO) or (?P?) will not be run!
+                        //cause: problem with creating the proper column family using COMPOSITE ... 
+                        
+                        // POS
+                        // insert 's-VER' and 's-URN' new versions
+                        /*Mutator<byte[]> m = HFactory.createMutator(getExistingKeyspace(keyspace), _bs);
+                        for( Iterator<String> it=versioned_entities.keySet().iterator(); it.hasNext(); ) {
+                            String row_entity_key = it.next();
+                            // there is a list of properties to be added to the new version of this entity
+                            List<Node[]> entity_old_version = versioned_entities.get(row_entity_key);
+                            Integer old_version_num = last_version_numbers.get(row_entity_key);
+
+                            for(Iterator it_old_v=entity_old_version.iterator(); it_old_v.hasNext(); ) {
+                                Node[] nx = (Node[]) it_old_v.next();
+                                // reorder for the key
+                                Node[] reordered = Util.reorder(nx, _maps.get(cf));
+                                ByteBuffer rowKey = createKey(new Node[] { reordered[0], reordered[1] });//, new Variable("-VER") });
+
+                                // get last version number for this entity
+                                //_log.info("LAST VERSION NUMBER FOR ENTITY " + rowKey + " is " + old_version_num);
+                                int next_ver = old_version_num+1;
+
+                                // VER, URN
+                                Composite colKey = new Composite();
+                                colKey.addComponent(String.valueOf(next_ver), StringSerializer.get());
+                                colKey.addComponent(URN_author, StringSerializer.get());
+                                String colKey_s = reordered[2].toN3();
+                                colKey.addComponent(colKey_s, StringSerializer.get());
+                                HColumn<Composite, String> hColumnObj_itemID = HFactory.createColumn(colKey, "",
+                                        new CompositeSerializer(),
+                                        StringSerializer.get());
+                                m.addInsertion(rowKey.array(), cf, hColumnObj_itemID);
+
+                                // URN, VER
+                                rowKey = createKey(new Node[] { reordered[0], reordered[1] });//, new Variable("-URN") });
+                                colKey = new Composite();
+                                colKey.addComponent(URN_author, StringSerializer.get());
+                                colKey.addComponent(String.valueOf(next_ver), StringSerializer.get());
+                                colKey_s = Nodes.toN3(new Node[] { reordered[1], reordered[2] });
+                                colKey.addComponent(colKey_s, StringSerializer.get());
+
+                                hColumnObj_itemID =HFactory.createColumn(colKey, "",
+                                        new CompositeSerializer(),
+                                        StringSerializer.get());
+                                m.addInsertion(rowKey.array(), cf, hColumnObj_itemID);
+                            }
+                            m.execute();
+                        }*/
+                    }
+                    else {
+                        //SPO, OSP
+                        // insert 's-VER' and 's-URN' new versions
+                        Mutator<String> m = HFactory.createMutator(getExistingKeyspace(keyspace), _ss);
+                        for( Iterator<String> it=versioned_entities.keySet().iterator(); it.hasNext(); ) {
+                            String row_entity_key = it.next();
+                            // there is a list of properties to be added to the new version of this entity
+                            List<Node[]> entity_old_version = versioned_entities.get(row_entity_key);
+                            Integer old_version_num = last_version_numbers.get(row_entity_key);
+
+                            for(Iterator it_old_v=entity_old_version.iterator(); it_old_v.hasNext(); ) {
+                                Node[] nx = (Node[]) it_old_v.next();
+                                // reorder for the key
+                                Node[] reordered = Util.reorder(nx, _maps.get(cf));
+                                String rowKey = new Resource(reordered[0].toString()).toN3();
+                                if( !reordered[0].toString().contains("-VER") )
+                                    rowKey = new Resource(reordered[0].toString() + "-VER").toN3();
+
+                                // get last version number for this entity
+                                //_log.info("LAST VERSION NUMBER FOR ENTITY " + rowKey + " is " + old_version_num);
+                                int next_ver = old_version_num+1;
+
+                                // VER, URN
+                                Composite colKey = new Composite();
+                                colKey.addComponent(String.valueOf(next_ver), StringSerializer.get());
+                                colKey.addComponent(URN_author, StringSerializer.get());
+                                String colKey_s = Nodes.toN3(new Node[] { reordered[1], reordered[2] });
+                                colKey.addComponent(colKey_s, StringSerializer.get());
+                                HColumn<Composite, String> hColumnObj_itemID = HFactory.createColumn(colKey, "",
+                                        new CompositeSerializer(),
+                                        StringSerializer.get());
+                                m.addInsertion(rowKey, cf, hColumnObj_itemID);
+
+                                // URN, VER
+                                rowKey = new Resource(reordered[0].toString() + "-URN").toN3();
+                                colKey = new Composite();
+                                colKey.addComponent(URN_author, StringSerializer.get());
+                                colKey.addComponent(String.valueOf(next_ver), StringSerializer.get());
+                                colKey_s = Nodes.toN3(new Node[] { reordered[1], reordered[2] });
+                                colKey.addComponent(colKey_s, StringSerializer.get());
+
+                                hColumnObj_itemID =HFactory.createColumn(colKey, "",
+                                        new CompositeSerializer(),
+                                        StringSerializer.get());
+                                m.addInsertion(rowKey, cf, hColumnObj_itemID);
+                            }
+                            m.execute();
+                        }
+                    }
+                    // only inserting in one column family will update the new version number
+                    // otherwise, if all do that, the number will be updated many times
+                    if( updateVerNum ) {
+                        for( Iterator<String> it=versioned_entities.keySet().iterator(); it.hasNext(); ) {
+                            String row_entity_key = it.next();
+                            // there is a list of properties to be added to the new version of this entity
+                            List<Node[]> entity_old_version = versioned_entities.get(row_entity_key);
+                            String version_key = ((Node[])entity_old_version.get(0))[0].toString().replaceAll("-VER", "");
+                            Integer old_version_num = last_version_numbers.get(row_entity_key);
+                            // update to next version
+                            updateToNextVersion(keyspace, version_key.replaceAll("<", "").replaceAll(">", ""),
+                                URN_author, old_version_num);
+                        }
+                    }
+                }
+	}
+
+        @Override
 	protected void batchInsert(String cf, List<Node[]> li, String keyspace) {
 		if (cf.equals(CF_C_SPO)) {
-			super.batchInsert(cf, li, keyspace);
+                        super.batchInsert(cf, li, keyspace);
 		}
 		else if (cf.equals(CF_PO_S)) {
 			Mutator<byte[]> m = HFactory.createMutator(getExistingKeyspace(keyspace), _bs);
 			for (Node[] nx : li) {
 				// reorder for the key
 				Node[] reordered = Util.reorder(nx, _maps.get(cf));
-				
+
 				ByteBuffer rowKey = createKey(new Node[] { reordered[0], reordered[1] });
 				String colKey = reordered[2].toN3();
 				m.addInsertion(rowKey.array(), cf, HFactory.createStringColumn(colKey, ""));
@@ -107,15 +303,25 @@ public class CassandraRdfHectorFlatHash extends CassandraRdfHectorQuads {
 			m.execute();
 		}
 		else {
-			Mutator<String> m = HFactory.createMutator(getExistingKeyspace(keyspace), _ss);
+                        Mutator<String> m = HFactory.createMutator(getExistingKeyspace(keyspace), _ss);
 			for (Node[] nx : li) {
 				// reorder for the key
 				Node[] reordered = Util.reorder(nx, _maps.get(cf));
 				String rowKey = reordered[0].toN3();
-				String colKey = Nodes.toN3(new Node[] { reordered[1], reordered[2] });
-				m.addInsertion(rowKey, cf, HFactory.createStringColumn(colKey, ""));
-			}
-			m.execute();
+
+                                // for ERS_bridges_.. keyspaces, use the column value; it is easier for querying afterwards
+                                // few keyspacs such as ERS_graphs cannot be decoded
+                                String keyspace_decoded = this.decodeKeyspace(keyspace);
+                                if( keyspace_decoded != null && keyspace_decoded.startsWith(Listener.BRIDGES_KEYSPACE+"_") ) {
+                                    String colKey = reordered[1].toN3();
+                                    m.addInsertion(rowKey, cf, HFactory.createStringColumn(colKey, reordered[2].toN3()));
+                                }
+                                else {
+                                    String colKey = Nodes.toN3(new Node[] { reordered[1], reordered[2] });
+                                    m.addInsertion(rowKey, cf, HFactory.createStringColumn(colKey, ""));
+                                }
+    			}
+                        m.execute();
 		}
 	}
 	
@@ -180,7 +386,6 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 			m.execute();
 		}
 	}
-
 
 	// create a batch of different operations and execute them all together
 	@Override
@@ -435,27 +640,36 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 		return CF_S_PO;
 	}
 
-	@Override
-	public Iterator<Node[]> query(Node[] query, int limit, String keyspace) throws StoreException {
+        private String selectColumnFamilyVersioning(Node[] q) {
+            // the only existing column family is SPO
+            return CF_S_PO;
+	}
+
+        /* situation options:
+         *  1. ID:*:*
+         *  2. URN:*:*
+         *  3. ID:URN:*
+         *  4. URN:ID:*
+         */
+	public Iterator<Node[]> queryVersioning(Node[] query, int limit, String keyspace, 
+                int situation, String ID, String URN) throws StoreException {
 		Iterator<Node[]> it = super.query(query, limit, keyspace);
 		if (it != null) {
 			return it;
 		}
-		
-		String columnFamily = selectColumnFamily(query);
+		String columnFamily = selectColumnFamilyVersioning(query);
 		int[] map = _maps.get(columnFamily);
 		Node[] q = Util.reorder(query, map);
-
 //		_log.info("query: " + Nodes.toN3(query) + " idx: " + columnFamily + " reordered: " + Nodes.toN3(q));
-		
 		if (isVariable(q[0])) {
 			// scan over all
 			throw new UnsupportedOperationException("triple patterns must have at least one constant");
 		}
 		else {
+                        //NOTE: we assume that we do not query by (?p?) or (?po) for the versioned entities
+                        //cause: problem with creating the proper column family using COMPOSITE ... 
 			if (columnFamily.equals(CF_PO_S)) {
-				if (isVariable(q[1])) {
-
+                                /*if (isVariable(q[1])) {
 					// we use a secondary index for P only when no other constant is given
 					IndexedSlicesQuery<byte[],String,String> isq = HFactory.createIndexedSlicesQuery(getExistingKeyspace(keyspace), _bs, _ss, _ss)
 						.setColumnFamily(columnFamily)
@@ -491,7 +705,200 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 
 					it = new ColumnSliceIterator<byte[]>(sq, nxKey, "<", "", map, limit, 1);
 				}
-				
+			*/
+			}
+			else {
+				// SPO cf has one node as key and two nodes as colname
+				Node[] nxKey = getQueryKeyBySituation(q[0], situation);
+                                String key_ID = nxKey[0].toN3();
+				int colNameTupleLength = 2;
+                                // check ID and get the latest if neccessary
+                                if( ID != null && ID.contains("last") && URN != null )
+                                    ID = String.valueOf(lastVersioningNumber(keyspace,q[0].toString()
+                                            , URN));
+
+                                  /* TM: query composite */
+                                SliceQuery<String, Composite, String> query_comp = HFactory.createSliceQuery(getExistingKeyspace(keyspace),
+                                         StringSerializer.get(), CompositeSerializer.get(), StringSerializer.get());
+                                Composite columnStart = getCompositeStart(ID, URN, situation, q);
+                                Composite columnEnd = getCompositeEnd(ID, URN, situation, q);
+                                query_comp.setColumnFamily(columnFamily).setKey(key_ID);
+
+                    /*_log.info("QUERY COMPOSITE ...on CF " + columnFamily + "..... on key  " + key_ID);
+                    _log.info("QUERY COMPOSITE " + Nodes.toN3(q) + "--" + Nodes.toN3(new Node[] {q[1], q[2]})) ;
+                    _log.info("QUERY COMPOSITE situation: " + situation );*/
+
+                                // use the extended map
+                                map = _maps_ext.get(columnFamily);
+                                it = new ColumnSliceIteratorComposite<String>(query_comp, nxKey,
+                                        columnStart, columnEnd, map, limit, colNameTupleLength, query);
+                        }
+			
+		}
+		return it;
+	}
+
+        private Composite getCompositeStart(String ID, String URN, int situation,
+                Node[] q) {
+            Composite columnStart = new Composite();
+            switch( situation ) {
+                    // ID:*:*
+                case 1:
+                    columnStart.addComponent(0, ID, Composite.ComponentEquality.EQUAL);
+                    break;
+                case 2:
+                    // URN:*:*
+                    columnStart.addComponent(0, URN, Composite.ComponentEquality.EQUAL);
+                    break;
+                case 3:
+                    // ID:URN:*
+                    columnStart.addComponent(0, ID, Composite.ComponentEquality.EQUAL);
+                    columnStart.addComponent(1, URN, Composite.ComponentEquality.EQUAL);
+                    break;
+                case 4:
+                    // URN:ID:*
+                    columnStart.addComponent(0, URN, Composite.ComponentEquality.EQUAL);
+                    columnStart.addComponent(1, ID, Composite.ComponentEquality.EQUAL);
+                    break;
+                case 5:
+                    // *:*:*
+                    break;
+                case 6:
+                    // ID:URN:prop
+                    columnStart.addComponent(0, ID, Composite.ComponentEquality.EQUAL);
+                    columnStart.addComponent(1, URN, Composite.ComponentEquality.EQUAL);
+                    columnStart.addComponent(2, q[1].toN3(), Composite.ComponentEquality.EQUAL);
+                    break;
+                 case 7:
+                    // ID:URN:prop-value
+                    columnStart.addComponent(0, ID, Composite.ComponentEquality.EQUAL);
+                    columnStart.addComponent(1, URN, Composite.ComponentEquality.EQUAL);
+                    columnStart.addComponent(2, q[1].toN3() + " " + q[2].toN3(), Composite.ComponentEquality.EQUAL);
+                    break;
+                default:
+                    break;
+            }
+            return columnStart;
+        }
+
+        private Composite getCompositeEnd(String ID, String URN, int situation,
+                Node[] q) {
+            Composite columnStop = new Composite();
+            switch( situation ) {
+                    // ID:*:*
+                case 1:
+                    columnStop.addComponent(0, ID, Composite.ComponentEquality.GREATER_THAN_EQUAL);
+                    break;
+                case 2:
+                    // URN:*:*
+                    columnStop.addComponent(0, URN, Composite.ComponentEquality.GREATER_THAN_EQUAL);
+                    break;
+                case 3:
+                    // ID:URN:*
+                    columnStop.addComponent(0, ID, Composite.ComponentEquality.EQUAL);
+                    columnStop.addComponent(1, URN, Composite.ComponentEquality.GREATER_THAN_EQUAL);
+                    break;
+                case 4:
+                    // URN:ID:*
+                    columnStop.addComponent(0, URN, Composite.ComponentEquality.EQUAL);
+                    columnStop.addComponent(1, ID, Composite.ComponentEquality.GREATER_THAN_EQUAL);
+                    break;
+                case 5:
+                    // *:*:*
+                    break;
+                 case 6:
+                    // ID:URN:prop
+                    columnStop.addComponent(0, ID, Composite.ComponentEquality.EQUAL);
+                    columnStop.addComponent(1, URN, Composite.ComponentEquality.EQUAL);
+                    columnStop.addComponent(2, q[1].toN3()+"_", Composite.ComponentEquality.GREATER_THAN_EQUAL);
+                    break;
+                 case 7:
+                    // ID:URN:prop-value
+                    columnStop.addComponent(0, ID, Composite.ComponentEquality.EQUAL);
+                    columnStop.addComponent(1, URN, Composite.ComponentEquality.EQUAL);
+                    columnStop.addComponent(2, q[1].toN3() + " " + q[2].toN3() + "_", Composite.ComponentEquality.GREATER_THAN_EQUAL);
+                    break;
+                default:
+                    break;
+            }
+            return columnStop;
+        }
+
+        private Node[] getQueryKeyBySituation(Node entity, int situation) {
+             Resource ent;
+             switch( situation ) {
+                    // ID:*:*
+                case 1:
+                    // ID:URN:*
+                case 3:
+                    // *:*:*
+                case 5:
+                    // ID:URN:prop
+                case 6:
+                    // ID:URN:prop-value
+                case 7:
+                    return new Node[] { new Resource(entity.toString()+"-VER")};
+                case 2:
+                    // URN:*:*
+                case 4:
+                    // URN:ID:*
+                    return new Node[] { new Resource(entity.toString()+"-URN")};
+                default:
+                    return null;
+            }
+        }
+
+        @Override
+	public Iterator<Node[]> query(Node[] query, int limit, String keyspace) throws StoreException {
+		Iterator<Node[]> it = super.query(query, limit, keyspace);
+		if (it != null) {
+			return it;
+		}
+		String columnFamily = selectColumnFamily(query);
+		int[] map = _maps.get(columnFamily);
+		Node[] q = Util.reorder(query, map);
+//		_log.info("query: " + Nodes.toN3(query) + " idx: " + columnFamily + " reordered: " + Nodes.toN3(q));
+
+		if (isVariable(q[0])) {
+			// scan over all
+			throw new UnsupportedOperationException("triple patterns must have at least one constant");
+		}
+		else {
+			if (columnFamily.equals(CF_PO_S)) {
+                                if (isVariable(q[1])) {
+					// we use a secondary index for P only when no other constant is given
+					IndexedSlicesQuery<byte[],String,String> isq = HFactory.createIndexedSlicesQuery(getExistingKeyspace(keyspace), _bs, _ss, _ss)
+						.setColumnFamily(columnFamily)
+						.addEqualsExpression("!p", q[0].toN3())
+						.setReturnKeysOnly();
+					it = new HashIndexedSlicesQueryIterator(isq, map, limit, columnFamily, getExistingKeyspace(keyspace));
+				}
+				else {
+					// here we always have a PO lookup, POS (=SPO) is handled by OSP or SPO
+					// we retrieve all columns from a single row
+					// in POS the keys are hashes, we retrieve P and O from columns !p and !o
+					ByteBuffer key = createKey(new Node[] { q[0], q[1] });
+
+					SliceQuery<byte[],String,String> sq = HFactory.createSliceQuery(getExistingKeyspace(keyspace), _bs, _ss, _ss)
+						.setColumnFamily(columnFamily)
+						.setKey(key.array())
+						.setRange("!o", "!p", false, 2);
+					QueryResult<ColumnSlice<String,String>> res = sq.execute();
+
+					if (res.get().getColumns().size() == 0)
+						return new ArrayList<Node[]>().iterator();
+
+					Node[] nxKey = new Node[2];
+					try {
+						nxKey[0] = NxParser.parseNode(res.get().getColumnByName("!p").getValue());
+						nxKey[1] = NxParser.parseNode(res.get().getColumnByName("!o").getValue());
+					}
+					catch (ParseException e) {
+						e.printStackTrace();
+					}
+
+					it = new ColumnSliceIterator<byte[]>(sq, nxKey, "<", "", map, limit, 1);
+				}
 			}
 			else {
 				String startRange = "", endRange = "";
@@ -499,7 +906,7 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 					// if there is more than one constant, we need to modify the range
 					startRange = q[1].toN3();
 					endRange = startRange + "_";
-	
+
 					if (!isVariable(q[2])) {
 						startRange = Nodes.toN3(new Node[] { q[1], q[2] });
 						endRange = startRange;
@@ -510,15 +917,38 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 				Node[] nxKey = new Node[] { q[0] };
 				String key = q[0].toN3();
 				int colNameTupleLength = 2;
-				
-				SliceQuery<String,String,String> sq = HFactory.createSliceQuery(getExistingKeyspace(keyspace), _ss, _ss, _ss)
+
+				SliceQuery<String,String,String> sq = HFactory.createSliceQuery(
+                                        getExistingKeyspace(keyspace), _ss, _ss, _ss)
 					.setColumnFamily(columnFamily)
 					.setKey(key);
-				
-				it = new ColumnSliceIterator<String>(sq, nxKey, startRange, endRange, map, limit, colNameTupleLength);
-			}
+
+				it = new ColumnSliceIterator<String>(sq, nxKey,
+                                        startRange, endRange, map, limit, colNameTupleLength);
+                        }
+
 		}
 		return it;
+	}
+
+        @Override
+	public Iterator<HColumn<String,String>> queryBrigesTimeStats(Node[] query, String keyspace,
+                String start_time, String end_time) throws StoreException {
+             
+                // SPO, OSP cfs have one node as key and two nodes as colname
+                Node[] nxKey = new Node[] { query[0] };
+                String key = query[0].toN3();
+                int colNameTupleLength = 1;
+
+                SliceQuery<String,String,String> sq = HFactory.createSliceQuery(
+                        getExistingKeyspace(keyspace), _ss, _ss, _ss)
+                        .setColumnFamily(CF_S_PO)
+                        .setRange(start_time, end_time, false, Integer.MAX_VALUE)
+                        .setKey(key);
+                QueryResult<ColumnSlice<String,String>> results = sq.execute();
+                List<HColumn<String,String>> columns = results.get().getColumns();
+                Iterator<HColumn<String,String>> it_columns = columns.iterator();
+		return it_columns;
 	}
 
 	//TM: added for supporting (?,?,?,g) queries

@@ -24,9 +24,14 @@ public class StaxRDFXMLFormat implements SerializationFormat {
 	public String getContentType() {
 		return "application/rdf+xml";
 	}
-	
+
+        @Override
+        public int print(Iterator<Node[]> it, Writer pw, String author) throws IOException  {
+            return print(it, pw, author, -1);
+        }
+
 	@Override
-	public int print(Iterator<Node[]> it, Writer pw, String author) throws IOException  {
+	public int print(Iterator<Node[]> it, Writer pw, String author, int cutSuffixesPos) throws IOException  {
 		XMLOutputFactory factory = XMLOutputFactory.newInstance();
 		factory.setProperty(XMLOutputFactory.IS_REPAIRING_NAMESPACES, Boolean.TRUE);
 
