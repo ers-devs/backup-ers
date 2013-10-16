@@ -1,5 +1,3 @@
-
-
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
@@ -15,7 +13,7 @@
     
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
-        URL_ROOT:    '',
+        URL_ROOT:    './',
         VERSION:     '0.11',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
@@ -55,19 +53,117 @@
 <div class="section" id="id1">
 <h2><tt class="xref py py-mod docutils literal"><span class="pre">ers</span></tt> Package<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
 <span class="target" id="module-ers.__init__"></span></div>
-<div class="section" id="daemon-module">
-<h2><tt class="xref py py-mod docutils literal"><span class="pre">daemon</span></tt> Module<a class="headerlink" href="#daemon-module" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="module-ers.daemon">
+<span id="daemon-module"></span><h2><tt class="xref py py-mod docutils literal"><span class="pre">daemon</span></tt> Module<a class="headerlink" href="#module-ers.daemon" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="ers.daemon.ERSDaemon">
+<em class="property">class </em><tt class="descclassname">ers.daemon.</tt><tt class="descname">ERSDaemon</tt><big>(</big><em>peer_type='contrib'</em>, <em>port=5984</em>, <em>dbname='ers'</em>, <em>pidfile='/var/run/ers_daemon.pid'</em>, <em>tries=10</em>, <em>logger=None</em><big>)</big><a class="reference internal" href="_modules/ers/daemon.html#ERSDaemon"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.daemon.ERSDaemon" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="attribute">
+<dt id="ers.daemon.ERSDaemon.dbname">
+<tt class="descname">dbname</tt><em class="property"> = None</em><a class="headerlink" href="#ers.daemon.ERSDaemon.dbname" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="ers.daemon.ERSDaemon.logger">
+<tt class="descname">logger</tt><em class="property"> = None</em><a class="headerlink" href="#ers.daemon.ERSDaemon.logger" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="ers.daemon.ERSDaemon.peer_type">
+<tt class="descname">peer_type</tt><em class="property"> = None</em><a class="headerlink" href="#ers.daemon.ERSDaemon.peer_type" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="ers.daemon.ERSDaemon.pidfile">
+<tt class="descname">pidfile</tt><em class="property"> = None</em><a class="headerlink" href="#ers.daemon.ERSDaemon.pidfile" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="ers.daemon.ERSDaemon.port">
+<tt class="descname">port</tt><em class="property"> = None</em><a class="headerlink" href="#ers.daemon.ERSDaemon.port" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="ers.daemon.ERSDaemon.start">
+<tt class="descname">start</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ers/daemon.html#ERSDaemon.start"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.daemon.ERSDaemon.start" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="ers.daemon.ERSDaemon.stop">
+<tt class="descname">stop</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ers/daemon.html#ERSDaemon.stop"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.daemon.ERSDaemon.stop" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="ers.daemon.ERSDaemon.tries">
+<tt class="descname">tries</tt><em class="property"> = None</em><a class="headerlink" href="#ers.daemon.ERSDaemon.tries" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="ers.daemon.ERSPeerInfo">
+<em class="property">class </em><tt class="descclassname">ers.daemon.</tt><tt class="descname">ERSPeerInfo</tt><big>(</big><em>service_name</em>, <em>host</em>, <em>ip</em>, <em>port</em>, <em>dbname='ers'</em>, <em>peer_type='contrib'</em><big>)</big><a class="reference internal" href="_modules/ers/daemon.html#ERSPeerInfo"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.daemon.ERSPeerInfo" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#ers.zeroconf.ServicePeer" title="ers.zeroconf.ServicePeer"><tt class="xref py py-class docutils literal"><span class="pre">ers.zeroconf.ServicePeer</span></tt></a></p>
+<p>This class contains information on an ERS peer.</p>
+<dl class="attribute">
+<dt id="ers.daemon.ERSPeerInfo.dbname">
+<tt class="descname">dbname</tt><em class="property"> = None</em><a class="headerlink" href="#ers.daemon.ERSPeerInfo.dbname" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="staticmethod">
+<dt id="ers.daemon.ERSPeerInfo.from_service_peer">
+<em class="property">static </em><tt class="descname">from_service_peer</tt><big>(</big><em>svc_peer</em><big>)</big><a class="reference internal" href="_modules/ers/daemon.html#ERSPeerInfo.from_service_peer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.daemon.ERSPeerInfo.from_service_peer" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="ers.daemon.ERSPeerInfo.peer_type">
+<tt class="descname">peer_type</tt><em class="property"> = None</em><a class="headerlink" href="#ers.daemon.ERSPeerInfo.peer_type" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="ers.daemon.ERSPeerInfo.to_json">
+<tt class="descname">to_json</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ers/daemon.html#ERSPeerInfo.to_json"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.daemon.ERSPeerInfo.to_json" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="ers.daemon.run">
+<tt class="descclassname">ers.daemon.</tt><tt class="descname">run</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ers/daemon.html#run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.daemon.run" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="ers.daemon.setup_logging">
+<tt class="descclassname">ers.daemon.</tt><tt class="descname">setup_logging</tt><big>(</big><em>args</em><big>)</big><a class="reference internal" href="_modules/ers/daemon.html#setup_logging"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.daemon.setup_logging" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
 </div>
 <div class="section" id="module-ers.ers">
 <span id="ers-module"></span><h2><tt class="xref py py-mod docutils literal"><span class="pre">ers</span></tt> Module<a class="headerlink" href="#module-ers.ers" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="ers.ers.ERSLocal">
-<em class="property">class </em><tt class="descclassname">ers.ers.</tt><tt class="descname">ERSLocal</tt><big>(</big><em>server_url='http://admin:admin&#64;127.0.0.1:5984/'</em>, <em>dbname='ers'</em>, <em>model=&lt;ers.models.ModelS object at 0x107ae3d10&gt;</em>, <em>fixed_peers=()</em>, <em>local_only=False</em>, <em>reset_database=False</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSLocal"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSLocal" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><tt class="descclassname">ers.ers.</tt><tt class="descname">ERSLocal</tt><big>(</big><em>server_url='http://admin:admin&#64;127.0.0.1:5984/'</em>, <em>dbname='ers'</em>, <em>model=&lt;ers.models.ModelS object at 0x21c37d0&gt;</em>, <em>fixed_peers=()</em>, <em>local_only=False</em>, <em>reset_database=False</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSLocal"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSLocal" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#ers.ers.ERSReadOnly" title="ers.ers.ERSReadOnly"><tt class="xref py py-class docutils literal"><span class="pre">ers.ers.ERSReadOnly</span></tt></a></p>
 <dl class="method">
 <dt id="ers.ers.ERSLocal.add_data">
 <tt class="descname">add_data</tt><big>(</big><em>s</em>, <em>p</em>, <em>o</em>, <em>g</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSLocal.add_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSLocal.add_data" title="Permalink to this definition">¶</a></dt>
 <dd><p>Adds the value for the given property in the given entity. Create the entity if it does not exist yet)</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ers.ers.ERSLocal.cache_entity">
+<tt class="descname">cache_entity</tt><big>(</big><em>entity</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSLocal.cache_entity"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSLocal.cache_entity" title="Permalink to this definition">¶</a></dt>
+<dd><p>Place an entity in the cache. This mark the entity as being
+cached and store the currently loaded documents in the cache.
+Later on, ERS will automatically update the description of
+this entity with new / updated documents
+&#64;param entity An entity object</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ers.ers.ERSLocal.create_entity">
+<tt class="descname">create_entity</tt><big>(</big><em>entity_name</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSLocal.create_entity"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSLocal.create_entity" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a new entity, return it and store in as a new document in the public store</p>
 </dd></dl>
 
 <dl class="method">
@@ -80,6 +176,24 @@
 <dt id="ers.ers.ERSLocal.delete_value">
 <tt class="descname">delete_value</tt><big>(</big><em>entity</em>, <em>prop</em>, <em>graph=None</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSLocal.delete_value"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSLocal.delete_value" title="Permalink to this definition">¶</a></dt>
 <dd><p>Deletes all of the user&#8217;s values for the given property in the given entity.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ers.ers.ERSLocal.get_machine_uuid">
+<tt class="descname">get_machine_uuid</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSLocal.get_machine_uuid"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSLocal.get_machine_uuid" title="Permalink to this definition">¶</a></dt>
+<dd><p>&#64;return a unique identifier for this ERS node</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ers.ers.ERSLocal.is_cached">
+<tt class="descname">is_cached</tt><big>(</big><em>entity_name</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSLocal.is_cached"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSLocal.is_cached" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check if an entity is listed as being cached</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ers.ers.ERSLocal.persist_entity">
+<tt class="descname">persist_entity</tt><big>(</big><em>entity</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSLocal.persist_entity"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSLocal.persist_entity" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save an updated entity</p>
 </dd></dl>
 
 <dl class="method">
@@ -97,8 +211,14 @@
 
 <dl class="class">
 <dt id="ers.ers.ERSReadOnly">
-<em class="property">class </em><tt class="descclassname">ers.ers.</tt><tt class="descname">ERSReadOnly</tt><big>(</big><em>server_url='http://admin:admin&#64;127.0.0.1:5984/'</em>, <em>dbname='ers'</em>, <em>model=&lt;ers.models.ModelS object at 0x107ae3d10&gt;</em>, <em>fixed_peers=()</em>, <em>local_only=False</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSReadOnly"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSReadOnly" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><tt class="descclassname">ers.ers.</tt><tt class="descname">ERSReadOnly</tt><big>(</big><em>server_url='http://admin:admin&#64;127.0.0.1:5984/'</em>, <em>dbname='ers'</em>, <em>model=&lt;ers.models.ModelS object at 0x21c37d0&gt;</em>, <em>fixed_peers=()</em>, <em>local_only=False</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSReadOnly"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSReadOnly" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<dl class="method">
+<dt id="ers.ers.ERSReadOnly.contains_entity">
+<tt class="descname">contains_entity</tt><big>(</big><em>entity_name</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSReadOnly.contains_entity"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSReadOnly.contains_entity" title="Permalink to this definition">¶</a></dt>
+<dd><p>Search in the public DB is there is already a document for describing that entity</p>
+</dd></dl>
+
 <dl class="method">
 <dt id="ers.ers.ERSReadOnly.exist">
 <tt class="descname">exist</tt><big>(</big><em>subject</em>, <em>graph</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSReadOnly.exist"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSReadOnly.exist" title="Permalink to this definition">¶</a></dt>
@@ -121,6 +241,12 @@
 <dd></dd></dl>
 
 <dl class="method">
+<dt id="ers.ers.ERSReadOnly.get_entity">
+<tt class="descname">get_entity</tt><big>(</big><em>entity_name</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSReadOnly.get_entity"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSReadOnly.get_entity" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create an entity object, fill it will all the relevant documents</p>
+</dd></dl>
+
+<dl class="method">
 <dt id="ers.ers.ERSReadOnly.get_peers">
 <tt class="descname">get_peers</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSReadOnly.get_peers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSReadOnly.get_peers" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
@@ -135,8 +261,64 @@ Return a list of values or an empty list</p>
 <dl class="method">
 <dt id="ers.ers.ERSReadOnly.search">
 <tt class="descname">search</tt><big>(</big><em>prop</em>, <em>value=None</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSReadOnly.search"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSReadOnly.search" title="Permalink to this definition">¶</a></dt>
-<dd><p>Search entities by property or property+value
-Return a list of unique (entity, graph) pairs.</p>
+<dd><p>Search local entities by property or property+value
+&#64;return: a list of identifiers.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="ers.ers.Entity">
+<em class="property">class </em><tt class="descclassname">ers.ers.</tt><tt class="descname">Entity</tt><big>(</big><em>entity_name</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#Entity"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.Entity" title="Permalink to this definition">¶</a></dt>
+<dd><p>An entity description is contained in various CouchDB documents</p>
+<dl class="method">
+<dt id="ers.ers.Entity.add_document">
+<tt class="descname">add_document</tt><big>(</big><em>document</em>, <em>source</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#Entity.add_document"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.Entity.add_document" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add a document to the list of documents that compose this entity</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ers.ers.Entity.add_property">
+<tt class="descname">add_property</tt><big>(</big><em>property</em>, <em>value</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#Entity.add_property"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.Entity.add_property" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add a property to the description of the entity
+TODO: we can only edit the local or private documents</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ers.ers.Entity.delete_property">
+<tt class="descname">delete_property</tt><big>(</big><em>property</em>, <em>value</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#Entity.delete_property"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.Entity.delete_property" title="Permalink to this definition">¶</a></dt>
+<dd><p>Delete a property to the description of the entity
+TODO: we can only edit the local or private documents</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ers.ers.Entity.get_documents">
+<tt class="descname">get_documents</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ers/ers.html#Entity.get_documents"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.Entity.get_documents" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return all the documents associated to this entity and their source</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ers.ers.Entity.get_documents_ids">
+<tt class="descname">get_documents_ids</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ers/ers.html#Entity.get_documents_ids"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.Entity.get_documents_ids" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the identifiers of all the documents associated to the entity</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ers.ers.Entity.get_name">
+<tt class="descname">get_name</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ers/ers.html#Entity.get_name"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.Entity.get_name" title="Permalink to this definition">¶</a></dt>
+<dd><p>&#64;return the name of that entity</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ers.ers.Entity.get_properties">
+<tt class="descname">get_properties</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ers/ers.html#Entity.get_properties"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.Entity.get_properties" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the aggregated properties out of all the individual documents</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ers.ers.Entity.get_raw_documents">
+<tt class="descname">get_raw_documents</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ers/ers.html#Entity.get_raw_documents"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.Entity.get_raw_documents" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the content of all the documents associated to the entity</p>
 </dd></dl>
 
 </dd></dl>
@@ -148,6 +330,7 @@ Return a list of unique (entity, graph) pairs.</p>
 <dt id="ers.models.LocalModelBase">
 <em class="property">class </em><tt class="descclassname">ers.models.</tt><tt class="descname">LocalModelBase</tt><a class="reference internal" href="_modules/ers/models.html#LocalModelBase"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.LocalModelBase" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Base class for all the serialisations</p>
 <dl class="method">
 <dt id="ers.models.LocalModelBase.add_data">
 <tt class="descname">add_data</tt><big>(</big><em>couch_doc</em>, <em>cache</em><big>)</big><a class="reference internal" href="_modules/ers/models.html#LocalModelBase.add_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.LocalModelBase.add_data" title="Permalink to this definition">¶</a></dt>
@@ -159,13 +342,18 @@ Return a list of unique (entity, graph) pairs.</p>
 <dd></dd></dl>
 
 <dl class="method">
+<dt id="ers.models.LocalModelBase.content_doc">
+<tt class="descname">content_doc</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ers/models.html#LocalModelBase.content_doc"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.LocalModelBase.content_doc" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
 <dt id="ers.models.LocalModelBase.couch_key">
 <tt class="descname">couch_key</tt><big>(</big><em>cache_key</em>, <em>graph</em><big>)</big><a class="reference internal" href="_modules/ers/models.html#LocalModelBase.couch_key"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.LocalModelBase.couch_key" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="method">
 <dt id="ers.models.LocalModelBase.delete_property">
-<tt class="descname">delete_property</tt><big>(</big><em>couch_doc</em>, <em>prop</em><big>)</big><a class="reference internal" href="_modules/ers/models.html#LocalModelBase.delete_property"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.LocalModelBase.delete_property" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">delete_property</tt><big>(</big><em>couch_doc</em>, <em>prop</em>, <em>value</em><big>)</big><a class="reference internal" href="_modules/ers/models.html#LocalModelBase.delete_property"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.LocalModelBase.delete_property" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="method">
@@ -181,6 +369,22 @@ Return a list of unique (entity, graph) pairs.</p>
 <dl class="method">
 <dt id="ers.models.LocalModelBase.initial_docs">
 <tt class="descname">initial_docs</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ers/models.html#LocalModelBase.initial_docs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.LocalModelBase.initial_docs" title="Permalink to this definition">¶</a></dt>
+<dd><p>TODO: delete</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ers.models.LocalModelBase.initial_docs_cache">
+<tt class="descname">initial_docs_cache</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ers/models.html#LocalModelBase.initial_docs_cache"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.LocalModelBase.initial_docs_cache" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="ers.models.LocalModelBase.initial_docs_private">
+<tt class="descname">initial_docs_private</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ers/models.html#LocalModelBase.initial_docs_private"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.LocalModelBase.initial_docs_private" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="ers.models.LocalModelBase.initial_docs_public">
+<tt class="descname">initial_docs_public</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ers/models.html#LocalModelBase.initial_docs_public"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.LocalModelBase.initial_docs_public" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="method">
@@ -191,32 +395,6 @@ Return a list of unique (entity, graph) pairs.</p>
 <dl class="attribute">
 <dt id="ers.models.LocalModelBase.view_name">
 <tt class="descname">view_name</tt><em class="property"> = '_all_docs'</em><a class="headerlink" href="#ers.models.LocalModelBase.view_name" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
-<dl class="class">
-<dt id="ers.models.ModelH">
-<em class="property">class </em><tt class="descclassname">ers.models.</tt><tt class="descname">ModelH</tt><a class="reference internal" href="_modules/ers/models.html#ModelH"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.ModelH" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#ers.models.ModelT" title="ers.models.ModelT"><tt class="xref py py-class docutils literal"><span class="pre">ers.models.ModelT</span></tt></a></p>
-<dl class="method">
-<dt id="ers.models.ModelH.add_data">
-<tt class="descname">add_data</tt><big>(</big><em>couch_doc</em>, <em>cache</em><big>)</big><a class="reference internal" href="_modules/ers/models.html#ModelH.add_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.ModelH.add_data" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="ers.models.ModelH.cache_key">
-<tt class="descname">cache_key</tt><big>(</big><em>couch_key</em><big>)</big><a class="reference internal" href="_modules/ers/models.html#ModelH.cache_key"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.ModelH.cache_key" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="ers.models.ModelH.couch_key">
-<tt class="descname">couch_key</tt><big>(</big><em>cache_key</em>, <em>graph</em><big>)</big><a class="reference internal" href="_modules/ers/models.html#ModelH.couch_key"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.ModelH.couch_key" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="attribute">
-<dt id="ers.models.ModelH.view_name">
-<tt class="descname">view_name</tt><em class="property"> = 'by_graph_subject'</em><a class="headerlink" href="#ers.models.ModelH.view_name" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
@@ -248,6 +426,11 @@ Return a list of unique (entity, graph) pairs.</p>
 <dd></dd></dl>
 
 <dl class="method">
+<dt id="ers.models.ModelS.add_property">
+<tt class="descname">add_property</tt><big>(</big><em>couch_doc</em>, <em>prop</em>, <em>value</em><big>)</big><a class="reference internal" href="_modules/ers/models.html#ModelS.add_property"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.ModelS.add_property" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
 <dt id="ers.models.ModelS.cache_key">
 <tt class="descname">cache_key</tt><big>(</big><em>couch_key</em><big>)</big><a class="reference internal" href="_modules/ers/models.html#ModelS.cache_key"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.ModelS.cache_key" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
@@ -259,7 +442,7 @@ Return a list of unique (entity, graph) pairs.</p>
 
 <dl class="method">
 <dt id="ers.models.ModelS.delete_property">
-<tt class="descname">delete_property</tt><big>(</big><em>couch_doc</em>, <em>prop</em><big>)</big><a class="reference internal" href="_modules/ers/models.html#ModelS.delete_property"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.ModelS.delete_property" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">delete_property</tt><big>(</big><em>couch_doc</em>, <em>prop</em>, <em>value</em><big>)</big><a class="reference internal" href="_modules/ers/models.html#ModelS.delete_property"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.ModelS.delete_property" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="method">
@@ -275,135 +458,9 @@ Return a list of unique (entity, graph) pairs.</p>
 
 </dd></dl>
 
-<dl class="class">
-<dt id="ers.models.ModelT">
-<em class="property">class </em><tt class="descclassname">ers.models.</tt><tt class="descname">ModelT</tt><a class="reference internal" href="_modules/ers/models.html#ModelT"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.ModelT" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#ers.models.LocalModelBase" title="ers.models.LocalModelBase"><tt class="xref py py-class docutils literal"><span class="pre">ers.models.LocalModelBase</span></tt></a></p>
-<p>Example document:</p>
-<dl class="docutils">
-<dt>{</dt>
-<dd><p class="first">&#8220;_id&#8221;: &#8220;<a class="reference external" href="http://www.w3.org/People/Berners-Lee">http://www.w3.org/People/Berners-Lee</a>/card#i#http://graph.name&#8221;,
-&#8220;_rev&#8221;: &#8220;1-d7841397d995f90480553919cff49bd8&#8221;,
-&#8220;p&#8221;: [</p>
-<blockquote>
-<div>&#8220;<a class="reference external" href="http://xmlns.com/foaf/0.1/nick">http://xmlns.com/foaf/0.1/nick</a>&#8221;,
-&#8220;<a class="reference external" href="http://xmlns.com/foaf/0.1/nick">http://xmlns.com/foaf/0.1/nick</a>&#8221;,
-&#8220;<a class="reference external" href="http://www.w3.org/2000/01/rdf-schema#label">http://www.w3.org/2000/01/rdf-schema#label</a>&#8221;,</div></blockquote>
-<p>],
-&#8220;s&#8221;: &#8220;<a class="reference external" href="http://www.w3.org/People/Berners-Lee/card#i">http://www.w3.org/People/Berners-Lee/card#i</a>&#8221;,
-&#8220;g&#8221;: &#8220;<a class="reference external" href="http://graph.name">http://graph.name</a>&#8221;,
-&#8220;o&#8221;: [</p>
-<blockquote>
-<div>&#8220;TimBL&#8221;,
-&#8220;timbl&#8221;,
-&#8220;Tim Berners-Lee&#8221;,</div></blockquote>
-<p class="last">]</p>
-</dd>
-</dl>
-<p>}</p>
-<dl class="method">
-<dt id="ers.models.ModelT.add_data">
-<tt class="descname">add_data</tt><big>(</big><em>couch_doc</em>, <em>cache</em><big>)</big><a class="reference internal" href="_modules/ers/models.html#ModelT.add_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.ModelT.add_data" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="ers.models.ModelT.cache_key">
-<tt class="descname">cache_key</tt><big>(</big><em>couch_key</em><big>)</big><a class="reference internal" href="_modules/ers/models.html#ModelT.cache_key"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.ModelT.cache_key" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="ers.models.ModelT.couch_key">
-<tt class="descname">couch_key</tt><big>(</big><em>cache_key</em>, <em>graph</em><big>)</big><a class="reference internal" href="_modules/ers/models.html#ModelT.couch_key"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.ModelT.couch_key" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="ers.models.ModelT.delete_property">
-<tt class="descname">delete_property</tt><big>(</big><em>couch_doc</em>, <em>prop</em><big>)</big><a class="reference internal" href="_modules/ers/models.html#ModelT.delete_property"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.ModelT.delete_property" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="ers.models.ModelT.get_data">
-<tt class="descname">get_data</tt><big>(</big><em>doc</em>, <em>subject</em>, <em>graph</em><big>)</big><a class="reference internal" href="_modules/ers/models.html#ModelT.get_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.ModelT.get_data" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="classmethod">
-<dt id="ers.models.ModelT.index_doc">
-<em class="property">classmethod </em><tt class="descname">index_doc</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ers/models.html#ModelT.index_doc"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.ModelT.index_doc" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
 </div>
-<div class="section" id="module-ers.sync_global">
-<span id="sync-global-module"></span><h2><tt class="xref py py-mod docutils literal"><span class="pre">sync_global</span></tt> Module<a class="headerlink" href="#module-ers.sync_global" title="Permalink to this headline">¶</a></h2>
-<dl class="class">
-<dt id="ers.sync_global.GraphSynch">
-<em class="property">class </em><tt class="descclassname">ers.sync_global.</tt><tt class="descname">GraphSynch</tt><big>(</big><em>ERSReadWrite</em>, <em>name</em>, <em>graph</em><big>)</big><a class="reference internal" href="_modules/ers/sync_global.html#GraphSynch"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.sync_global.GraphSynch" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">threading.Thread</span></tt></p>
-<p>Creates a synch thread for a given graph using _changes feed</p>
-<dl class="method">
-<dt id="ers.sync_global.GraphSynch.dump_changes_to_file">
-<tt class="descname">dump_changes_to_file</tt><big>(</big><em>prev_seq</em>, <em>stream</em><big>)</big><a class="reference internal" href="_modules/ers/sync_global.html#GraphSynch.dump_changes_to_file"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.sync_global.GraphSynch.dump_changes_to_file" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="ers.sync_global.GraphSynch.filter_by_graph_doc">
-<tt class="descname">filter_by_graph_doc</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ers/sync_global.html#GraphSynch.filter_by_graph_doc"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.sync_global.GraphSynch.filter_by_graph_doc" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="ers.sync_global.GraphSynch.get_previous_seq_num">
-<tt class="descname">get_previous_seq_num</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ers/sync_global.html#GraphSynch.get_previous_seq_num"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.sync_global.GraphSynch.get_previous_seq_num" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="ers.sync_global.GraphSynch.run">
-<tt class="descname">run</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ers/sync_global.html#GraphSynch.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.sync_global.GraphSynch.run" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="ers.sync_global.GraphSynch.set_finished">
-<tt class="descname">set_finished</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ers/sync_global.html#GraphSynch.set_finished"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.sync_global.GraphSynch.set_finished" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="ers.sync_global.GraphSynch.set_new_seq_num">
-<tt class="descname">set_new_seq_num</tt><big>(</big><em>new_seq</em><big>)</big><a class="reference internal" href="_modules/ers/sync_global.html#GraphSynch.set_new_seq_num"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.sync_global.GraphSynch.set_new_seq_num" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
-<dl class="class">
-<dt id="ers.sync_global.SynchronizationManager">
-<em class="property">class </em><tt class="descclassname">ers.sync_global.</tt><tt class="descname">SynchronizationManager</tt><big>(</big><em>ERSReadWrite</em><big>)</big><a class="reference internal" href="_modules/ers/sync_global.html#SynchronizationManager"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.sync_global.SynchronizationManager" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
-<dl class="method">
-<dt id="ers.sync_global.SynchronizationManager.exists_synch_thread">
-<tt class="descname">exists_synch_thread</tt><big>(</big><em>graph</em><big>)</big><a class="reference internal" href="_modules/ers/sync_global.html#SynchronizationManager.exists_synch_thread"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.sync_global.SynchronizationManager.exists_synch_thread" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="ers.sync_global.SynchronizationManager.get_thread_name">
-<tt class="descname">get_thread_name</tt><big>(</big><em>graph</em><big>)</big><a class="reference internal" href="_modules/ers/sync_global.html#SynchronizationManager.get_thread_name"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.sync_global.SynchronizationManager.get_thread_name" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="ers.sync_global.SynchronizationManager.start_synch">
-<tt class="descname">start_synch</tt><big>(</big><em>graph</em><big>)</big><a class="reference internal" href="_modules/ers/sync_global.html#SynchronizationManager.start_synch"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.sync_global.SynchronizationManager.start_synch" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="ers.sync_global.SynchronizationManager.stop_synch">
-<tt class="descname">stop_synch</tt><big>(</big><em>graph</em><big>)</big><a class="reference internal" href="_modules/ers/sync_global.html#SynchronizationManager.stop_synch"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.sync_global.SynchronizationManager.stop_synch" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
-<dl class="function">
-<dt id="ers.sync_global.test">
-<tt class="descclassname">ers.sync_global.</tt><tt class="descname">test</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ers/sync_global.html#test"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.sync_global.test" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
+<div class="section" id="sync-global-module">
+<h2><tt class="xref py py-mod docutils literal"><span class="pre">sync_global</span></tt> Module<a class="headerlink" href="#sync-global-module" title="Permalink to this headline">¶</a></h2>
 </div>
 <div class="section" id="module-ers.utils">
 <span id="utils-module"></span><h2><tt class="xref py py-mod docutils literal"><span class="pre">utils</span></tt> Module<a class="headerlink" href="#module-ers.utils" title="Permalink to this headline">¶</a></h2>
@@ -608,10 +665,10 @@ even if the service was published some time in the past.</li>
   <ul>
 <li><a class="reference internal" href="#">ers Package</a><ul>
 <li><a class="reference internal" href="#id1"><tt class="docutils literal"><span class="pre">ers</span></tt> Package</a></li>
-<li><a class="reference internal" href="#daemon-module"><tt class="docutils literal"><span class="pre">daemon</span></tt> Module</a></li>
+<li><a class="reference internal" href="#module-ers.daemon"><tt class="docutils literal"><span class="pre">daemon</span></tt> Module</a></li>
 <li><a class="reference internal" href="#module-ers.ers"><tt class="docutils literal"><span class="pre">ers</span></tt> Module</a></li>
 <li><a class="reference internal" href="#module-ers.models"><tt class="docutils literal"><span class="pre">models</span></tt> Module</a></li>
-<li><a class="reference internal" href="#module-ers.sync_global"><tt class="docutils literal"><span class="pre">sync_global</span></tt> Module</a></li>
+<li><a class="reference internal" href="#sync-global-module"><tt class="docutils literal"><span class="pre">sync_global</span></tt> Module</a></li>
 <li><a class="reference internal" href="#module-ers.utils"><tt class="docutils literal"><span class="pre">utils</span></tt> Module</a></li>
 <li><a class="reference internal" href="#module-ers.zeroconf"><tt class="docutils literal"><span class="pre">zeroconf</span></tt> Module</a></li>
 </ul>
@@ -660,7 +717,7 @@ even if the service was published some time in the past.</li>
     </div>
     <div class="footer">
         &copy; Copyright 2013, ers-devs.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2b3.
     </div>
   </body>
 </html>
