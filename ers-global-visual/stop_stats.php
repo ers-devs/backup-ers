@@ -1,5 +1,3 @@
 <?php 
-
 system("pkill python");
-
 ?> 
