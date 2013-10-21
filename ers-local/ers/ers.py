@@ -5,10 +5,14 @@ import re
 import sys
 import uuid
 
+from hashlib import md5
+from socket import gethostname
+
 from models import ModelS
 from utils import EntityCache
 
 DEFAULT_MODEL = ModelS()
+SERVER_TIMEOUT = 300
 
 class ERSReadOnly(object):
     def __init__(self,
@@ -22,6 +26,7 @@ class ERSReadOnly(object):
         self.server = couchdbkit.Server(server_url)
         self._init_model(model)
         self._init_databases()
+        self._init_host_urn()
 
     def _init_databases(self):
         self.public_db = self.server.get_db('ers-public')
@@ -31,6 +36,16 @@ class ERSReadOnly(object):
     def _init_model(self, model):
         """Connect to model."""
         self.model = model
+
+    def _init_host_urn(self):
+        fingerprint = md5(gethostname()).hexdigest()
+        self.host_urn = "urn:ers:host:{}".format(fingerprint)
+
+    def _get_docs_by_entity(self, db, entity_name):
+        return db.view('index/by_entity',
+                        wrapper = lambda r: r['doc'],
+                        key=entity_name,
+                        include_docs=True)
 
     def get_annotation(self, entity):
         result = self.get_data(entity)
@@ -72,35 +87,34 @@ class ERSReadOnly(object):
         entity = Entity(entity_name)
         
         # Search for related documents in public
-        for doc in self.public_db.all_docs().all():
-            document = self.public_db.get(doc['id'])
-            if '@id' in document and document['@id'] == entity_name:
-                entity.add_document(document, 'public')
-                
+        public_docs = self._get_docs_by_entity(self.public_db, entity_name)
+        for doc in public_docs:
+            entity.add_document(doc, 'public')
+
         # Do the same in the cache
-        for doc in self.cache_db.all_docs().all():
-            document = self.cache_db.get(doc['id'])
-            if '@id' in document and document['@id'] == entity_name:
-                entity.add_document(document, 'cache')
+        cached_docs = self._get_docs_by_entity(self.cache_db, entity_name)
+        for doc in cached_docs:
+            entity.add_document(doc, 'cache')
          
-        # Get documents out of public of connected peers
+        # Get documents out of public/cache of connected peers
         for peer in self.get_peers():
-            remote_docs = []
             try:
-                remote_docs = couchdbkit.Server(peer['server_url'])[peer['dbname']].view(
-                    'index/by_entity',
-                    wrapper = lambda r: r['doc'],
-                    key=entity_name,
-                    include_docs=True)
+                remote_server = couchdbkit.Server(  peer['server_url'],
+                                                    timeout = SERVER_TIMEOUT)
             except:
                 sys.stderr.write("Warning: failed to query remote peer {0}".format(peer))
-            else:
-                for doc in remote_docs:
-                    entity.add_document(doc, 'remote')
-        
-        # TODO : Get documents out of cache of connected peers
-       
-        # Return the entity
+                continue
+
+            for dbname in ('ers-public', 'ers-cache'):
+                remote_docs = []
+                try:
+                    remote_docs = self._get_docs_by_entity(
+                        remote_server[dbname], entity_name)
+                except:
+                    sys.stderr.write("Warning: failed to query {1} on remote peer {0}".format(peer, dbname))
+                else:
+                    for doc in remote_docs:
+                        entity.add_document(doc, 'remote')
         return entity
     
 
@@ -111,20 +125,6 @@ class ERSReadOnly(object):
         entity_data = self.get_annotation(entity)
         return entity_data.get(prop, [])
 
-    # def search(self, prop, value=None):
-    #     '''
-    #     Search local entities by property or property+value
-    #     @return: a list of identifiers.
-    #     '''
-    #     # TODO Fix index
-    #     results = []
-    #     for doc in self.public_db.all_docs().all():
-    #         document = self.public_db.get(doc['id'])
-    #         if prop in document:
-    #             if value == None or value in document[prop]:
-    #                 results.append(document['@id'])
-    #     return results
-    
     def search(self, prop, value=None):
         """ Search entities by property or property+value
             Return a list of unique (entity, graph) pairs.
@@ -135,14 +135,17 @@ class ERSReadOnly(object):
             view_range = {'key': [prop, value]}
 
         result = set([r['value'] for r in self.public_db.view('index/by_property_value', **view_range)])
+        result.update(set([r['value'] for r in self.cache_db.view('index/by_property_value', **view_range)]))
+        result.update(set([r['value'] for r in self.private_db.view('index/by_property_value', **view_range)]))
         for peer in self.get_peers():
-            try:
-                remote = ERSReadOnly(peer['server_url'], peer['dbname'], local_only=True)
-                remote_result = remote.search(prop, value)
-            except:
-                sys.stderr.write("Warning: failed to query remote peer {0}".format(peer))
-                continue
-            result.update(remote_result)
+            for dbname in ('ers-public', 'ers-cache'):
+                try:
+                    remote = ERSReadOnly(peer['server_url'], dbname, local_only=True)
+                    remote_result = remote.search(prop, value)
+                except:
+                    sys.stderr.write("Warning: failed to query remote peer {0}".format(peer))
+                    continue
+                result.update(remote_result)
         return list(result)
 
     def exist(self, subject, graph):
@@ -208,6 +211,8 @@ class ERSLocal(ERSReadOnly):
 
         # Connect to the internal model used to store the triples
         self._init_model(model)
+
+        self._init_host_urn()
 
     def _init_databases(self, reset_database):
         if reset_database:
@@ -283,7 +288,10 @@ class ERSLocal(ERSReadOnly):
         Create a new entity, return it and store in as a new document in the public store
         '''
         # Create a new document
-        document = {'@id' : entity_name}
+        document =  {
+                        '@id' : entity_name,
+                        '@owner' : self.host_urn
+                    }
         self.public_db.save_doc(document)
         
         # Create the entity
