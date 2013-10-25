@@ -227,17 +227,22 @@ public class CassandraRdfHectorQuads extends AbstractCassandraRdfHector {
 	}
 
         @Override
-        protected void batchInsertVersioning(String cf, List<Node[]> li, String keyspace, String URN_author, boolean updateVerNum) {
+        public Iterator<HColumn<String,String>> queryBrigesTimeStats(Node[] query, String keyspace, String start_time, String end_time) throws StoreException {
             throw new UnsupportedOperationException("Not supported yet.");
         }
 
         @Override
         public Iterator<Node[]> queryVersioning(Node[] query, int limit, String keyspace, int situation, String ID, String URN) throws StoreException {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+        @Override
+        protected int batchInsertVersioning(String cf, List<Node[]> li, String keyspace, String URN_author, String txID) {
             throw new UnsupportedOperationException("Not supported yet.");
         }
 
         @Override
-        public Iterator<HColumn<String,String>> queryBrigesTimeStats(Node[] query, String keyspace, String start_time, String end_time) throws StoreException {
-            throw new UnsupportedOperationException("Not supported yet.");
-        }
+        protected int batchUpdateVersioning(String cf, List<Node[]> li, String keyspace, String URN_author, String txID) {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
 }

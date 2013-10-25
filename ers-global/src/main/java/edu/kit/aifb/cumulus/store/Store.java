@@ -14,6 +14,7 @@ import org.semanticweb.yars.nx.parser.ParseException;
 
 import edu.kit.aifb.cumulus.webapp.Listener;
 
+import java.util.HashSet;
 import me.prettyprint.hector.api.beans.HColumn;
 import org.apache.commons.codec.digest.DigestUtils;
 
@@ -114,19 +115,36 @@ public abstract class Store {
 
 	public abstract int addData(Iterator<Node[]> it, String keyspace, Integer
                 linkFlag) throws StoreException;
-        public abstract int addDataVersioning(Iterator<Node[]> it, String keyspace, Integer
-                linkFlag, String URN_author) throws StoreException;
-
 	// add (e,p,v,g); if insertLink != 0, then create the link as well
 	public abstract int addData(String e, String p, String v, String keyspace,
                 Integer linkFlag);
+
+        // add a not yet committed transaction ID to a list; this will be skipped upon reading
+        public abstract int addCIDToNotYetCommittedList(String keyspace, String txID);
+        public abstract int removeCIDFromNotYetCommittedList(String keyspace, String txID);
+        public abstract HashSet<String> getCIDNotYetCommittedSet(String keyspace);
+
         public abstract int addDataVersioning(String e, String p, String v, String keyspace,
                 Integer linkFlag, String URN_author);
+        public abstract int addDataVersioning(String e, String p, String v, String keyspace,
+                Integer linkFlag, String URN_author, String txID);
+
+        public abstract int addDataVersioning(Iterator<Node[]> it, String keyspace, Integer
+                linkFlag, String URN_author) throws StoreException;
+        public abstract int addDataVersioning(Iterator<Node[]> it, String keyspace, Integer
+                linkFlag, String URN_author, String txID) throws StoreException;
 
 	// update/replace (e,p,v_old,g) with (e,p,v_new,g);
-
         public abstract int updateData(String e, String p, String v_old, String v_new, 
                 String keyspace, Integer linkFlag);
+
+        public abstract int updateDataVersioning(String e, String p, String v_old,
+                String v_new, String keyspace, Integer linkFlag, String URN_author);
+        public abstract int updateDataVersioning(String e, String p, String v_old,
+                String v_new, String keyspace, Integer linkFlag, String URN_author, String txID);
+        public abstract int updateDataVersioning(Iterator<Node[]> it, String keyspace, Integer
+                linkFlag, String URN_author, String txID) throws StoreException;
+
 	// delete (e,p,v,g)  
 	public abstract int deleteData(String e, String p, String v, String keyspace,
                 Integer linkFlag);
@@ -159,6 +177,7 @@ public abstract class Store {
 	// create a keyspace / graph 
 	public abstract int createKeyspace(String keyspace, boolean enableVersioning);
 	public abstract int createKeyspaceInit(String keyspace);
+        
 	// test if a keyspace / graph exists
 	public abstract boolean existsKeyspace(String keyspace);
 	// test if a keyspace / graph is empty or not 

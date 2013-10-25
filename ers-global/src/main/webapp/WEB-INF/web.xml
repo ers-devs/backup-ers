@@ -76,6 +76,18 @@
       <param-value>0</param-value>
    </context-param>
 
+   <!-- set this to 1 if you want to use MVCC transactional support -->
+   <context-param>
+      <param-name>ers-transactional-mvcc</param-name> 
+      <param-value>1</param-value>
+   </context-param>
+
+   <!-- set this to 1 if you want to use Check My Writes consistency level -->
+   <context-param>
+      <param-name>ers-transactional-check-my-writes</param-name> 
+      <param-value>1</param-value>
+   </context-param>
+
    <!-- if set to yes, any operation will also handle links  -->
    <!-- default value: yes -->
    <context-param>

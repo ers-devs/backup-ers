@@ -214,10 +214,18 @@ public class TransactionServlet extends AbstractHttpServlet {
 				if( line == null ) 
 					break;
 				line = line.trim();
-				if( line.equals("BEGIN") ) { 
+                                // BEGIN-URN_author
+				if( line.startsWith("BEGIN") ) {
 					// new T starts here 
 					++counter;
-					t = new Transaction(random_n+"_"+counter);
+					//t = new Transaction(random_n+"_"+counter);
+                                        t = new Transaction(random_n+"_"+counter, line.substring(line.indexOf("/")+1,
+                                                line.indexOf("-")));
+                                        if( line.contains("-") && line.length() > 6 )
+                                            // get URN here
+                                            t.setURN(line.substring(line.indexOf("-")+1, line.length()));
+                                        else
+                                            t.setURN("JUST_DUMMY_URN_FOR_TEST");
 				}
 				// commit or rollback must end the transaction
 				else if( line.equals("COMMIT") || line.equals("ROLLBACK") ) { 
