@@ -367,7 +367,8 @@ public class Listener implements ServletContextListener {
                     }*/
                     if( _log != null )
                         _log.info("Closing Curator client ... ");
-                    curator_client.close();
+                    if( curator_client != null )
+                        curator_client.close();
                     return;
             } 
         }
@@ -468,6 +469,10 @@ public class Listener implements ServletContextListener {
             Listener.DEFAULT_REPLICATION_FACTOR = factor;
         }
 
+        public static void changeCheckMyWritesConsistency(int value) {
+            Listener.CHECK_MY_WRITES = value;
+        }
+
         public static void changeTransactionalSupport(String mode) {
             if( mode.equals("zookeeper") )  {
                 if( Listener.USE_ZOOKEEPER != 1) {
@@ -480,6 +485,11 @@ public class Listener implements ServletContextListener {
                     Listener.USE_ZOOKEEPER = -1;  
                     Listener.initOrCleanCurator(null);
                 }
+                if( mode.equals("mvcc") )
+                    Listener.USE_MVCC = 1;
+                else
+                    // default: no zookeeper, no mvcc
+                    Listener.USE_MVCC = -1;
             }
         }
 }

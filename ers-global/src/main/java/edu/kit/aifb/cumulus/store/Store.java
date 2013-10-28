@@ -15,6 +15,7 @@ import org.semanticweb.yars.nx.parser.ParseException;
 import edu.kit.aifb.cumulus.webapp.Listener;
 
 import java.util.HashSet;
+import java.util.List;
 import me.prettyprint.hector.api.beans.HColumn;
 import org.apache.commons.codec.digest.DigestUtils;
 
@@ -119,10 +120,10 @@ public abstract class Store {
 	public abstract int addData(String e, String p, String v, String keyspace,
                 Integer linkFlag);
 
-        // add a not yet committed transaction ID to a list; this will be skipped upon reading
-        public abstract int addCIDToNotYetCommittedList(String keyspace, String txID);
-        public abstract int removeCIDFromNotYetCommittedList(String keyspace, String txID);
-        public abstract HashSet<String> getCIDNotYetCommittedSet(String keyspace);
+        // add a pending transaction ID to a list; this will be skipped upon reading
+        public abstract int addCIDToPendingTXList(String keyspace, String txID);
+        public abstract int removeCIDFromPendingTXList(String keyspace, String txID);
+        public abstract HashSet<String> getCIDPendingTXSet(String keyspace);
 
         public abstract int addDataVersioning(String e, String p, String v, String keyspace,
                 Integer linkFlag, String URN_author);
@@ -239,7 +240,11 @@ public abstract class Store {
 		}	
 		 return null;
 	}
-	
+
+        public List<String> queryAllRowKeys(String keyspace, int limit) {
+            return null;
+        }
+
 	public int queryEntireKeyspace(String keyspace, Writer out, int limit) throws IOException { 
 		return -1;
 	}

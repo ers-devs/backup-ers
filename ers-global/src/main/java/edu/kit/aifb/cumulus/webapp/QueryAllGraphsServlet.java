@@ -1,31 +1,19 @@
 package edu.kit.aifb.cumulus.webapp;
 
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.io.BufferedWriter;
 import java.io.CharArrayWriter;
-import java.util.Iterator;
 import java.util.logging.Logger;
-import java.util.List; 
-import java.util.ArrayList;
 
 import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.semanticweb.yars.nx.Node;
-import org.semanticweb.yars.nx.Nodes;
-import org.semanticweb.yars.nx.Variable;
-import org.semanticweb.yars.nx.parser.NxParser;
-import org.semanticweb.yars.nx.parser.ParseException;
 
-import edu.kit.aifb.cumulus.store.Store;
 import edu.kit.aifb.cumulus.store.AbstractCassandraRdfHector;
-import edu.kit.aifb.cumulus.store.StoreException;
 import edu.kit.aifb.cumulus.webapp.formatter.SerializationFormat;
 
-import me.prettyprint.hector.api.ddl.KeyspaceDefinition;
 
 /** 
  * 

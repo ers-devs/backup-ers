@@ -528,6 +528,7 @@ public abstract class AbstractCassandraRdfHector extends Store {
                     if( Listener.USE_MVCC == 1 )
                         return _transactions.executeTransaction_MVCC(t, this);
                     else
+                        //default, no zookeeper locks, no MVCC 
                         return _transactions.executeTransaction(t, this);
             } catch (Exception ex) {
                 Logger.getLogger(AbstractCassandraRdfHector.class.getName()).log(Level.SEVERE, null, ex);
@@ -568,7 +569,7 @@ public abstract class AbstractCassandraRdfHector extends Store {
                 Node[] query = new Node[3];
                 Iterator it;
                 String e = "<"+keyspaceName+ "-" + entity_w_brackets+">";
-                HashSet<String> not_yet_committed = getCIDNotYetCommittedSet(keyspaceName);
+                HashSet<String> pending_txs = getCIDPendingTXSet(keyspaceName);
 		try {
 			query[0] = getNode(e, "s");
 			query[1] = getNode(null, "p");
@@ -590,8 +591,8 @@ public abstract class AbstractCassandraRdfHector extends Store {
                             String lastCommitId = next[1].toString();
                             String prevCommitId = next[2].toString();
 
-                            // don't add to tree the not yet committed ids
-                            if( not_yet_committed.contains(lastCommitId) )
+                            // don't add to tree the pending txs
+                            if( pending_txs.contains(lastCommitId) )
                                 continue;
                             // skip also the aborted ones
                             if( prevCommitId.equals("X") )
@@ -636,9 +637,10 @@ public abstract class AbstractCassandraRdfHector extends Store {
                 return "-";
         }
 
-         // get the last commit tx id
-        public boolean checkMyWrites(String keyspaceName, String entity_w_brackets,
-                String justWroteTxID) {
+        // retrieve for a given keyspace and entity, the versioning tree/history
+        public Hashtable<String, List<String>> getVersionHistory(String keyspaceName,
+                String entity_w_brackets) {
+                Hashtable<String, List<String>> version_history = new Hashtable<String, List<String>>();
                 Node[] query = new Node[3];
                 String e = "<"+keyspaceName+ "-" + entity_w_brackets+">";
 		try {
@@ -648,59 +650,59 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		}
 		catch (ParseException ex) {
 			_log.severe(ex.getMessage());
-			return false;
+			return version_history;
 		}
                 Iterator<Node[]> it;
                 try {
                     it = this.query(query, Integer.MAX_VALUE, Listener.GRAPHS_VERSIONS_KEYSPACE);
+                    while( it.hasNext() ) {
+                        Node[] next = (Node[])it.next();
+                        // if we see them as a tree, lastCommitId is a child of prevCommitId
+                        String lastCommitId = next[1].toString();
+                        String prevCommitId = next[2].toString();
 
-                    if (it.hasNext()) {
-                        Hashtable<String, List<String>> version_history = new Hashtable<String, List<String>>();
-                        while( it.hasNext() ) {
-                            Node[] next = (Node[])it.next();
-                            // if we see them as a tree, lastCommitId is a child of prevCommitId
-                            String lastCommitId = next[1].toString();
-                            String prevCommitId = next[2].toString();
-
-                            if( version_history.contains(prevCommitId) ) {
-                                // add lastCommitId to its children list
-                                List<String> childen_prevCommitId = version_history.get(prevCommitId);
-                                childen_prevCommitId.add(lastCommitId);
-                                version_history.put(prevCommitId, childen_prevCommitId);
-                            }
-                            else {
-                                List<String> child_prevCommitId = new ArrayList<String>();
-                                child_prevCommitId.add(lastCommitId);
-                                version_history.put(prevCommitId, child_prevCommitId);
-                            }
+                        if( version_history.containsKey(prevCommitId) ) {
+                            // add lastCommitId to its children list
+                            List<String> childen_prevCommitId = version_history.get(prevCommitId);
+                            childen_prevCommitId.add(lastCommitId);
+                            version_history.put(prevCommitId, childen_prevCommitId);
                         }
-                        // now traverse the history from root to most recent version
-                        //and stop if we find the version we just wrote
-                        String current = "-";
-                        while( version_history.containsKey(current) ) {
-                            List<String> children = version_history.get(current);
-                            // if many, choose the children with highest timestmap
-                            if( children.size() > 0 ) {
-                                String max = null;
-                                for( Iterator<String> it2=children.iterator(); it2.hasNext(); ) {
-                                    String child = it2.next();
-                                    if( max == null || child.compareToIgnoreCase(max) > 0 )
-                                       max = child;
-                                }
-                                current = max;
-                            }
-                            else
-                                current = children.get(0);
-                            
-                            if( current.equals(justWroteTxID) ) 
-                                return true;
+                        else {
+                            List<String> child_prevCommitId = new ArrayList<String>();
+                            child_prevCommitId.add(lastCommitId);
+                            version_history.put(prevCommitId, child_prevCommitId);
                         }
-                        return false;
                     }
-                    else
-                        return false;
                 } catch (StoreException ex) {
                     Logger.getLogger(AbstractCassandraRdfHector.class.getName()).log(Level.SEVERE, null, ex);
+                }
+                return version_history;
+        }
+
+        // return true if the just wrote commitID can be read (i.e. is in the correct history path)
+        public boolean checkMyWrites(String keyspaceName, String entity_w_brackets,
+                String justWroteTxID) {
+                Hashtable<String, List<String>> version_history = getVersionHistory(keyspaceName, entity_w_brackets);
+                // now traverse the history from root to most recent version
+                //and stop if we find the version we just wrote
+                String current = "-";
+                while( version_history.containsKey(current) ) {
+                    List<String> children = version_history.get(current);
+                    // if many, choose the children with highest timestmap
+                    if( children.size() > 1 ) {
+                        String max = null;
+                        for( Iterator<String> it2=children.iterator(); it2.hasNext(); ) {
+                            String child = it2.next();
+                            if( max == null || child.compareToIgnoreCase(max) > 0 )
+                               max = child;
+                        }
+                        current = max;
+                    }
+                    else
+                        current = children.get(0);
+
+                    if( current.equals(justWroteTxID) )
+                        return true;
                 }
                 return false;
         }
@@ -772,22 +774,22 @@ public abstract class AbstractCassandraRdfHector extends Store {
 	}
 
         @Override
-        public int addCIDToNotYetCommittedList(String keyspace, String txID) {
-            return addData("<"+keyspace+"-not-yet-committed>", "\""+txID+"\"", "\""+txID+"\"",
+        public int addCIDToPendingTXList(String keyspace, String txID) {
+            return addData("<"+keyspace+"-pending-tx>", "\""+txID+"\"", "\""+txID+"\"",
                     Listener.GRAPHS_VERSIONS_KEYSPACE, 0);
         }
 
         @Override
-        public int removeCIDFromNotYetCommittedList(String keyspace, String txID) {
-            return deleteData("<"+keyspace+"-not-yet-committed>", "\""+txID+"\"", "\""+txID+"\"",
+        public int removeCIDFromPendingTXList(String keyspace, String txID) {
+            return deleteData("<"+keyspace+"-pending-tx>", "\""+txID+"\"", "\""+txID+"\"",
                     Listener.GRAPHS_VERSIONS_KEYSPACE, 0);
         }
 
         @Override
-        public HashSet<String> getCIDNotYetCommittedSet(String keyspace) {
+        public HashSet<String> getCIDPendingTXSet(String keyspace) {
             HashSet<String> results = new HashSet<String>();
             Node[] query = new Node[3];
-            String e = "<"+keyspace+ "-not-yet-committed>";
+            String e = "<"+keyspace+ "-pending-tx>";
             try {
                     query[0] = getNode(e, "s");
                     query[1] = getNode(null, "p");

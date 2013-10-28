@@ -15,8 +15,6 @@ import javax.servlet.http.HttpServletResponse;
 import org.semanticweb.yars.nx.Node;
 
 import edu.kit.aifb.cumulus.webapp.formatter.SerializationFormat;
-import java.io.BufferedWriter;
-import java.io.CharArrayWriter;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -28,7 +26,7 @@ import org.semanticweb.yars.nx.parser.ParseException;
 
 /**
  *
- * @author aharth
+ * @author tmacicas
  */
 @SuppressWarnings("serial")
 public class QueryBridgesStatsServlet extends AbstractHttpServlet {

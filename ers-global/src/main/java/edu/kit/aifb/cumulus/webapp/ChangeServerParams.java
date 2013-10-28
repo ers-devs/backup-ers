@@ -21,7 +21,8 @@ public class ChangeServerParams extends AbstractHttpServlet {
 
         private String[] consistency_levels = {"one", "two", "three", "any", "quorum", "all"};
         private String[] granularity_levels = {"e", "ep", "epv" };
-        private String[] trans_support_modes = {"zookeeper", "default" };
+        private String[] trans_support_modes = {"zookeeper", "mvcc", "default" };
+        private String[] check_my_writes_modes = {"on", "off"};
 
 	@Override
 	public void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
@@ -54,12 +55,13 @@ public class ChangeServerParams extends AbstractHttpServlet {
 		String trans_lock_gran = req.getParameter("trans_lock_gran");	//transactiona locking granularity
                 String replication_factor = req.getParameter("repl_factor");    //replication factor
                 String trans_support = req.getParameter("trans_support");    //replication factor
+                String check_my_writes = req.getParameter("check_my_writes");
 		// some checks
 		if( read_cons == null && write_cons == null && trans_lock_gran == null 
-                        && replication_factor == null && trans_support == null ) {
+                        && replication_factor == null && trans_support == null && check_my_writes == null ) {
 			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please pass data like " +
                                 "'read_cons=_&write_cons=_&trans_lock_gran=_&repl_factor=_&trans_support=_'");
-                        _log.info("Please pass data like 'read_cons=_&write_cons=_&trans_lock_gran=_&repl_factor=_&trans_support=_'");
+                        _log.info("Please pass data like 'read_cons=_&write_cons=_&trans_lock_gran=_&repl_factor=_&trans_support=_&check_my_writes=_'");
 			return;
 		}
                 boolean match_rc = false;
@@ -161,10 +163,34 @@ public class ChangeServerParams extends AbstractHttpServlet {
                         _log.info("Not an allowed transaction support mode passed!");
                         return;
                     }
-                     Listener.changeTransactionalSupport(trans_support);
-                     sendResponse(ctx, req, resp, HttpServletResponse.SC_OK,
+                    Listener.changeTransactionalSupport(trans_support);
+                    sendResponse(ctx, req, resp, HttpServletResponse.SC_OK,
                             "New transactional support mode: " + trans_support);
-                     _log.info("New transactional support mode: " + trans_support);
+                    _log.info("New transactional support mode: " + trans_support);
+                }
+
+                if( check_my_writes != null && !check_my_writes.isEmpty() ) {
+                    boolean match = false;
+                    // check if a correct consistency level
+                    for( int i=0; i<check_my_writes_modes.length; i++) {
+                        if( check_my_writes.matches(check_my_writes_modes[i]) ) {
+                            match = true;
+                            break;
+                        }
+                    }
+                    if( ! match ) {
+                        sendResponse(ctx, req, resp, HttpServletResponse.SC_CONFLICT,
+                                "Not an allowed check my writes mode passed!");
+                        _log.info("Not an allowed check my writes mode passed! " + check_my_writes);
+                        return;
+                    }
+                    if( check_my_writes.equals("on") )
+                        Listener.changeCheckMyWritesConsistency(1);
+                    else
+                        Listener.changeCheckMyWritesConsistency(0);
+                    sendResponse(ctx, req, resp, HttpServletResponse.SC_OK,
+                            "New check my writes consistency mode: " + check_my_writes);
+                    _log.info("New check my writes consistency mode: " + check_my_writes);
                 }
 		_log.info("[dataset] SETUP sucessful");
 	}

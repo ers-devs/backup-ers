@@ -191,17 +191,18 @@ public class CassandraRdfHectorFlatHash extends CassandraRdfHectorQuads {
                     // just add the last commit id
                     writeCommitID(keyspace, version_key.replaceAll("<", "").replaceAll(">", ""),
                             URN_author, txID, prev_commit_id);
+                    // assuming that this entity was successfully commited
+                    committed_entities.add(row_entity_key);
                     if( Listener.CHECK_MY_WRITES == 1 ) {
                         // check if the version we just wrote is the one we read or
                         //is it in the correct tree path
                         if( ! checkMyWrites(keyspace,
-                                version_key.replaceAll("<", "").replaceAll(">", ""), txID) ) {
+                                version_key.replaceAll("<", "").replaceAll(">", ""),
+                                txID) ) {
                             abort = true;
                             break;
                         }
                     }
-                    // this entity has successfully commited 
-                    committed_entities.add(row_entity_key);
                 }
             }
             if( abort && committed_entities.size() > 0 ) {
@@ -220,7 +221,7 @@ public class CassandraRdfHectorFlatHash extends CassandraRdfHectorQuads {
                 return -1;
             }
             //so it commited
-            return 1;
+            return 0;
         }
 
         @Override
@@ -235,7 +236,8 @@ public class CassandraRdfHectorFlatHash extends CassandraRdfHectorQuads {
                     // we have to abort here the insertion
                     return 2;
                 }
-                
+
+                /*
 // SIMULATE SOME DELAY HERE !!
 try{
 Thread.sleep(System.currentTimeMillis()%10000);
@@ -765,6 +767,7 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
          *  3. ID:URN:*
          *  4. URN:ID:*
          */
+        @Override
 	public Iterator<Node[]> queryVersioning(Node[] query, int limit, String keyspace, 
                 int situation, String ID, String URN) throws StoreException {
 		Iterator<Node[]> it = super.query(query, limit, keyspace);
@@ -1107,5 +1110,41 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 			total_rows += queryEntireKeyspace(keyspace, out, limit);
 		}
 		return total_rows;
+	}
+
+
+        public List<String> queryAllRowKeys(String keyspace, int limit) {
+		int row_count = ( limit > 100) ? 100 : limit;
+                List<String> results = new ArrayList<String>();
+
+		String decoded_keyspace = this.decodeKeyspace(keyspace);
+		// String(row), String(column_name), String(column_value)
+		Keyspace k = getExistingKeyspace(keyspace);
+        	RangeSlicesQuery<String, String, String> rangeSlicesQuery = HFactory
+	            .createRangeSlicesQuery(k, StringSerializer.get(), StringSerializer.get(), StringSerializer.get())
+        	    .setColumnFamily("SPO")
+		    .setRange(null, null, false, Integer.MAX_VALUE)
+	            .setRowCount((row_count==1)?2:row_count);		//do this trick because if row_count=1 and only one "null" record, then stucks in a loop
+         	String last_key = null;
+
+	        while (true) {
+        	    rangeSlicesQuery.setKeys(last_key, null);
+                    QueryResult<OrderedRows<String, String, String>> result = rangeSlicesQuery.execute();
+                    OrderedRows<String, String, String> rows = result.get();
+                    Iterator<Row<String, String, String>> rowsIterator = rows.iterator();
+
+                    // we'll skip this first one, since it is the same as the last one from previous time we executed
+                    if (last_key != null && rowsIterator != null)
+                            rowsIterator.next();
+
+                    while (rowsIterator.hasNext()) {
+                            Row<String, String, String> row = rowsIterator.next();
+                            last_key = row.getKey();
+                            results.add(row.getKey());
+                    }
+                    if (rows.getCount() < row_count)
+                        break;
+        	}
+		return results;
 	}
 }

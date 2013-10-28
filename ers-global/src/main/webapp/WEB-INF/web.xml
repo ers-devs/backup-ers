@@ -187,6 +187,10 @@
 	<servlet-name>query_bridges_stats</servlet-name>
 	<servlet-class>edu.kit.aifb.cumulus.webapp.QueryBridgesStatsServlet</servlet-class>
   </servlet>
+  <servlet>
+	<servlet-name>query_versions_stats</servlet-name>
+	<servlet-class>edu.kit.aifb.cumulus.webapp.QueryVersionsStatsServlet</servlet-class>
+  </servlet>
 
   <servlet>
   	<servlet-name>query</servlet-name>
@@ -241,6 +245,10 @@
   <servlet-mapping>
     <servlet-name>query_bridges_stats</servlet-name>
     <url-pattern>/query_bridges_stats</url-pattern>
+  </servlet-mapping>
+  <servlet-mapping>
+    <servlet-name>query_versions_stats</servlet-name>
+    <url-pattern>/query_versions_stats</url-pattern>
   </servlet-mapping>
   <servlet-mapping>
     <servlet-name>query_bridges</servlet-name>

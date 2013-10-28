@@ -107,7 +107,7 @@ public class ExecuteTransactions
             // put this txID into "NOT_YET_COMMITED" list
             // this is neccessary in case a multiple-e tx is half way commited, so
             //it won't be half-way read
-            store.addCIDToNotYetCommittedList(keyspace, txID);
+            store.addCIDToPendingTXList(keyspace, txID);
             
             switch( t.txType ) {
                 // insert property
@@ -128,6 +128,8 @@ public class ExecuteTransactions
                     break;
                 // insert link
                 case IL:
+                     r = store.addDataVersioning(batch.iterator(), keyspace,
+                             1, URN_author, txID);
                     break;
                 // delete link
                 case DL:
@@ -142,26 +144,27 @@ public class ExecuteTransactions
                     break;
             }
 
+             // as the tx was finished, then remove it from pending list
+            store.removeCIDFromPendingTXList(keyspace, txID);
+            
             switch(r) {
                 case -3:
                     // exception has been thrown
                     break;
                 case -2:
-                    _log.info("COMMIT "+t.txType.DC.toString()+" FAILED " +
+                    _log.info("COMMIT "+t.txType.toString()+" FAILED " +
                             "- keyspace " + keyspace + "does not exist!");
                     break;
                 case -1:
-                    _log.info("COMMIT "+t.txType.DC.toString()+" FAILED - " +
+                    _log.info("COMMIT "+t.txType.toString()+" FAILED - " +
                             "it has been aborted!" );
                     break;
                 case 1:
-                    _log.info("COMMIT "+t.txType.DC.toString()+" SUCCESSFUL " +
-                            "- it has been committed!" );
-                    // as it was successful, then delete the CID from the not-yet-committed list
-                    store.removeCIDFromNotYetCommittedList(keyspace, txID);
+                    /*_log.info("COMMIT "+t.txType.toString()+" SUCCESSFUL " +
+                            "- it has been committed!" );*/
                     break;
                 case 2:
-                    _log.info("COMMIT "+t.txType.DC.toString()+" FAILED - cannot " +
+                    _log.info("COMMIT "+t.txType.toString()+" FAILED - cannot " +
                             "fetch all previous versions with CID<txID" +
                             "; it means that another tx has added in the meantime " +
                             "another version with higher CID!" );
@@ -227,7 +230,7 @@ public class ExecuteTransactions
                         default:
                                 break;
                 }*/
-            return 0;
+            return r;
         }
 
 
