@@ -1,83 +1,111 @@
 <!DOCTYPE html>
 <html>
+
   <head>
-    <meta charset='utf-8'>
-    <meta http-equiv="X-UA-Compatible" content="chrome=1">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-    <link href='https://fonts.googleapis.com/css?family=Architects+Daughter' rel='stylesheet' type='text/css'>
-    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen" />
-    <link rel="stylesheet" type="text/css" href="stylesheets/pygment_trac.css" media="screen" />
-    <link rel="stylesheet" type="text/css" href="stylesheets/print.css" media="print" />
+    <meta charset='utf-8' />
+    <meta http-equiv="X-UA-Compatible" content="chrome=1" />
+    <meta name="description" content="ERS : Entity Registry System" />
 
-    <!--[if lt IE 9]>
-    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
-    <![endif]-->
+    <link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">
 
-    <title>ERS by ers-devs</title>
+    <title>ERS</title>
   </head>
 
   <body>
-    <header>
-      <div class="inner">
-        <h1>ERS</h1>
-        <h2>Entity Registry System</h2>
-        <a href="https://github.com/ers-devs/ers" class="button"><small>View project on</small>GitHub</a>
-      </div>
-    </header>
 
-    <div id="content-wrapper">
-      <div class="inner clearfix">
-        <section id="main-content">
-          <h3>
-<a name="welcome-to-github-pages" class="anchor" href="#welcome-to-github-pages"><span class="octicon octicon-link"></span></a>Welcome to GitHub Pages.</h3>
+    <!-- HEADER -->
+    <div id="header_wrap" class="outer">
+        <header class="inner">
+          <a id="forkme_banner" href="https://github.com/ers-devs/ers">View on GitHub</a>
 
-<p>This automatic page generator is the easiest way to create beautiful pages for all of your projects. Author your page content here using GitHub Flavored Markdown, select a template crafted by a designer, and publish. After your page is generated, you can check out the new branch:</p>
+          <h1 id="project_title">ERS</h1>
+          <h2 id="project_tagline">Entity Registry System</h2>
 
-<pre><code>$ cd your_repo_root/repo_name
-$ git fetch origin
-$ git checkout gh-pages
-</code></pre>
-
-<p>If you're using the GitHub for Mac, simply sync your repository and you'll see the new branch.</p>
-
-<h3>
-<a name="designer-templates" class="anchor" href="#designer-templates"><span class="octicon octicon-link"></span></a>Designer Templates</h3>
-
-<p>We've crafted some handsome templates for you to use. Go ahead and continue to layouts to browse through them. You can easily go back to edit your page before publishing. After publishing your page, you can revisit the page generator and switch to another theme. Your Page content will be preserved if it remained markdown format.</p>
-
-<h3>
-<a name="rather-drive-stick" class="anchor" href="#rather-drive-stick"><span class="octicon octicon-link"></span></a>Rather Drive Stick?</h3>
-
-<p>If you prefer to not use the automatic generator, push a branch named <code>gh-pages</code> to your repository to create a page manually. In addition to supporting regular HTML content, GitHub Pages support Jekyll, a simple, blog aware static site generator written by our own Tom Preston-Werner. Jekyll makes it easy to create site-wide headers and footers without having to copy them across every page. It also offers intelligent blog support and other advanced templating features.</p>
-
-<h3>
-<a name="authors-and-contributors" class="anchor" href="#authors-and-contributors"><span class="octicon octicon-link"></span></a>Authors and Contributors</h3>
-
-<p>You can <a href="https://github.com/blog/821" class="user-mention">@mention</a> a GitHub username to generate a link to their profile. The resulting <code>&lt;a&gt;</code> element will link to the contributor's GitHub Profile. For example: In 2007, Chris Wanstrath (<a href="https://github.com/defunkt" class="user-mention">@defunkt</a>), PJ Hyett (<a href="https://github.com/pjhyett" class="user-mention">@pjhyett</a>), and Tom Preston-Werner (<a href="https://github.com/mojombo" class="user-mention">@mojombo</a>) founded GitHub.</p>
-
-<h3>
-<a name="support-or-contact" class="anchor" href="#support-or-contact"><span class="octicon octicon-link"></span></a>Support or Contact</h3>
-
-<p>Having trouble with Pages? Check out the documentation at <a href="http://help.github.com/pages">http://help.github.com/pages</a> or contact <a href="mailto:support@github.com">support@github.com</a> and we’ll help you sort it out.</p>
-        </section>
-
-        <aside id="sidebar">
-          <a href="https://github.com/ers-devs/ers/zipball/master" class="button">
-            <small>Download</small>
-            .zip file
-          </a>
-          <a href="https://github.com/ers-devs/ers/tarball/master" class="button">
-            <small>Download</small>
-            .tar.gz file
-          </a>
-
-          <p class="repo-owner"><a href="https://github.com/ers-devs/ers"></a> is maintained by <a href="https://github.com/ers-devs">ers-devs</a>.</p>
-
-          <p>This page was generated by <a href="pages.github.com">GitHub Pages</a> using the Architect theme by <a href="https://twitter.com/jasonlong">Jason Long</a>.</p>
-        </aside>
-      </div>
+            <section id="downloads">
+              <a class="zip_download_link" href="https://github.com/ers-devs/ers/zipball/master">Download this project as a .zip file</a>
+              <a class="tar_download_link" href="https://github.com/ers-devs/ers/tarball/master">Download this project as a tar.gz file</a>
+            </section>
+        </header>
     </div>
 
-  
+    <!-- MAIN CONTENT -->
+    <div id="main_content_wrap" class="outer">
+      <section id="main_content" class="inner">
+        <h3>
+<a name="the-need-for-sharing-structured-data" class="anchor" href="#the-need-for-sharing-structured-data"><span class="octicon octicon-link"></span></a>The need for sharing structured data</h3>
+
+<p>As more and more applications are data-driven, being able to share <a href="http://en.wikipedia.org/wiki/Semi-structured_data">semi-structured data</a> seamlessly becomes an absolute necessity. Building social networking applications or semantic wikis, for instance, relies today mostly on the capability to share, integrate and redistribute heterogeneous pieces of data across large sets of users. Supporting semi-structured data sharing is especially crucial in a learning context, where students are often expected to contribute highly-structured content (e.g., scientific reports, quizz answers) that is then compared, merged or integrated. However, most of today’s open data sharing infrastructures strongly rely on the availability of third-party online resources (such as DBpedia <a href="http://dbpedia.org/">http://dbpedia.org/</a>) that are not always available in rural or remote contexts. Our project will help teachers and students in two specific ways: i) we will build an open software infrastructure to more easily share and integrate semi-structured data locally in ad-hoc contexts and ii) we will build mechanisms to then seamlessly integrate the contributed data into global data sharing platforms.</p>
+
+<h3>
+<a name="entity-registry-system-ers-as-a-solution" class="anchor" href="#entity-registry-system-ers-as-a-solution"><span class="octicon octicon-link"></span></a>Entity Registry System (ERS) as a solution</h3>
+
+<p>An entity registry is a software that associates data to a uniquely identified entity. For instance, the <a href="http://en.wikipedia.org/wiki/Domain_name_registry">DNS registry</a> associates a list of IPs to the uniquely identified site “wordpress.com”.  In contrary to standard registries that are centralised and read-mostly, ERS is an innovative registry which is designed to be read/write, track the provenance of the contributions and be usable offline and online. This registry creates a global data space where every user is able to say something about any entity. Just like Wikis allows for the collaborative of a web site, ERS will enable the collaborative editing of a registry on a de-centralised basis. The data associated to en entity is its description, recorded as <a href="http://en.wikipedia.org/wiki/Resource_Description_Framework">RDF</a> data. By using this open standard, ERS benefits from an open and supported stack of protocols and can also easily interact with other data sets published under the same standards.</p>
+
+<p>ERS is designed around three type of components:</p>
+
+<ul>
+<li>Contributor: Contributors read and edit the content of the registry. They may create and delete entities, look for entities, and contribute to the description of entities. Every contribution is identified by the contributor name so that the collectively-created description of an entity can be traced back to individual contributors. Contributors are free to make any statement about any entity in the system. They use a local data-store in which they persist their contributions to the description of the entities. They may also cache the contributions of others when appropriate.</li>
+<li>Bridge: Bridges do not directly contribute to the content of the registry. They are used to connect isolated closed networks and improve the availability of the individual descriptions shared by the contributors. Bridges can theoretically store content coming from any contributor, but will typically store the data
+only for a limited amount of time.</li>
+<li>Global Server: ERS deployments can feature any number of bridges and contributors.  In addition, some use-cases may require the presence of global servers that contain a copy of all the data going through the bridges. A global server provides a single, read-only, entry point to the registry content. It exposes the contents of an ERS to other systems, for instance to the Web of Data.
+A typical deployment would feature a number of contributors working in closed networks, some bridges to connect them and a global server providing a view over the registry content. But ERS is also fully functional with only two contributors connected in an ad-hoc network. In contrary to other data-sharing platforms using centralised hosting and local caching, ERS upper level components are not critical for the operation of the system. These are just present to increase the functionalities of the registry.</li>
+</ul><p>The triples created by the contributors stay on the device they used to create them. These are replicated upper in the layers when such upper components can be contacted.</p>
+
+<h3>
+<a name="code-and-status" class="anchor" href="#code-and-status"><span class="octicon octicon-link"></span></a>Code and status</h3>
+
+<p>All the code developed for the project is released under an open license. The project output can be followed on the <a href="https://github.com/organizations/ers-devs">ERS GitHub group</a>.</p>
+
+<p>Most of the target features are currently implemented and working:</p>
+
+<ul>
+<li>Discovery of neighbours and automatic tuning of data replication rules</li>
+<li>Two ways synchronisation between contributors and bridges</li>
+<li>One way synchronisation from the contributors to the bridges</li>
+<li>Search for entities based on properties</li>
+<li>De-referencing of entity descriptions</li>
+</ul><p>Some planned additional features:</p>
+
+<ul>
+<li>Top-down propagation from a global server down to a bridge, down to a contributor. This will require proper definition of what is relevant to back-propagate in order to avoid dumping too much data to the contributors</li>
+<li>Reasoning</li>
+</ul><p>We made a <a href="https://vimeo.com/70883238">video</a> showing how ERS works in practice with an application sending messages.</p>
+
+<h3>
+<a name="related-work" class="anchor" href="#related-work"><span class="octicon octicon-link"></span></a>Related work</h3>
+
+<p>Some related platforms and a description of how ERS differs from them:</p>
+
+<ul>
+<li>
+<a href="http://wiki.sugarlabs.org/go/Sugar_Network">Sugar Network</a> is the project closest to our. This system is designed around a master server hosting all the data and nodes that can store a local copy of it for off-line use (see <a href="http://wiki.sugarlabs.org/go/Platform_Team/Sugar_Network/Architecture">architecture document</a>). The data is contributed either to the nodes (with pending replication to the master) or to the master server directly. By comparison with this architecture, ERS does not rely on a similar master node and can work in totally closed networks. The data storing capabilities are also more flexible as ERS can store any structured data expressed as RDF triples.</li>
+<li>
+<a href="http://www.okkam.org/">OKKAM</a> and <a href="http://ops.conceptwiki.org/">ConceptWiki</a> are two web applications that let users create entities and contribute to their descriptions. Unlike ERS, both systems are centralised. Their usage directly depends on the connectivity to the web site that operates them.</li>
+<li>Nintendo <a href="http://en.wikipedia.org/wiki/StreetPass_and_SpotPass">StreetPass and SpotPass</a> data-sharing system has an architecture very similar to ERS. The latest generation of portable gaming device from Nintendo, the <a href="http://en.wikipedia.org/wiki/3ds">3DS</a>, let gamers exchange data about the progress made in their games. The data is hosted on the gaming devices directly and shared when two of such devices are within a close enough radio range. This scenario is very similar to getting two contributor nodes from ERS getting in touch via a mesh network. Recently, Nintendo extended this feature with streetpass relays: users that come within the radio range of a relay can transfer data to it that will be later on picked up by another device. This enable data-sharing between devices that would otherwise not have been in contact with each other. From an architectural point of view, the relays of Streetpass are similar to the bridges of ERS.</li>
+<li>The <a href="http://en.wikipedia.org/wiki/TIPC">TIPC</a> (Transparent Inter-process Communication) network protocol (see also the <a href="http://tipc.sourceforge.net/index.shtml">homepage</a>) has an architecture very similar to that of ERS. Local cluster of meshed nodes are connected with each other into zones which are in turn connected in clusters. These node, zone and cluster levels map to the ERS contributor, bridge and global levels. The main difference is that TIPC acts on the same level as the IP protocol whereas ERS resides in the application layer of the network protocol stack.</li>
+</ul><h3>
+<a name="publications" class="anchor" href="#publications"><span class="octicon octicon-link"></span></a>Publications</h3>
+
+<ul>
+<li>Marat Charlaganov, Philippe Cudré-Mauroux, Cristian Dinu, Christophe Guéret, Martin Grund, Teodor Macicas, The Entity Registry System: Implementing 5-Star Linked Data Without the Web, arXiv preprint, August 2013 [<a href="http://arxiv.org/abs/1308.3357">page</a>, <a href="http://arxiv.org/pdf/1308.3357v1">paper</a>]</li>
+<li>Marat Charlaganov, Philippe Cudré-Mauroux, Cristian Dinu, Christophe Guéret, Martin Grund, Teodor Macicas, Demonstrating The Entity Registry System: Implementing 5-Star Linked Data Without the Web, Proceedings of ISWC2013 – poster and demo track, 2013 [<a href="http://www.mendeley.com/download/public/18928/5686150481/e30c04f5b7d4eea65ecb2155c41938168a92b772/dl.pdf">paper</a>]</li>
+<li>Marat Charlaganov, ERS Messages Activity Demo, Video posted on Vimeo.com, 2013 [<a href="https://vimeo.com/70883238">video</a>]</li>
+</ul><h3>
+<a name="acknowledgements" class="anchor" href="#acknowledgements"><span class="octicon octicon-link"></span></a>Acknowledgements</h3>
+
+<p>The project started in September 2012 and will run for a year under a generous grant from Verisign. For the press coverage see <a href="http://www.verisigninc.com/en_US/news-events/press-room/articles/index.xhtml?artLink=aHR0cHM6Ly9wcmVzcy52ZXJpc2lnbi5jb20vZWFzeWlyL2N1c3RvbXJlbC5kbz9lYXN5aXJpZD1BRkMwRkYwREI1QzU2MEQzO3ZlcnNpb249bGl2ZTtwcmlkPTkwNTc2ODtyZWxlYXNlanNwPWN1c3RvbV85Nw%3D%3D">link</a>, <a href="http://wp.me/p1ffiZ-7N">link</a> and <a href="http://blogs.verisigninc.com/blog/entry/the_promise_of_a_better1">link</a>.</p>
+      </section>
+    </div>
+
+    <!-- FOOTER  -->
+    <div id="footer_wrap" class="outer">
+      <footer class="inner">
+        <p class="copyright">ERS maintained by <a href="https://github.com/ers-devs">ers-devs</a></p>
+        <p>Published with <a href="http://pages.github.com">GitHub Pages</a></p>
+      </footer>
+    </div>
+
+    
+
   </body>
 </html>
