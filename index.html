@@ -36,6 +36,8 @@
 <h3>
 <a name="entity-registry-system-ers-as-a-solution" class="anchor" href="#entity-registry-system-ers-as-a-solution"><span class="octicon octicon-link"></span></a>Entity Registry System (ERS) as a solution</h3>
 
+<img src="images/pixo.jpg" style="float: right; margin: 5px; width: 200px" />
+
 <p>An entity registry is a software that associates data to a uniquely identified entity. For instance, the <a href="http://en.wikipedia.org/wiki/Domain_name_registry">DNS registry</a> associates a list of IPs to the uniquely identified site “wordpress.com”.  In contrary to standard registries that are centralised and read-mostly, ERS is an innovative registry which is designed to be read/write, track the provenance of the contributions and be usable offline and online. This registry creates a global data space where every user is able to say something about any entity. Just like Wikis allows for the collaborative of a web site, ERS will enable the collaborative editing of a registry on a de-centralised basis. The data associated to en entity is its description, recorded as <a href="http://en.wikipedia.org/wiki/Resource_Description_Framework">RDF</a> data. By using this open standard, ERS benefits from an open and supported stack of protocols and can also easily interact with other data sets published under the same standards.</p>
 
 <p>ERS is designed around three type of components:</p>
@@ -46,6 +48,9 @@
 only for a limited amount of time.</li>
 <li>Global Server: ERS deployments can feature any number of bridges and contributors.  In addition, some use-cases may require the presence of global servers that contain a copy of all the data going through the bridges. A global server provides a single, read-only, entry point to the registry content. It exposes the contents of an ERS to other systems, for instance to the Web of Data.
 A typical deployment would feature a number of contributors working in closed networks, some bridges to connect them and a global server providing a view over the registry content. But ERS is also fully functional with only two contributors connected in an ad-hoc network. In contrary to other data-sharing platforms using centralised hosting and local caching, ERS upper level components are not critical for the operation of the system. These are just present to increase the functionalities of the registry.</li>
+
+<img src="images/arch.png" style="position: relative; margin: 10px 120px" />
+
 </ul><p>The triples created by the contributors stay on the device they used to create them. These are replicated upper in the layers when such upper components can be contacted.</p>
 
 <h3>
@@ -66,7 +71,8 @@ A typical deployment would feature a number of contributors working in closed ne
 <ul>
 <li>Top-down propagation from a global server down to a bridge, down to a contributor. This will require proper definition of what is relevant to back-propagate in order to avoid dumping too much data to the contributors</li>
 <li>Reasoning</li>
-</ul><p>We made a <a href="https://vimeo.com/70883238">video</a> showing how ERS works in practice with an application sending messages.</p>
+</ul><p>We made a video showing how ERS works in practice with an application sending messages.</p>
+<iframe src="//player.vimeo.com/video/70883238" width="500" height="281" frameborder="0" webkitallowfullscreen mozallowfullscreen allowfullscreen></iframe> <p><a href="http://vimeo.com/70883238">ERS Messages Activity Demo</a> from <a href="http://vimeo.com/user9602284">marat</a> on <a href="https://vimeo.com">Vimeo</a>.</p>
 
 <h3>
 <a name="related-work" class="anchor" href="#related-work"><span class="octicon octicon-link"></span></a>Related work</h3>
@@ -104,10 +110,10 @@ A typical deployment would feature a number of contributors working in closed ne
           </a>
           <a href="http://82.196.15.149/sugarbox.ova" class="button">
             <small>Download</small>
-            Virtual Machine
+            <span style="font-size: 18px">Virtual Machine</span>
           </a>
           <a href="./index_documentation.html" class="button">
-            Docs
+            <span style="font-size: 18px">Documentation</span>
           </a>
 
           <p class="repo-owner"><a href="https://github.com/ers-devs/ers"></a> is maintained by <a href="https://github.com/ers-devs">ers-devs</a>.</p>
