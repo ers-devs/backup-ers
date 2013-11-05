@@ -24,7 +24,7 @@ import org.semanticweb.yars.nx.parser.ParseException;
 
 /**
  *
- * @author aharth
+ * @author tmacicas
  */
 @SuppressWarnings("serial")
 public class QueryBridgesIPServlet extends AbstractHttpServlet {

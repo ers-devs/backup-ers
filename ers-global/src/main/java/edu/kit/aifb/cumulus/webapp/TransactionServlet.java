@@ -90,35 +90,41 @@ public class TransactionServlet extends AbstractHttpServlet {
 		AbstractCassandraRdfHector crdf = (AbstractCassandraRdfHector)ctx.getAttribute(Listener.STORE);
 		while(st.hasMoreTokens()) { 
 			n = st.nextToken();
-			//_log.info(n);
-			if( n.equals("BEGIN") ) { 
+                        // BEGIN-TxType-URN_author
+			if( n.startsWith("BEGIN") ) {
 				// new T starts here 
-				tr = new Transaction(new String("BY_REQ_"+TransactionServlet.tx_counter.incrementAndGet()));
+				tr = new Transaction(new String("BY_REQ_"+TransactionServlet.tx_counter.incrementAndGet()),
+                                        n.substring(n.indexOf("/")+1,n.indexOf("-")));
+                                if( n.contains("-") && n.length() > 6 )
+                                    // get URN here
+                                    tr.setURN(n.substring(n.indexOf("-")+1, n.length()));
+                                else
+                                    tr.setURN("JUST_DUMMY_URN_FOR_TEST");
 			}
 			// commit or rollback must end the transaction
 			else if( n.equals("COMMIT") || n.equals("ROLLBACK") ) { 
 				// T ends here
 				while( true ) { 
-					if( --no_retrials_int < 0 ) {
-						resp_msg = -1;
-						break;
-					}
-					r = crdf.runTransaction(tr); 
-					if ( r != 0 ) {
-						_log.info("Error running transaction " + tr.ID + " error: " + r);
-						//resp_msg.append("\nERROR running transaction " + tr.ID + " error: " + r);
-						//resp_msg = "1";
-						resp_msg++;
-					}
-					else {	
-						//resp_msg.append("\nTransaction " + tr.ID + " ran successfully.")
-						//resp_msg = "0";
-						break;
-					}
+                                    if( --no_retrials_int < 0 ) {
+                                            resp_msg = -1;
+                                            break;
+                                    }
+                                    r = crdf.runTransaction(tr);
+                                    if ( r != 0 ) {
+                                            _log.info("Error running transaction " + tr.ID + " error: " + r);
+                                            //resp_msg.append("\nERROR running transaction " + tr.ID + " error: " + r);
+                                            //resp_msg = "1";
+                                            resp_msg++;
+                                    }
+                                    else {
+                                            //resp_msg.append("\nTransaction " + tr.ID + " ran successfully.")
+                                            //resp_msg = "0";
+                                            break;
+                                    }
 				}
 				tr = null;
 			}
-			else if ( n.length() > 10 ) { 
+			else if ( n.length() > 10 ) {
 				// this must contain a line with an operation (insert, update, etc) 
 				r = tr.addOp(n);
 				if( r != 0 ) { 
@@ -214,10 +220,18 @@ public class TransactionServlet extends AbstractHttpServlet {
 				if( line == null ) 
 					break;
 				line = line.trim();
-				if( line.equals("BEGIN") ) { 
+                                // BEGIN-TxType-URN_author
+				if( line.startsWith("BEGIN") ) {
 					// new T starts here 
 					++counter;
-					t = new Transaction(random_n+"_"+counter);
+					//t = new Transaction(random_n+"_"+counter);
+                                        t = new Transaction(random_n+"_"+counter, line.substring(line.indexOf("/")+1,
+                                                line.indexOf("-")));
+                                        if( line.contains("-") && line.length() > 6 )
+                                            // get URN here
+                                            t.setURN(line.substring(line.indexOf("-")+1, line.length()));
+                                        else
+                                            t.setURN("JUST_DUMMY_URN_FOR_TEST");
 				}
 				// commit or rollback must end the transaction
 				else if( line.equals("COMMIT") || line.equals("ROLLBACK") ) { 
@@ -232,12 +246,12 @@ public class TransactionServlet extends AbstractHttpServlet {
 					t = null;
 				}
 				else if ( line.length() > 10 ) { 
-					// this must contain a line with an operation (insert, update, etc) 
+					// this must contain a line with an operation (insert, update, etc)
 					r = t.addOp(line);
 					if( r != 0 ) { 
 						_log.info("Adding operation to transaction " + t.ID + " failed!");
 						_log.info("Returning value: " + r);
-						out_r.println("Adding operation to transwaction " + t.ID + " failed!" + "(line: " + line);
+						out_r.println("Adding operation to transaction " + t.ID + " failed!" + "(line: " + line);
                                                 out_r.println("Please check the operation type to be one of the supported ones: insert," +
                                                         "update, delete, copy_shallow, copy_deep");
 						break;

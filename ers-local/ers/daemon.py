@@ -12,9 +12,16 @@ import gobject
 import logging
 import logging.handlers
 
-from utils import ERS_AVAHI_SERVICE_TYPE, ERS_PEER_TYPES, ERS_DEFAULT_DBNAME, ERS_DEFAULT_PEER_TYPE
-from utils import ERS_PEER_TYPE_BRIDGE
 from ers import DEFAULT_MODEL
+
+ERS_AVAHI_SERVICE_TYPE = '_ers._tcp'
+
+ERS_PEER_TYPE_CONTRIB = 'contrib'
+ERS_PEER_TYPE_BRIDGE = 'bridge'
+ERS_PEER_TYPES = [ERS_PEER_TYPE_CONTRIB, ERS_PEER_TYPE_BRIDGE]
+
+ERS_DEFAULT_DBNAME = 'ers-public'
+ERS_DEFAULT_PEER_TYPE = ERS_PEER_TYPE_CONTRIB
 
 class ERSPeerInfo(zeroconf.ServicePeer):
     """
@@ -75,7 +82,12 @@ class ERSDaemon:
     _db = None
     _model = None
     _repl_db = None
+
+    # List of all peers
     _peers = None
+
+    # List of bridges
+    _bridges = None
 
     def __init__(self, peer_type=ERS_DEFAULT_PEER_TYPE, port=5984, dbname=ERS_DEFAULT_DBNAME,
                  pidfile='/var/run/ers_daemon.pid', tries=10, logger=None):
@@ -87,6 +99,7 @@ class ERSDaemon:
         self.logger = logger if logger is not None else logging.getLogger('ers-daemon')
 
         self._peers = {}
+        self._bridges = {}
 
     def start(self):
         self.logger.info("Starting ERS daemon")
@@ -121,6 +134,7 @@ class ERSDaemon:
                 try:
                     server = couchdbkit.Server(server_url)
                     self._db = server.get_or_create_db(self.dbname)
+                    self._cache_db = server.get_or_create_db('ers-cache')
                     self._repl_db = server.get_db('_replicator')
                     break
                 except Exception as e:
@@ -135,6 +149,11 @@ class ERSDaemon:
             for doc in self._model.initial_docs():
                 if not self._db.doc_exist(doc['_id']):
                     self._db.save_doc(doc)
+
+            for doc in self._model.initial_docs_cache():
+                if not self._cache_db.doc_exist(doc['_id']):
+                    self._cache_db.save_doc(doc)
+
         except Exception as e:
             raise RuntimeError("Error connecting to CouchDB: {0}".format(str(e)))
 
@@ -163,6 +182,7 @@ class ERSDaemon:
             self._service.unpublish()
 
         self._peers = {}
+        self._bridges = {}
         self._update_peers_in_couchdb()
         self._clear_replication()
 
@@ -180,9 +200,13 @@ class ERSDaemon:
         self.logger.debug("Peer joined: " + str(ers_peer))
 
         self._peers[ers_peer.service_name] = ers_peer
+        if ers_peer.peer_type == ERS_PEER_TYPE_BRIDGE:
+            self._bridges[ers_peer.service_name] = ers_peer
 
         self._update_peers_in_couchdb()
         self._update_replication_links()
+
+        self._update_cache()
 
     def _on_leave(self, peer):
         if not peer.service_name in self._peers:
@@ -193,13 +217,18 @@ class ERSDaemon:
         self.logger.debug("Peer left: " + str(ex_peer))
 
         del self._peers[peer.service_name]
+        if peer.service_type == ERS_PEER_TYPE_BRIDGE:
+            del self._bridges[peer.service_name]
 
         self._update_peers_in_couchdb()
         self._update_replication_links()
 
     def _update_peers_in_couchdb(self):
         state_doc = self._db.open_doc('_local/state')
-        state_doc['peers'] = [peer.to_json() for peer in self._peers.values()]
+
+        # If there are bridges, do not record other peers in the state_doc.
+        visible_peers = self._bridges or self._peers
+        state_doc['peers'] = [peer.to_json() for peer in visible_peers.values()]
         self._db.save_doc(state_doc)
 
     def _replication_doc_id(self, peer):
@@ -211,7 +240,7 @@ class ERSDaemon:
             'source': self.dbname,
             'target': r'http://admin:admin@{0}:{1}/{2}'.format(peer.ip, peer.port, peer.dbname),
             'continuous': True
-        } for peer in self._peers.values()]
+        } for peer in self._bridges.values()]
 
         self._apply_desired_repl_docs(desired_repl_docs)
 
@@ -243,6 +272,23 @@ class ERSDaemon:
         search_view = { "map": 'function(doc) { if (doc._id.indexOf("ers-auto-") == 0) emit(doc._id, doc); }' }
 
         return [doc['value'] for doc in self._repl_db.temp_view(search_view)]
+
+    def _get_cache_contents(self):
+        return [doc_id for doc_id in self._cache_db.all_docs(wrapper=lambda r: r['id'])
+                            if not doc_id.startswith('_design/')]
+
+    def _update_cache(self):
+        cache_contents = self._get_cache_contents()
+        for peer in self._peers.values():
+            for dbname in ('ers-public', 'ers-cache'):
+                source_db = r'http://admin:admin@{0}:{1}/{2}'.format(peer.ip, peer.port, dbname)
+                repl_doc = {
+                    'target': 'ers-cache',
+                    'source': source_db,
+                    'continuous': False,
+                    'doc_ids' : cache_contents                
+                }
+                self._repl_db.save_doc(repl_doc)
 
     def _check_already_running(self):
         if self.pidfile is not None and os.path.exists(self.pidfile):

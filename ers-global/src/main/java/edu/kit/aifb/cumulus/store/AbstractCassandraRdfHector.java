@@ -48,6 +48,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
+import java.util.Hashtable;
 import me.prettyprint.hector.api.ConsistencyLevelPolicy;
 import org.semanticweb.yars2.rdfxml.RDFXMLParser;
 
@@ -232,6 +233,7 @@ public abstract class AbstractCassandraRdfHector extends Store {
 	}
 
 	// pass the exact name of the keyspace created previously
+        @Override
 	public boolean existsKeyspace(String keyspaceName) { 
 		if( _cluster.describeKeyspace(keyspaceName) != null ) 
 			return true;
@@ -239,6 +241,7 @@ public abstract class AbstractCassandraRdfHector extends Store {
 	}
 
 	// don't use the encoded keyspace; this is used by Listener for initialization
+        @Override
 	public int createKeyspaceInit(String keyspaceName) {
 		if (! existsKeyspace(keyspaceName))  {
 			try {
@@ -271,6 +274,7 @@ public abstract class AbstractCassandraRdfHector extends Store {
 	// create a keyspace if it does not exist yet and add 
 	//NOTE: pass NON-encoded keyspace
         //TM: CHANGE-POINT for versioning
+        @Override
 	public int createKeyspace(String keyspaceName, boolean enableVersioning) {
 		String encoded_keyspaceName = Store.encodeKeyspace(keyspaceName);
 		if (! existsKeyspace(encoded_keyspaceName)) 
@@ -310,6 +314,7 @@ public abstract class AbstractCassandraRdfHector extends Store {
 	}
 
 	// pass the actual name of the keyspace as it was created before
+        @Override
 	public boolean emptyKeyspace(String keyspace) { 
 		try { 
 			int r = queryEntireKeyspace(keyspace, new PrintWriter("/dev/null"), 1);
@@ -327,6 +332,7 @@ public abstract class AbstractCassandraRdfHector extends Store {
 	}
 
 	// drop a keyspace if it exists (if force is true, delete even if it is not empty)
+        @Override
 	public int dropKeyspace(String keyspaceName, boolean force) { 
 		if(keyspaceName.startsWith("system")) 
 			return 3;
@@ -348,6 +354,7 @@ public abstract class AbstractCassandraRdfHector extends Store {
 	}
 
         // truncate all column families of a keyspace
+        @Override
         public int truncateKeyspace(String keyspaceName) {
 		if(keyspaceName.startsWith("system"))
 			return 3;
@@ -444,7 +451,7 @@ public abstract class AbstractCassandraRdfHector extends Store {
 
 		return new ThriftCfDef(cfdef);
 	}
-	
+        
 	protected ColumnFamilyDefinition createCfDefHier(String cfName, String keyspaceName) {
 		BasicColumnFamilyDefinition cfdef = new BasicColumnFamilyDefinition();
 		cfdef.setKeyspaceName(keyspaceName);
@@ -456,11 +463,13 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		cfdef.setCompressionOptions(compressionOptions);
 		return new ThriftCfDef(cfdef);
 	}
-	
-	protected abstract void batchInsert(String cf, List<Node[]> li, String keyspace);
-        protected abstract void batchInsertVersioning(String cf, List<Node[]> li, String keyspace, 
-                String URN_author, boolean updateVerNum);
-        
+		
+        protected abstract int batchInsertVersioning(String cf, List<Node[]> li, String keyspace,
+                String URN_author, String txID);
+        protected abstract int batchUpdateVersioning(String cf, List<Node[]> li, String keyspace,
+                String URN_author, String txID);
+
+        protected abstract void batchInsert(String cf, List<Node[]> li, String keyspace);
 	protected abstract void batchDelete(String cf, List<Node[]> li, String keyspace);
 	protected abstract void batchDeleteRow(String cf, List<Node[]> li, String keyspace);
 	protected abstract void batchRun(String cf, List<Node[]> li, String keyspace);
@@ -474,6 +483,7 @@ public abstract class AbstractCassandraRdfHector extends Store {
 
 
         // check if a given keyspace has versioning enabled
+        @Override
         public boolean keyspaceEnabledVersioning(String keyspaceName) {
                 Node[] query = new Node[3];
 		try {
@@ -509,12 +519,17 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		_cluster.getConnectionManager().shutdown();
 	}
 
+        @Override
 	public int runTransaction(Transaction t) { 
             try {
                 if( Listener.USE_ZOOKEEPER == 1 )
                     return _transactions.executeTransaction_Zookeeper(t, this);
                 else
-                    return _transactions.executeTransaction(t, this);
+                    if( Listener.USE_MVCC == 1 )
+                        return _transactions.executeTransaction_MVCC(t, this);
+                    else
+                        //default, no zookeeper locks, no MVCC 
+                        return _transactions.executeTransaction(t, this);
             } catch (Exception ex) {
                 Logger.getLogger(AbstractCassandraRdfHector.class.getName()).log(Level.SEVERE, null, ex);
                 return -1;
@@ -528,6 +543,168 @@ public abstract class AbstractCassandraRdfHector extends Store {
                 // delete the old one and put the new oneADD
                 deleteData(e, p, "\""+old_version+"\"", Listener.GRAPHS_VERSIONS_KEYSPACE, 0);
                 addData(e, p, "\""+(old_version+1)+"\"", Listener.GRAPHS_VERSIONS_KEYSPACE, 0);
+        }
+
+        public void writeCommitID(String keyspaceName, String entity_w_brackets,
+                String URN_author, String txID, String previousTxID) {
+                String e = "<"+keyspaceName+ "-" + entity_w_brackets+">";
+                String p = "\""+txID+"\"";
+                String v = "\""+previousTxID+"\"";
+                addData(e, p, v, Listener.GRAPHS_VERSIONS_KEYSPACE, 0);
+        }
+
+        // delete the just commited conflictual CID and add a flag that this
+        //has been aborted such that all other CIDs that followed are dropped as well
+        public void abortCommitID(String keyspaceName, String entity_w_brackets,
+                String URN_author, String txID, String previousTxID) {
+                String e = "<"+keyspaceName+ "-" + entity_w_brackets+">";
+                String p = "\""+txID+"\"";
+                String v_old = "\""+previousTxID+"\"";
+                String v_new = "\"X\"";
+                updateData(e, p, v_old, v_new, Listener.GRAPHS_VERSIONS_KEYSPACE, 0);
+        }
+
+        // get the last commit tx id
+        public String lastCommitTxID(String keyspaceName, String entity_w_brackets) {
+                Node[] query = new Node[3];
+                Iterator it;
+                String e = "<"+keyspaceName+ "-" + entity_w_brackets+">";
+                HashSet<String> pending_txs = getCIDPendingTXSet(keyspaceName);
+		try {
+			query[0] = getNode(e, "s");
+			query[1] = getNode(null, "p");
+			query[2] = getNode(null, "o");
+		}
+		catch (ParseException ex) {
+			_log.severe(ex.getMessage());
+			return "";
+		}
+                try {
+                    it = this.query(query, Integer.MAX_VALUE,
+                            Listener.GRAPHS_VERSIONS_KEYSPACE);
+
+                    if (it.hasNext()) {
+                        Hashtable<String, List<String>> version_history = new Hashtable<String, List<String>>();
+                        while( it.hasNext() ) {
+                            Node[] next = (Node[])it.next();
+                            // if we see them as a tree, lastCommitId is a child of prevCommitId
+                            String lastCommitId = next[1].toString();
+                            String prevCommitId = next[2].toString();
+
+                            // don't add to tree the pending txs
+                            if( pending_txs.contains(lastCommitId) )
+                                continue;
+                            // skip also the aborted ones
+                            if( prevCommitId.equals("X") )
+                                continue;
+
+                            if( version_history.contains(prevCommitId) ) {
+                                // add lastCommitId to its children list
+                                List<String> childen_prevCommitId = version_history.get(prevCommitId);
+                                childen_prevCommitId.add(lastCommitId);
+                                version_history.put(prevCommitId, childen_prevCommitId);
+                            }
+                            else {
+                                List<String> child_prevCommitId = new ArrayList<String>();
+                                child_prevCommitId.add(lastCommitId);
+                                version_history.put(prevCommitId, child_prevCommitId);
+                            }
+                        }
+                        // now traverse the history from root to most recent version and return it
+                        String current = "-";
+                        while( version_history.containsKey(current) ) {
+                            List<String> children = version_history.get(current);
+                            // if many, choose the children with highest timestmap
+                            if( children.size() > 0 ) {
+                                String max = null;
+                                for( Iterator<String> it2=children.iterator(); it2.hasNext(); ) {
+                                    String child = it2.next();
+                                    if( max == null || child.compareToIgnoreCase(max) > 0 )
+                                       max = child;
+                                }
+                                current = max;
+                            }
+                            else
+                                current = children.get(0);
+                        }
+                        return current;
+                    }
+                    else 
+                        return "-";
+                } catch (StoreException ex) {
+                    Logger.getLogger(AbstractCassandraRdfHector.class.getName()).log(Level.SEVERE, null, ex);
+                }
+                return "-";
+        }
+
+        // retrieve for a given keyspace and entity, the versioning tree/history
+        public Hashtable<String, List<String>> getVersionHistory(String keyspaceName,
+                String entity_w_brackets) {
+                Hashtable<String, List<String>> version_history = new Hashtable<String, List<String>>();
+                Node[] query = new Node[3];
+                String e = "<"+keyspaceName+ "-" + entity_w_brackets+">";
+		try {
+			query[0] = getNode(e, "s");
+			query[1] = getNode(null, "p");
+			query[2] = getNode(null, "o");
+		}
+		catch (ParseException ex) {
+			_log.severe(ex.getMessage());
+			return version_history;
+		}
+                Iterator<Node[]> it;
+                try {
+                    it = this.query(query, Integer.MAX_VALUE, Listener.GRAPHS_VERSIONS_KEYSPACE);
+                    while( it.hasNext() ) {
+                        Node[] next = (Node[])it.next();
+                        // if we see them as a tree, lastCommitId is a child of prevCommitId
+                        String lastCommitId = next[1].toString();
+                        String prevCommitId = next[2].toString();
+
+                        if( version_history.containsKey(prevCommitId) ) {
+                            // add lastCommitId to its children list
+                            List<String> childen_prevCommitId = version_history.get(prevCommitId);
+                            childen_prevCommitId.add(lastCommitId);
+                            version_history.put(prevCommitId, childen_prevCommitId);
+                        }
+                        else {
+                            List<String> child_prevCommitId = new ArrayList<String>();
+                            child_prevCommitId.add(lastCommitId);
+                            version_history.put(prevCommitId, child_prevCommitId);
+                        }
+                    }
+                } catch (StoreException ex) {
+                    Logger.getLogger(AbstractCassandraRdfHector.class.getName()).log(Level.SEVERE, null, ex);
+                }
+                return version_history;
+        }
+
+        // return true if the just wrote commitID can be read (i.e. is in the correct history path)
+        public boolean checkMyWrites(String keyspaceName, String entity_w_brackets,
+                String justWroteTxID) {
+                Hashtable<String, List<String>> version_history = getVersionHistory(keyspaceName, entity_w_brackets);
+                // now traverse the history from root to most recent version
+                //and stop if we find the version we just wrote
+                String current = "-";
+                while( version_history.containsKey(current) ) {
+                    List<String> children = version_history.get(current);
+                    // if many, choose the children with highest timestmap
+                    if( children.size() > 1 ) {
+                        String max = null;
+                        for( Iterator<String> it2=children.iterator(); it2.hasNext(); ) {
+                            String child = it2.next();
+                            if( max == null || child.compareToIgnoreCase(max) > 0 )
+                               max = child;
+                        }
+                        current = max;
+                    }
+                    else
+                        current = children.get(0);
+
+                    if( current.equals(justWroteTxID) )
+                        return true;
+                }
+                return false;
         }
 
         // get the last versioning number for a given keyspace and entity
@@ -563,7 +740,6 @@ public abstract class AbstractCassandraRdfHector extends Store {
                 return -1;
         }
 
-
 	@Override
 	public int addData(Iterator<Node[]> it, String keyspace, Integer linkFlag) throws StoreException {
 		// check firstly if keyspace exists, if not, return error 
@@ -598,72 +774,72 @@ public abstract class AbstractCassandraRdfHector extends Store {
 	}
 
         @Override
+        public int addCIDToPendingTXList(String keyspace, String txID) {
+            return addData("<"+keyspace+"-pending-tx>", "\""+txID+"\"", "\""+txID+"\"",
+                    Listener.GRAPHS_VERSIONS_KEYSPACE, 0);
+        }
+
+        @Override
+        public int removeCIDFromPendingTXList(String keyspace, String txID) {
+            return deleteData("<"+keyspace+"-pending-tx>", "\""+txID+"\"", "\""+txID+"\"",
+                    Listener.GRAPHS_VERSIONS_KEYSPACE, 0);
+        }
+
+        @Override
+        public HashSet<String> getCIDPendingTXSet(String keyspace) {
+            HashSet<String> results = new HashSet<String>();
+            Node[] query = new Node[3];
+            String e = "<"+keyspace+ "-pending-tx>";
+            try {
+                    query[0] = getNode(e, "s");
+                    query[1] = getNode(null, "p");
+                    query[2] = getNode(null, "o");
+            }
+            catch (ParseException ex) {
+                    _log.severe(ex.getMessage());
+                    return null;
+            }
+            Iterator<Node[]> it;
+            try {
+                it = this.query(query, Integer.MAX_VALUE,
+                        Listener.GRAPHS_VERSIONS_KEYSPACE);
+                while( it.hasNext() ) {
+                    results.add(it.next()[1].toString());
+                }
+            }
+            catch(StoreException ex) {
+                _log.severe(ex.getMessage());
+                return null;
+            }
+            return results;
+        }
+
+        @Override
         public int addDataVersioning(Iterator<Node[]> it, String keyspace,
                 Integer linkFlag, String URN_author) throws StoreException {
+             return addDataVersioning(it, keyspace, linkFlag, URN_author, null);
+         }
+
+        @Override
+        public int addDataVersioning(Iterator<Node[]> it, String keyspace,
+                Integer linkFlag, String URN_author, String txID) throws StoreException {
 		// check firstly if keyspace exists, if not, return error
 		if( !existsKeyspace(keyspace) ) {
 			return -1;
 		}
 		List<Node[]> batch = new ArrayList<Node[]>();
-		int batchSize = 0;
-		int count = 0;
 		while (it.hasNext()) {
-			Node[] nx = it.next();
-			//_log.info("addData  " + nx[0].toString() + " " + nx[1].toString() + " " + nx[2].toString());
-                        batch.add(nx);
-                         // add the back link as well
-                        if( linkFlag != 0 && nx[2] instanceof Resource )
-                                batch.add(Util.reorderForLink(nx, _maps.get("link")));
-
-                        batchSize += nx[0].toN3().getBytes().length + nx[1].toN3().getBytes().length + nx[2].toN3().getBytes().length;
-			count++;
-			if (batchSize >= _batchSizeMB * 1048576) {
-				_log.finer("insert batch of size " + batchSize + " (" + batch.size() + " tuples)");
-				/*for (String cf : _cfs)
-					batchInsertVersioning(cf, batch, keyspace, URN_author);
-                                for(int i=0; i<_cfs.size(); ++i ) {
-                                    String cf = _cfs.get(i);
-                                    // update the versions number on the ERS_versions only once, at the end
-                                    if( i == _cfs.size() -1 )
-                                        batchInsertVersioning(cf, batch, keyspace,
-                                                URN_author, true);
-                                    else
-                                        batchInsertVersioning(cf, batch, keyspace,
-                                                URN_author, false);
-                                }*/
-                                batchInsertVersioning(CassandraRdfHectorFlatHash.CF_S_PO,
-                                        batch, keyspace, URN_author, true);
-                                
-				batch = new ArrayList<Node[]>();
-				batchSize = 0;
-			}
+                    Node[] nx = it.next();
+                    batch.add(nx);
+                     // add the back link as well
+                    if( linkFlag != 0 && nx[2] instanceof Resource )
+                            batch.add(Util.reorderForLink(nx, _maps.get("link")));
+                    //batchSize += nx[0].toN3().getBytes().length + nx[1].toN3().getBytes().length + nx[2].toN3().getBytes().length;
 		}
-		if (batch.size() > 0) {
-			/*for (String cf : _cfs)
-				batchInsertVersioning(cf, batch, keyspace, URN_author);
-                        for(int i=0; i<_cfs.size(); ++i ) {
-                                    String cf = _cfs.get(i);
-                                    // update the versions number on the ERS_versions only once, at the end
-                                    if( i == _cfs.size() -1 )
-                                        batchInsertVersioning(cf, batch, keyspace,
-                                                URN_author, true);
-                                    else
-                                        batchInsertVersioning(cf, batch, keyspace,
-                                                URN_author, false);
-                                }*/
-                    batchInsertVersioning(CassandraRdfHectorFlatHash.CF_S_PO,
-                            batch, keyspace, URN_author, true);
-                }
-		return count;
+                // add everything at once (instead of individual batches)
+                return batchInsertVersioning(CassandraRdfHectorFlatHash.CF_S_PO,
+                            batch, keyspace, URN_author, txID);
 	}
-
-
-        // <e> <INVERTED_..> <v> <g> => <v> is generated by this function 
-        // basically it represnets the source graph concatenated with the source entity
-        // reason: a clone operation can be run inter-graphs
-        private String prepareCloningValue(String e_src, String g_src) {
-            return "\""+g_src+":"+e_src+"\"";
-        }
 
 	// TM: add just one record
         @Override
@@ -693,10 +869,16 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		}
 	}
 
-        // TM: add just one record
         @Override
 	public int addDataVersioning(String e, String p, String v, String keyspace,
                 Integer linkFlag, String URN_author) {
+            return addDataVersioning(e, p, v, keyspace, linkFlag, URN_author, null);
+        }
+
+        // TM: add just one record
+        @Override
+	public int addDataVersioning(String e, String p, String v, String keyspace,
+                Integer linkFlag, String URN_author, String txID) {
 		if( !existsKeyspace(keyspace) ) {
 			return -2;
 		}               
@@ -709,31 +891,90 @@ public abstract class AbstractCassandraRdfHector extends Store {
                             // add the back link as well
                             if( nx[2] instanceof Resource )
                                 batch.add(Util.reorderForLink(nx, _maps.get("link")));
-			/*for (String cf : _cfs)
-                            batchInsertVersioning(cf, batch, keyspace, URN_author);
-                        for(int i=0; i<_cfs.size(); ++i ) {
-                            String cf = _cfs.get(i);
-                            // update the version on the ERS_versions keyspace only once, at the end 
-                            if( i == _cfs.size() -1 )
-                                batchInsertVersioning(cf, batch, keyspace,
-                                        URN_author, true);
-                            else
-                                batchInsertVersioning(cf, batch, keyspace,
-                                        URN_author, false);
-                        }*/
-                        batchInsertVersioning(CassandraRdfHectorFlatHash.CF_S_PO, 
-                                batch, keyspace, URN_author, true);
-				
-			return 0;
+			
+                        return batchInsertVersioning(CassandraRdfHectorFlatHash.CF_S_PO,
+                                batch, keyspace, URN_author, txID);
 		}
 		catch( ParseException ex ) {
 			ex.printStackTrace();
 			_log.severe(ex.getMessage());
-			return -1;
+			return -3;
 		}
 	}
 
+        /* TM: update just one record
+         * NOTE: this has a bit of overhead since the value is stored as column name; thus
+         * for updating it needs 1 deletion and 1 insertion
+  	*/
+        @Override
+	public int updateData(String e, String p, String v_old, String v_new,
+                String keyspace, Integer linkFlag) {
+		// check if keyspace exists
+		if ( !existsKeyspace(keyspace) ) {
+			return -2;
+		}
+		// assuming the old record exists, run a del
+		if( deleteData(e, p, v_old, keyspace, linkFlag) == -1 )
+			return -1;
+		// now run an add
+	 	return addData(e, p, v_new, keyspace, linkFlag);
+	}
+
+        @Override
+        public int updateDataVersioning(String e, String p, String v_old,
+                String v_new, String keyspace, Integer linkFlag, String URN_author) {
+            return updateDataVersioning(e, p, v_old, v_new, keyspace, linkFlag, URN_author,
+                    Listener.SNOWFLAKE_GENERATOR.getStringId());
+        }
+
+        @Override
+	public int updateDataVersioning(String e, String p, String v_old,
+                String v_new, String keyspace, Integer linkFlag, String URN_author,
+                String txID) {
+            String triple = e + " " + p + " " + v_old + " " + v_new + " .";
+            try {
+                Node[] nx = NxParser.parseNodes(triple);
+                List<Node[]> batch = new ArrayList<Node[]>();
+                batch.add(nx);
+                if( linkFlag != 0 )
+                    // add the back link as well
+                    if( nx[2] instanceof Resource )
+                        batch.add(Util.reorderForLink(nx, _maps.get("link")));
+
+                return batchUpdateVersioning(CassandraRdfHectorFlatHash.CF_S_PO,
+                        batch, keyspace, URN_author, txID);
+            }
+            catch( ParseException ex ) {
+                ex.printStackTrace();
+                _log.severe(ex.getMessage());
+                return -3;
+            }
+        }
+
+        @Override
+	public int updateDataVersioning(Iterator<Node[]> it, String keyspace,
+               Integer linkFlag, String URN_author, String txID) {
+            // check firstly if keyspace exists, if not, return error
+            if( !existsKeyspace(keyspace) ) {
+                    return -1;
+            }
+            List<Node[]> batch = new ArrayList<Node[]>();
+            while (it.hasNext()) {
+                Node[] nx = it.next();
+                batch.add(nx);
+                 // add the back link as well
+                if( linkFlag != 0 && nx[2] instanceof Resource )
+                        batch.add(Util.reorderForLink(nx, _maps.get("link")));
+                //batchSize += nx[0].toN3().getBytes().length + nx[1].toN3().getBytes().length + nx[2].toN3().getBytes().length;
+            }
+            // add everything at once (instead of individual batches)
+            return batchUpdateVersioning(CassandraRdfHectorFlatHash.CF_S_PO,
+                        batch, keyspace, URN_author, txID);
+	}
+
+
 	// TM: delete a record 
+        @Override
 	public int deleteData(String e, String p, String v, String keyspace,
                 Integer linkFlag) {
 		// check if keyspace exists	
@@ -756,7 +997,8 @@ public abstract class AbstractCassandraRdfHector extends Store {
 			return -1;
 		}
 	}
-	
+
+        @Override
 	public void deleteData(Node[] nx, String keyspace, Integer linkFlag) {
 	 	List<Node[]> batch = new ArrayList<Node[]>();
 		batch.add(nx);
@@ -768,7 +1010,8 @@ public abstract class AbstractCassandraRdfHector extends Store {
                 }
 	}
 
-	// return one row iterator over all its columns  
+	// return one row iterator over all its columns
+        @Override
 	public Iterator<Node[]> getRowIterator(String e, String keyspace) { 
 		Resource resource = new Resource(e);
 		try {
@@ -786,7 +1029,8 @@ public abstract class AbstractCassandraRdfHector extends Store {
 	}
 
 	// it queries to get the whole data and then it uses it to delete
-    //(of course, it would be easier to directly delete it by using the row key, but for POS and OSP column families it is not that easy)
+        //(of course, it would be easier to directly delete it by using the row key, but for POS and OSP column families it is not that easy)
+        @Override
 	public int deleteByRowKey(String e, String keyspace, Integer linkFlag) {
 	 	// check if keyspace exists	
 		if( !existsKeyspace(keyspace)) { 
@@ -801,25 +1045,15 @@ public abstract class AbstractCassandraRdfHector extends Store {
 		return 1;
 	}
 
-
-	/* TM: update just one record
-         * NOTE: this has a bit of overhead since the value is stored as column name; thus 
-         * for updating it needs 1 deletion and 1 insertion 
-  	*/
-	public int updateData(String e, String p, String v_old, String v_new, 
-                String keyspace, Integer linkFlag) {
-		// check if keyspace exists
-		if ( !existsKeyspace(keyspace) ) { 
-			return -2; 
-		}
-		// assuming the old record exists, run a del
-		if( deleteData(e, p, v_old, keyspace, linkFlag) == -1 )
-			return -1;
-		// now run an add
-	 	return addData(e, p, v_new, keyspace, linkFlag);
-	}
+          // <e> <INVERTED_..> <v> <g> => <v> is generated by this function
+        // basically it represnets the source graph concatenated with the source entity
+        // reason: a clone operation can be run inter-graphs
+        private String prepareCloningValue(String e_src, String g_src) {
+            return "\""+g_src+":"+e_src+"\"";
+        }
 
         // it creates a new e_dest entity with a property "sameAs" to e_src
+        @Override
         public int shallowClone(String e_src, String keyspace_src, String e_dest,
                 String keyspace_dest, String unencoded_keyspace_src,
                 String unencoded_keyspac_dest) {
@@ -866,6 +1100,7 @@ public abstract class AbstractCassandraRdfHector extends Store {
         }
 
         // rollback a shallow clone
+        @Override
         public int deleteShallowClone(String e_src, String keyspace_src, String e_dest,
                 String keyspace_dest, String unencoded_keyspace_src,
                 String unencoded_keyspace_dest) {
@@ -887,6 +1122,7 @@ public abstract class AbstractCassandraRdfHector extends Store {
         }
 
         // it creates a new full copy of e_src into e_dest
+        @Override
         public int deepClone(String e_src, String keyspace_src, String e_dest,
                 String keyspace_dest) {
                 // test if the source keyspace exists
@@ -931,6 +1167,7 @@ public abstract class AbstractCassandraRdfHector extends Store {
         }
 
         // rollback a deep clone
+        @Override
         public int deleteDeepClone(String e_dest, String keyspace_dest) {
                 // test if the dest keyspace exists
                 if( !existsKeyspace(keyspace_dest) ) {
@@ -1137,7 +1374,6 @@ data = (int) (System.currentTimeMillis() % 500);
                             "\""+total_number+"\"", "\""+new_total+"\"", Listener.BRIDGES_KEYSPACE, 0);
                 }
 	}
-
 
 	// used by BatchRun servlet to load a given file of operations (not only inserts)
 	public int bulkRun(File file, String format, int threads, String keyspace,

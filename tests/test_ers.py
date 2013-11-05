@@ -50,7 +50,7 @@ def test():
     all_objects = local_objects | remote_objects
 
     # Test local ers using differend document models
-    for model in [ModelS(), ModelT()]:
+    for model in [ModelS()]:
         dbname = 'ers_' + model.__class__.__name__.lower()
         ers = ERSLocal(dbname=dbname, model=model, reset_database=True)
         test_ers()

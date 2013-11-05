@@ -90,7 +90,6 @@ public class CassandraRdfHectorFlatHash extends CassandraRdfHectorQuads {
 		return li;
 	}
 
-		
 	@Override
 	protected List<ColumnFamilyDefinition> createColumnFamiliyDefinitions(String keyspace) {
 		ColumnFamilyDefinition spo = createCfDefFlat(CF_S_PO, null, null, ComparatorType.UTF8TYPE, keyspace);
@@ -111,176 +110,293 @@ public class CassandraRdfHectorFlatHash extends CassandraRdfHectorQuads {
 		return key;
 	}
 
-        @Override
-	protected void batchInsertVersioning(String cf, List<Node[]> li, String keyspace,
-                String URN_author, boolean updateVerNum) {
-		if (cf.equals(CF_C_SPO)) {
-// TM
-//			super.batchInsert(cf, li, keyspace);
-		}
-		else {
-                    // FETCH ALL MOST RECENT VERSIONS FOR ALL ENTITIES and add the new triple
-                    // get previous versions of all entities involved in this batch
-                    Hashtable<String, List<Node[]>> versioned_entities = new Hashtable<String, List<Node[]>>();
-                    Hashtable<String, Integer> last_version_numbers  = new Hashtable<String, Integer>();
-                    for (Node[] nx : li) {
-                        // reorder for the key
-                        Node[] reordered = Util.reorder(nx, _maps.get(cf));
-                        String rowKey = new Resource(reordered[0].toString() + "-VER").toN3();
-                        // if the previous version has been fetched, then add the new prop-value
-                        if( versioned_entities.contains(rowKey) ) {
-                            List<Node[]> all_props = versioned_entities.get(rowKey);
-                            all_props.add(nx);
-                            versioned_entities.put(rowKey, all_props);
-                            continue;
-                        }
-                        // else, fetch the old version and add the current one to the list
-                        String version_key = nx[0].toString();
-                        int last_ver;
-                        if( last_version_numbers.contains(rowKey) )
-                            last_ver = last_version_numbers.get(rowKey);
-                        else {
-                            last_ver = lastVersioningNumber(keyspace, version_key.replaceAll("<", "").
-                                replaceAll(">", ""), URN_author);
-                            last_version_numbers.put(rowKey, last_ver);
-                        }
+        // for all involved entities, get the most recent version and also the lastCommitID
+        private boolean fetchMostRecentVersions(String keyspace, String cf, List<Node[]> li,
+                String txID, String URN_author,
+                Hashtable<String, List<Node[]>> versioned_entities, Hashtable<String, String> previous_commit_id ) {
+            // FETCH ALL MOST RECENT VERSIONS FOR ALL ENTITIES and add the new triple
+            // get previous versions of all entities involved in this batch
+            for (Node[] nx : li) {
+                // reorder for the key
+                Node[] reordered = Util.reorder(nx, _maps.get(cf));
+                String rowKey = new Resource(reordered[0].toString() + "-VER").toN3();
+                // if the previous version has been fetched, then add the new prop-value
+                if( versioned_entities.contains(rowKey) ) {
+                    List<Node[]> all_props = versioned_entities.get(rowKey);
+                    all_props.add(nx);
+                    versioned_entities.put(rowKey, all_props);
+                    continue;
+                }
+                // else, fetch the old version and add the current one to the list
+                String version_key = nx[0].toString();
+                String last_ver;
+                if( previous_commit_id.contains(rowKey) )
+                    last_ver = previous_commit_id.get(rowKey);
+                else {
+                    /*last_ver = lastVersioningNumber(keyspace, version_key.replaceAll("<", "").
+                        replaceAll(">", ""), URN_author);*/
+                    last_ver = lastCommitTxID(keyspace, version_key.replaceAll("<", "").
+                            replace(">",""));
+                    // if last commit ID is greater than current Tx commit id, then abort
+                    //as other Tx may have in the meantime
+                    if( last_ver.compareToIgnoreCase(txID) > 0 )
+                        return false;
+                    previous_commit_id.put(rowKey, last_ver);
+                }
 
-                        Node[] query = new Node[3];
-                        try {
-                            query[0] = getNode(nx[0].toN3(), "s");
-                            query[1] = getNode(null, "p");
-                            query[2] = getNode(null, "o");
-                            Iterator<Node[]> last_version = queryVersioning(query,
-                                    Integer.MAX_VALUE, keyspace, 3, String.valueOf(last_ver), URN_author);
-                            List<Node[]> all_prop_last_v = new ArrayList<Node[]>();
-                            while( last_version.hasNext() ) {
-                                Node[] ent = last_version.next();
-                                ent[0] = new Resource( ent[0].toString().replaceAll("-VER", "") );
-                                all_prop_last_v.add(ent);
-                            }
-                            all_prop_last_v.add(nx);
-                            // add it to the hashtable
-                            versioned_entities.put(rowKey, all_prop_last_v);
-                        } catch (Exception ex) {
-                            Logger.getLogger(CassandraRdfHectorFlatHash.class.getName()).log(Level.SEVERE, null, ex);
-                        }
+                Node[] query = new Node[3];
+                try {
+                    query[0] = getNode(nx[0].toN3(), "s");
+                    query[1] = getNode(null, "p");
+                    query[2] = getNode(null, "o");
+                    // here get the last version for this entity
+                    Iterator<Node[]> last_version = queryVersioning(query,
+                            Integer.MAX_VALUE, keyspace, 3, last_ver, URN_author);
+                    List<Node[]> all_prop_last_v = new ArrayList<Node[]>();
+                    while( last_version.hasNext() ) {
+                        Node[] ent = last_version.next();
+                        ent[0] = new Resource( ent[0].toString().replaceAll("-VER", "") );
+                        all_prop_last_v.add(ent);
                     }
-                    // END FETCHING ALL OLD VERSIONS
+                    // add it to the hashtable
+                    versioned_entities.put(rowKey, all_prop_last_v);
+                } catch (Exception ex) {
+                    Logger.getLogger(CassandraRdfHectorFlatHash.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            }
+            return true;
+        }
 
-                    if (cf.equals(CF_PO_S)) {
-                        //NOTE: we assume that queries like (?PO) or (?P?) will not be run!
-                        //cause: problem with creating the proper column family using COMPOSITE ... 
-                        
-                        // POS
-                        // insert 's-VER' and 's-URN' new versions
-                        /*Mutator<byte[]> m = HFactory.createMutator(getExistingKeyspace(keyspace), _bs);
-                        for( Iterator<String> it=versioned_entities.keySet().iterator(); it.hasNext(); ) {
-                            String row_entity_key = it.next();
-                            // there is a list of properties to be added to the new version of this entity
-                            List<Node[]> entity_old_version = versioned_entities.get(row_entity_key);
-                            Integer old_version_num = last_version_numbers.get(row_entity_key);
+        // return 1 if no conflicts were encountered when adding the new 'lastCID' 'prevCID' records
+        //for all entities; if one such record cannot be added (i.e. a previous tx has already added
+        //a lastCID > than whan we add), it must abort and returns -1
+        private int commitOrAbort(String keyspace, String txID, String URN_author,
+                Hashtable<String, List<Node[]>> versioned_entities,
+                Hashtable<String, String> previous_commit_id ) {
+            boolean abort = false;
+            List<String> committed_entities = new ArrayList<String>();
+            // try to commit by inserting  'lastCID' 'prevCID' 
+            for( Iterator<String> it=versioned_entities.keySet().iterator(); it.hasNext(); ) {
+                String row_entity_key = it.next();
+                // there is a list of properties to be added to the new version of this entity
+                List<Node[]> entity_old_version = versioned_entities.get(row_entity_key);
+                String version_key = ((Node[])entity_old_version.get(0))[0].toString().replaceAll("-VER", "");
+                String prev_commit_id = previous_commit_id.get(row_entity_key);
 
-                            for(Iterator it_old_v=entity_old_version.iterator(); it_old_v.hasNext(); ) {
-                                Node[] nx = (Node[]) it_old_v.next();
-                                // reorder for the key
-                                Node[] reordered = Util.reorder(nx, _maps.get(cf));
-                                ByteBuffer rowKey = createKey(new Node[] { reordered[0], reordered[1] });//, new Variable("-VER") });
-
-                                // get last version number for this entity
-                                //_log.info("LAST VERSION NUMBER FOR ENTITY " + rowKey + " is " + old_version_num);
-                                int next_ver = old_version_num+1;
-
-                                // VER, URN
-                                Composite colKey = new Composite();
-                                colKey.addComponent(String.valueOf(next_ver), StringSerializer.get());
-                                colKey.addComponent(URN_author, StringSerializer.get());
-                                String colKey_s = reordered[2].toN3();
-                                colKey.addComponent(colKey_s, StringSerializer.get());
-                                HColumn<Composite, String> hColumnObj_itemID = HFactory.createColumn(colKey, "",
-                                        new CompositeSerializer(),
-                                        StringSerializer.get());
-                                m.addInsertion(rowKey.array(), cf, hColumnObj_itemID);
-
-                                // URN, VER
-                                rowKey = createKey(new Node[] { reordered[0], reordered[1] });//, new Variable("-URN") });
-                                colKey = new Composite();
-                                colKey.addComponent(URN_author, StringSerializer.get());
-                                colKey.addComponent(String.valueOf(next_ver), StringSerializer.get());
-                                colKey_s = Nodes.toN3(new Node[] { reordered[1], reordered[2] });
-                                colKey.addComponent(colKey_s, StringSerializer.get());
-
-                                hColumnObj_itemID =HFactory.createColumn(colKey, "",
-                                        new CompositeSerializer(),
-                                        StringSerializer.get());
-                                m.addInsertion(rowKey.array(), cf, hColumnObj_itemID);
-                            }
-                            m.execute();
-                        }*/
-                    }
-                    else {
-                        //SPO, OSP
-                        // insert 's-VER' and 's-URN' new versions
-                        Mutator<String> m = HFactory.createMutator(getExistingKeyspace(keyspace), _ss);
-                        for( Iterator<String> it=versioned_entities.keySet().iterator(); it.hasNext(); ) {
-                            String row_entity_key = it.next();
-                            // there is a list of properties to be added to the new version of this entity
-                            List<Node[]> entity_old_version = versioned_entities.get(row_entity_key);
-                            Integer old_version_num = last_version_numbers.get(row_entity_key);
-
-                            for(Iterator it_old_v=entity_old_version.iterator(); it_old_v.hasNext(); ) {
-                                Node[] nx = (Node[]) it_old_v.next();
-                                // reorder for the key
-                                Node[] reordered = Util.reorder(nx, _maps.get(cf));
-                                String rowKey = new Resource(reordered[0].toString()).toN3();
-                                if( !reordered[0].toString().contains("-VER") )
-                                    rowKey = new Resource(reordered[0].toString() + "-VER").toN3();
-
-                                // get last version number for this entity
-                                //_log.info("LAST VERSION NUMBER FOR ENTITY " + rowKey + " is " + old_version_num);
-                                int next_ver = old_version_num+1;
-
-                                // VER, URN
-                                Composite colKey = new Composite();
-                                colKey.addComponent(String.valueOf(next_ver), StringSerializer.get());
-                                colKey.addComponent(URN_author, StringSerializer.get());
-                                String colKey_s = Nodes.toN3(new Node[] { reordered[1], reordered[2] });
-                                colKey.addComponent(colKey_s, StringSerializer.get());
-                                HColumn<Composite, String> hColumnObj_itemID = HFactory.createColumn(colKey, "",
-                                        new CompositeSerializer(),
-                                        StringSerializer.get());
-                                m.addInsertion(rowKey, cf, hColumnObj_itemID);
-
-                                // URN, VER
-                                rowKey = new Resource(reordered[0].toString() + "-URN").toN3();
-                                colKey = new Composite();
-                                colKey.addComponent(URN_author, StringSerializer.get());
-                                colKey.addComponent(String.valueOf(next_ver), StringSerializer.get());
-                                colKey_s = Nodes.toN3(new Node[] { reordered[1], reordered[2] });
-                                colKey.addComponent(colKey_s, StringSerializer.get());
-
-                                hColumnObj_itemID =HFactory.createColumn(colKey, "",
-                                        new CompositeSerializer(),
-                                        StringSerializer.get());
-                                m.addInsertion(rowKey, cf, hColumnObj_itemID);
-                            }
-                            m.execute();
-                        }
-                    }
-                    // only inserting in one column family will update the new version number
-                    // otherwise, if all do that, the number will be updated many times
-                    if( updateVerNum ) {
-                        for( Iterator<String> it=versioned_entities.keySet().iterator(); it.hasNext(); ) {
-                            String row_entity_key = it.next();
-                            // there is a list of properties to be added to the new version of this entity
-                            List<Node[]> entity_old_version = versioned_entities.get(row_entity_key);
-                            String version_key = ((Node[])entity_old_version.get(0))[0].toString().replaceAll("-VER", "");
-                            Integer old_version_num = last_version_numbers.get(row_entity_key);
-                            // update to next version
-                            updateToNextVersion(keyspace, version_key.replaceAll("<", "").replaceAll(">", ""),
-                                URN_author, old_version_num);
+                if( txID == null )
+                    // update to next version (increment the previous one)
+                    updateToNextVersion(keyspace, version_key.replaceAll("<", "").replaceAll(">", ""),
+                        URN_author, Integer.valueOf(prev_commit_id));
+                else {
+                    // just add the last commit id
+                    writeCommitID(keyspace, version_key.replaceAll("<", "").replaceAll(">", ""),
+                            URN_author, txID, prev_commit_id);
+                    // assuming that this entity was successfully commited
+                    committed_entities.add(row_entity_key);
+                    if( Listener.CHECK_MY_WRITES == 1 ) {
+                        // check if the version we just wrote is the one we read or
+                        //is it in the correct tree path
+                        if( ! checkMyWrites(keyspace,
+                                version_key.replaceAll("<", "").replaceAll(">", ""),
+                                txID) ) {
+                            abort = true;
+                            break;
                         }
                     }
                 }
+            }
+            if( abort && committed_entities.size() > 0 ) {
+                for( Iterator<String> it=committed_entities.iterator(); it.hasNext(); ) {
+                    String row_entity_key = it.next();
+                    List<Node[]> entity_old_version = versioned_entities.get(row_entity_key);
+                    String version_key = ((Node[])entity_old_version.get(0))[0].toString().replaceAll("-VER", "");
+                    String prev_commit_id = previous_commit_id.get(row_entity_key);
+
+                    // make the prevCID of current txID an 'X' meaning it is not anymore attached
+                    //to the version tree
+                    abortCommitID(keyspace, version_key.replaceAll("<", "").replaceAll(">", ""),
+                            URN_author, txID, prev_commit_id);
+                }
+                // so it aborted
+                return -1;
+            }
+            //so it commited
+            return 0;
+        }
+
+        @Override
+	protected int batchInsertVersioning(String cf, List<Node[]> li, String keyspace,
+                String URN_author, String txID) {
+                Hashtable<String, List<Node[]>> versioned_entities = new Hashtable<String, List<Node[]>>();
+                Hashtable<String, String> previous_commit_id  = new Hashtable<String, String>();
+                boolean successful_fetch = fetchMostRecentVersions(keyspace, cf, li, txID,
+                        URN_author, versioned_entities, previous_commit_id);
+                if( ! successful_fetch ) {
+                    // it means that for one entity there is already a lastCID > txID
+                    // we have to abort here the insertion
+                    return 2;
+                }
+
+                /*
+// SIMULATE SOME DELAY HERE !!
+try{
+Thread.sleep(System.currentTimeMillis()%10000);
+}catch(Exception ex) {}
+// END [THIS MUST BE ERASED IN PRODUCTION!!]*/
+
+                // add the new triples to previous versions
+                for(Iterator<Node[]> it_triples=li.iterator(); it_triples.hasNext(); ) {
+                    Node[] triple = it_triples.next();
+                    String rowKey = new Resource(triple[0].toString() + "-VER").toN3();
+
+                    List<Node[]> prev_version = versioned_entities.get(rowKey);
+                    prev_version.add(triple);
+                    versioned_entities.put(rowKey, prev_version);
+                }
+
+                //SPO
+                // insert 's-VER' and 's-URN' new versions
+                Mutator<String> m = HFactory.createMutator(getExistingKeyspace(keyspace), _ss);
+                for( Iterator<String> it=versioned_entities.keySet().iterator(); it.hasNext(); ) {
+                    String row_entity_key = it.next();
+                    // there is a list of properties to be added to the new version of this entity
+                    List<Node[]> entity_old_version = versioned_entities.get(row_entity_key);
+                    String old_version_num = previous_commit_id.get(row_entity_key);
+
+                    for(Iterator it_old_v=entity_old_version.iterator(); it_old_v.hasNext(); ) {
+                        Node[] nx = (Node[]) it_old_v.next();
+                        // reorder for the key
+                        Node[] reordered = Util.reorder(nx, _maps.get(cf));
+                        String rowKey = new Resource(reordered[0].toString()).toN3();
+                        if( !reordered[0].toString().contains("-VER") )
+                            rowKey = new Resource(reordered[0].toString() + "-VER").toN3();
+
+                        /* this is the approach without using Snowflake
+                        int next_ver = old_version_num+1;*/
+                        String next_ver;
+                        // if txID is different than null, it means this is called in a transactional context
+                        if( txID != null ) 
+                            next_ver = txID;
+                        else
+                            next_ver = String.valueOf(Integer.valueOf(old_version_num)+1);
+
+                        // VER, URN
+                        Composite colKey = new Composite();
+                        colKey.addComponent(next_ver, StringSerializer.get());
+                        colKey.addComponent(URN_author, StringSerializer.get());
+                        String colKey_s = Nodes.toN3(new Node[] { reordered[1], reordered[2] });
+                        colKey.addComponent(colKey_s, StringSerializer.get());
+                        HColumn<Composite, String> hColumnObj_itemID = HFactory.createColumn(colKey, "",
+                                new CompositeSerializer(),
+                                StringSerializer.get());
+                        m.addInsertion(rowKey, cf, hColumnObj_itemID);
+
+                        // URN, VER
+                        rowKey = new Resource(reordered[0].toString() + "-URN").toN3();
+                        colKey = new Composite();
+                        colKey.addComponent(URN_author, StringSerializer.get());
+                        colKey.addComponent(String.valueOf(next_ver), StringSerializer.get());
+                        colKey_s = Nodes.toN3(new Node[] { reordered[1], reordered[2] });
+                        colKey.addComponent(colKey_s, StringSerializer.get());
+
+                        hColumnObj_itemID =HFactory.createColumn(colKey, "",
+                                new CompositeSerializer(),
+                                StringSerializer.get());
+                        m.addInsertion(rowKey, cf, hColumnObj_itemID);
+                    }
+                    m.execute();
+                }
+                // now try to write all CID,prevCID; if check my writes is enabled, it can abort in case
+                //there are conflicts
+                return commitOrAbort(keyspace, txID, URN_author, versioned_entities, previous_commit_id);
+	}
+
+        @Override
+	public int batchUpdateVersioning(String cf, List<Node[]> li, String keyspace,
+               String URN_author, String txID) {
+            Hashtable<String, List<Node[]>> versioned_entities = new Hashtable<String, List<Node[]>>();
+            Hashtable<String, String> previous_commit_id  = new Hashtable<String, String>();
+            boolean successful_fetch = fetchMostRecentVersions(keyspace, cf, li, txID,
+                    URN_author, versioned_entities, previous_commit_id);
+            if( ! successful_fetch ) {
+                // it means that for one entity there is already a lastCID > txID
+                // we have to abort here the insertion
+                return 2;
+            }
+
+            // now update the properties into the recent versions fetched
+            for( Iterator<Node[]> it=li.iterator(); it.hasNext(); ) {
+                Node[] current = it.next();
+                String prop = current[1].toN3();
+                String value_old = current[2].toN3();
+                Node value_new = current[3];
+
+                List<Node[]> entity_version = versioned_entities.get("<"+current[0].toString()+"-VER>");
+                for( Iterator<Node[]> it_version=entity_version.iterator(); it_version.hasNext(); ) {
+                    Node[] ver_ent = it_version.next();
+                    String ver_prop = ver_ent[1].toN3();
+                    String ver_value = ver_ent[2].toN3();
+                    // check if this is the triple to be replaces
+                    if( prop.equals(ver_prop) && value_old.equals(ver_value) )
+                        ver_ent[2] = value_new;
+                }
+            }
+
+            //SPO
+            // insert 's-VER' and 's-URN' new versions
+            Mutator<String> m = HFactory.createMutator(getExistingKeyspace(keyspace), _ss);
+            for( Iterator<String> it=versioned_entities.keySet().iterator(); it.hasNext(); ) {
+                String row_entity_key = it.next();
+                // there is a list of properties to be added to the new version of this entity
+                List<Node[]> entity_old_version = versioned_entities.get(row_entity_key);
+                String old_version_num = previous_commit_id.get(row_entity_key);
+
+                for(Iterator it_old_v=entity_old_version.iterator(); it_old_v.hasNext(); ) {
+                    Node[] nx = (Node[]) it_old_v.next();
+                    // reorder for the key
+                    Node[] reordered = Util.reorder(nx, _maps.get(cf));
+                    String rowKey = new Resource(reordered[0].toString()).toN3();
+                    if( !reordered[0].toString().contains("-VER") )
+                        rowKey = new Resource(reordered[0].toString() + "-VER").toN3();
+
+                    /* this is the approach without using Snowflake
+                    int next_ver = old_version_num+1;*/
+                    String next_ver;
+                    // if txID is different than null, it means this is called in a transactional context
+                    if( txID != null )
+                        next_ver = txID;
+                    else
+                        next_ver = String.valueOf(Integer.valueOf(old_version_num)+1);
+
+                    // VER, URN
+                    Composite colKey = new Composite();
+                    colKey.addComponent(next_ver, StringSerializer.get());
+                    colKey.addComponent(URN_author, StringSerializer.get());
+                    String colKey_s = Nodes.toN3(new Node[] { reordered[1], reordered[2] });
+                    colKey.addComponent(colKey_s, StringSerializer.get());
+                    HColumn<Composite, String> hColumnObj_itemID = HFactory.createColumn(colKey, "",
+                            new CompositeSerializer(),
+                            StringSerializer.get());
+                    m.addInsertion(rowKey, cf, hColumnObj_itemID);
+
+                    // URN, VER
+                    rowKey = new Resource(reordered[0].toString() + "-URN").toN3();
+                    colKey = new Composite();
+                    colKey.addComponent(URN_author, StringSerializer.get());
+                    colKey.addComponent(String.valueOf(next_ver), StringSerializer.get());
+                    colKey_s = Nodes.toN3(new Node[] { reordered[1], reordered[2] });
+                    colKey.addComponent(colKey_s, StringSerializer.get());
+
+                    hColumnObj_itemID =HFactory.createColumn(colKey, "",
+                            new CompositeSerializer(),
+                            StringSerializer.get());
+                    m.addInsertion(rowKey, cf, hColumnObj_itemID);
+                }
+                m.execute();
+            }
+            // now try to write all CID,prevCID; if check my writes is enabled, it can abort in case
+            //there are conflicts
+            return commitOrAbort(keyspace, txID, URN_author, versioned_entities, previous_commit_id);
 	}
 
         @Override
@@ -651,13 +767,14 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
          *  3. ID:URN:*
          *  4. URN:ID:*
          */
+        @Override
 	public Iterator<Node[]> queryVersioning(Node[] query, int limit, String keyspace, 
                 int situation, String ID, String URN) throws StoreException {
 		Iterator<Node[]> it = super.query(query, limit, keyspace);
 		if (it != null) {
 			return it;
 		}
-		String columnFamily = selectColumnFamilyVersioning(query);
+		String columnFamily = CF_S_PO;
 		int[] map = _maps.get(columnFamily);
 		Node[] q = Util.reorder(query, map);
 //		_log.info("query: " + Nodes.toN3(query) + " idx: " + columnFamily + " reordered: " + Nodes.toN3(q));
@@ -666,75 +783,33 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 			throw new UnsupportedOperationException("triple patterns must have at least one constant");
 		}
 		else {
-                        //NOTE: we assume that we do not query by (?p?) or (?po) for the versioned entities
-                        //cause: problem with creating the proper column family using COMPOSITE ... 
-			if (columnFamily.equals(CF_PO_S)) {
-                                /*if (isVariable(q[1])) {
-					// we use a secondary index for P only when no other constant is given
-					IndexedSlicesQuery<byte[],String,String> isq = HFactory.createIndexedSlicesQuery(getExistingKeyspace(keyspace), _bs, _ss, _ss)
-						.setColumnFamily(columnFamily)
-						.addEqualsExpression("!p", q[0].toN3())
-						.setReturnKeysOnly();
-					
-					it = new HashIndexedSlicesQueryIterator(isq, map, limit, columnFamily, getExistingKeyspace(keyspace));
-				}
-				else {
-					// here we always have a PO lookup, POS (=SPO) is handled by OSP or SPO
-					// we retrieve all columns from a single row
-					// in POS the keys are hashes, we retrieve P and O from columns !p and !o
-					
-					ByteBuffer key = createKey(new Node[] { q[0], q[1] });
+                       
+                    // SPO cf has one node as key and two nodes as colname
+                    Node[] nxKey = getQueryKeyBySituation(q[0], situation);
+                    String key_ID = nxKey[0].toN3();
+                    int colNameTupleLength = 2;
+                    // check ID and get the latest if neccessary
+                    if( ID != null && ID.contains("last") && URN != null )
+                        /*ID = String.valueOf(lastVersioningNumber(keyspace,q[0].toString()
+                                , URN));*/
+                        ID = lastCommitTxID(keyspace, q[0].toString());
 
-					SliceQuery<byte[],String,String> sq = HFactory.createSliceQuery(getExistingKeyspace(keyspace), _bs, _ss, _ss)
-						.setColumnFamily(columnFamily)
-						.setKey(key.array())
-						.setRange("!o", "!p", false, 2);
-					QueryResult<ColumnSlice<String,String>> res = sq.execute();
-					
-					if (res.get().getColumns().size() == 0)
-						return new ArrayList<Node[]>().iterator();
-					
-					Node[] nxKey = new Node[2];
-					try {
-						nxKey[0] = NxParser.parseNode(res.get().getColumnByName("!p").getValue());
-						nxKey[1] = NxParser.parseNode(res.get().getColumnByName("!o").getValue());
-					}
-					catch (ParseException e) {
-						e.printStackTrace();
-					}
+                      /* TM: query composite */
+                    SliceQuery<String, Composite, String> query_comp = HFactory.createSliceQuery(getExistingKeyspace(keyspace),
+                             StringSerializer.get(), CompositeSerializer.get(), StringSerializer.get());
+                    Composite columnStart = getCompositeStart(ID, URN, situation, q);
+                    Composite columnEnd = getCompositeEnd(ID, URN, situation, q);
+                    query_comp.setColumnFamily(columnFamily).setKey(key_ID);
 
-					it = new ColumnSliceIterator<byte[]>(sq, nxKey, "<", "", map, limit, 1);
-				}
-			*/
-			}
-			else {
-				// SPO cf has one node as key and two nodes as colname
-				Node[] nxKey = getQueryKeyBySituation(q[0], situation);
-                                String key_ID = nxKey[0].toN3();
-				int colNameTupleLength = 2;
-                                // check ID and get the latest if neccessary
-                                if( ID != null && ID.contains("last") && URN != null )
-                                    ID = String.valueOf(lastVersioningNumber(keyspace,q[0].toString()
-                                            , URN));
+        /*_log.info("QUERY COMPOSITE ...on CF " + columnFamily + "..... on key  " + key_ID);
+        _log.info("QUERY COMPOSITE " + Nodes.toN3(q) + "--" + Nodes.toN3(new Node[] {q[1], q[2]})) ;
+        _log.info("QUERY COMPOSITE situation: " + situation );*/
 
-                                  /* TM: query composite */
-                                SliceQuery<String, Composite, String> query_comp = HFactory.createSliceQuery(getExistingKeyspace(keyspace),
-                                         StringSerializer.get(), CompositeSerializer.get(), StringSerializer.get());
-                                Composite columnStart = getCompositeStart(ID, URN, situation, q);
-                                Composite columnEnd = getCompositeEnd(ID, URN, situation, q);
-                                query_comp.setColumnFamily(columnFamily).setKey(key_ID);
-
-                    /*_log.info("QUERY COMPOSITE ...on CF " + columnFamily + "..... on key  " + key_ID);
-                    _log.info("QUERY COMPOSITE " + Nodes.toN3(q) + "--" + Nodes.toN3(new Node[] {q[1], q[2]})) ;
-                    _log.info("QUERY COMPOSITE situation: " + situation );*/
-
-                                // use the extended map
-                                map = _maps_ext.get(columnFamily);
-                                it = new ColumnSliceIteratorComposite<String>(query_comp, nxKey,
-                                        columnStart, columnEnd, map, limit, colNameTupleLength, query);
+                    // use the extended map
+                    map = _maps_ext.get(columnFamily);
+                    it = new ColumnSliceIteratorComposite<String>(query_comp, nxKey,
+                            columnStart, columnEnd, map, limit, colNameTupleLength, query);
                         }
-			
-		}
 		return it;
 	}
 
@@ -1035,5 +1110,41 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
 			total_rows += queryEntireKeyspace(keyspace, out, limit);
 		}
 		return total_rows;
+	}
+
+
+        public List<String> queryAllRowKeys(String keyspace, int limit) {
+		int row_count = ( limit > 100) ? 100 : limit;
+                List<String> results = new ArrayList<String>();
+
+		String decoded_keyspace = this.decodeKeyspace(keyspace);
+		// String(row), String(column_name), String(column_value)
+		Keyspace k = getExistingKeyspace(keyspace);
+        	RangeSlicesQuery<String, String, String> rangeSlicesQuery = HFactory
+	            .createRangeSlicesQuery(k, StringSerializer.get(), StringSerializer.get(), StringSerializer.get())
+        	    .setColumnFamily("SPO")
+		    .setRange(null, null, false, Integer.MAX_VALUE)
+	            .setRowCount((row_count==1)?2:row_count);		//do this trick because if row_count=1 and only one "null" record, then stucks in a loop
+         	String last_key = null;
+
+	        while (true) {
+        	    rangeSlicesQuery.setKeys(last_key, null);
+                    QueryResult<OrderedRows<String, String, String>> result = rangeSlicesQuery.execute();
+                    OrderedRows<String, String, String> rows = result.get();
+                    Iterator<Row<String, String, String>> rowsIterator = rows.iterator();
+
+                    // we'll skip this first one, since it is the same as the last one from previous time we executed
+                    if (last_key != null && rowsIterator != null)
+                            rowsIterator.next();
+
+                    while (rowsIterator.hasNext()) {
+                            Row<String, String, String> row = rowsIterator.next();
+                            last_key = row.getKey();
+                            results.add(row.getKey());
+                    }
+                    if (rows.getCount() < row_count)
+                        break;
+        	}
+		return results;
 	}
 }

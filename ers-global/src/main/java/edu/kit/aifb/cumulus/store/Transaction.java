@@ -1,6 +1,5 @@
 package edu.kit.aifb.cumulus.store;
 
-import edu.kit.aifb.cumulus.webapp.Listener;
 import java.util.ArrayList;
 import java.util.StringTokenizer;
 import java.util.Iterator;
@@ -9,19 +8,48 @@ import java.util.logging.Logger;
 
 public class Transaction 
 {
+        public enum TX_TYPES { IP, DP, UP, DE, IL, DL, SC, DC};
+
 	private final Logger _log = Logger.getLogger(this.getClass().getName());	
 
 	public String ID; 
+        // IP -insert property, DP - delete pr, UP - update p, DE - delete entity
+        // IL - insert link, DL - delete link, SC - shallow copy, DC - deep copy
+        public TX_TYPES txType;
 	// store all the operations that must be done here 
 	public ArrayList<Operation> ops; 
 	// store all the reverse operations that must be done in case of ROLLBACK
 	private ArrayList<Operation> reverse_ops;
+
+        // used only when MVCC is turned on 
+        private String URN;
 	
 	public Transaction(String ID) { 
 		this.ID = ID;
 		this.ops = new ArrayList<Operation>();
 		this.reverse_ops = new ArrayList<Operation>();
 	}
+
+        public Transaction(String ID, String txType) {
+            this(ID);
+            if( txType.equals("IP") )
+                this.txType = TX_TYPES.IP;
+            if( txType.equals("DP") )
+                this.txType = TX_TYPES.DP;
+            if( txType.equals("UP") )
+                this.txType = TX_TYPES.UP;
+            if( txType.equals("DE") )
+                this.txType = TX_TYPES.DE;
+            if( txType.equals("IL") )
+                this.txType = TX_TYPES.IL;
+            if( txType.equals("DL") )
+                this.txType = TX_TYPES.DL;
+            if( txType.equals("SC") )
+                this.txType = TX_TYPES.SC;
+            if( txType.equals("DC") )
+                this.txType = TX_TYPES.DC;
+
+        }
 
 	public ArrayList<Operation> getOps() { 
 		return this.ops;
@@ -127,6 +155,14 @@ public class Transaction
 	public Operation getReverseOp(int index) { 
 		return this.reverse_ops.get(index);
 	}
+
+        public String getURN() {
+            return this.URN;
+        }
+
+        public void setURN(String URN) {
+            this.URN = URN;
+        }
 
 	public void printTransaction() { 
 		StringBuffer buf = new StringBuffer("Transaction ID: " + this.ID); 
