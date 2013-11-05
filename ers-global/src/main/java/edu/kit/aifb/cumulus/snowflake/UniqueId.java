@@ -60,12 +60,12 @@ public class UniqueId {
       int node_0 = bb.getInt();
       short node_1 = bb.getShort();
       short seq = bb.getShort();
-      //return String.format("%016d-%s%s-%04d", ts, Integer.toHexString(node_0), Integer.toHexString(node_1), seq);
-      String r;
+      return String.format("%016d-%s%s-%04d", ts, Integer.toHexString(node_0), Integer.toHexString(node_1), seq);
+      /*String r;
       synchronized(this) {
           r = ts+"-"+String.valueOf(++seqTEST);
       }
-      return r;
+      return r;*/
     }
 
     public static void main(String[] args) throws IOException {
