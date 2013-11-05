@@ -6,7 +6,7 @@ from os import chdir
 requirements = open('requirements.txt').read().splitlines()
 chdir('ers-local')
 setup(name='ERS',
-      version='0.1',
+      version='0.12',
       description='Entity Registry System',
       url='https://github.com/ers-devs/ers/',
       packages=['ers'],
