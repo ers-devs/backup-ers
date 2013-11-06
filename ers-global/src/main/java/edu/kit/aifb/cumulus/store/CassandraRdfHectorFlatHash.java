@@ -1123,7 +1123,7 @@ _log.info("Delete full row for " + rowKey + " cf= " + cf);
         	RangeSlicesQuery<String, String, String> rangeSlicesQuery = HFactory
 	            .createRangeSlicesQuery(k, StringSerializer.get(), StringSerializer.get(), StringSerializer.get())
         	    .setColumnFamily("SPO")
-		    .setRange(null, null, false, Integer.MAX_VALUE)
+		    .setRange(null, null, false, row_count)
 	            .setRowCount((row_count==1)?2:row_count);		//do this trick because if row_count=1 and only one "null" record, then stucks in a loop
          	String last_key = null;
 
