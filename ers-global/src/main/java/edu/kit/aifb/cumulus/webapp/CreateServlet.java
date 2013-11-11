@@ -102,6 +102,8 @@ public class CreateServlet extends AbstractHttpServlet {
                         sendError(ctx, req, resp, HttpServletResponse.SC_CONFLICT, 
                                 "Graph " + graph + " has versioning enabled. Please " +
                                 "pass URN as parameter.");
+                        _log.info("[dataset] POST Graph " + graph + " has versioning enabled. Please " +
+                                "pass URN as parameter.");
                         return;
                     }
                     ret = crdf.addDataVersioning(e,p,v,Store.encodeKeyspace(a), 
@@ -110,13 +112,16 @@ public class CreateServlet extends AbstractHttpServlet {
                 else
                     ret = crdf.addData(e,p,v,Store.encodeKeyspace(a), 0);
                 
-		if( ret  == -2 )
+		if( ret  == -2 ) {
 			sendError(ctx, req, resp, HttpServletResponse.SC_CONFLICT, "Graph " + graph + " does not exist.");
+                        _log.info("[dataset] POST Graph " + graph + " does not exist.");
+                }
 		else {
 			String msg = "Quad ("+e+","+p+","+v+","+a+") has been added.";
 			if ( formatter.getContentType().equals("text/html") )
 				msg = escapeHtml(msg);
 			sendResponse(ctx, req, resp, HttpServletResponse.SC_CONFLICT, msg);
+                        _log.info("[dataset] POST Graph " + msg);
 		}
 		_log.info("[dataset] POST " + (System.currentTimeMillis() - start) + "ms ");
 	}

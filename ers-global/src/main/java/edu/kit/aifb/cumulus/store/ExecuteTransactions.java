@@ -233,8 +233,6 @@ public class ExecuteTransactions
             return r;
         }
 
-
-
         // USE CAGE (ZOOKEEPER) FOR LOCKING
         public int executeTransaction_Zookeeper(Transaction t, AbstractCassandraRdfHector store) throws Exception
 	{
@@ -577,8 +575,6 @@ public class ExecuteTransactions
                         this.print(locks_hold, t);*/
 		}
 	}
-
-
 
        /**
         * 
