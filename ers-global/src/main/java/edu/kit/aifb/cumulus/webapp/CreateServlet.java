@@ -120,7 +120,7 @@ public class CreateServlet extends AbstractHttpServlet {
 			String msg = "Quad ("+e+","+p+","+v+","+a+") has been added.";
 			if ( formatter.getContentType().equals("text/html") )
 				msg = escapeHtml(msg);
-			sendResponse(ctx, req, resp, HttpServletResponse.SC_CONFLICT, msg);
+			sendResponse(ctx, req, resp, HttpServletResponse.SC_OK, msg);
                         _log.info("[dataset] POST Graph " + msg);
 		}
 		_log.info("[dataset] POST " + (System.currentTimeMillis() - start) + "ms ");
