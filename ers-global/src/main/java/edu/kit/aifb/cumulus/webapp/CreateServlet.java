@@ -121,7 +121,7 @@ public class CreateServlet extends AbstractHttpServlet {
 			if ( formatter.getContentType().equals("text/html") )
 				msg = escapeHtml(msg);
 			sendResponse(ctx, req, resp, HttpServletResponse.SC_OK, msg);
-                        _log.info("[dataset] POST Graph " + msg);
+                        //_log.info("[dataset] POST Graph " + msg);
 		}
 		_log.info("[dataset] POST " + (System.currentTimeMillis() - start) + "ms ");
 	}
