@@ -59,6 +59,7 @@ public class CreateServlet extends AbstractHttpServlet {
 		String v = req.getParameter("v");	//value
 		String a = req.getParameter("g");  	//author = keyspace_name
                 String urn = req.getParameter("urn");   //used in case of versioning
+                String ver = req.getParameter("ver");   //used in case of versioning
 		// some checks
 		if( e == null || p == null || v == null || a == null ) { 
 			sendError(ctx, req, resp, HttpServletResponse.SC_BAD_REQUEST, "Please pass data like 'e=_&p=_&v=_&g=_'");
@@ -93,8 +94,13 @@ public class CreateServlet extends AbstractHttpServlet {
 		resp.setContentType(formatter.getContentType());
 		Store crdf = (Store)ctx.getAttribute(Listener.STORE);
 
+                /* AVOID ASKING EVERY TIME IF THE KEYSPACE IS VERSIONED OR NOT, IT BRINGS OVERHEAD
                 // check if for given graph versioning is enabled or not
-                boolean enabled = crdf.keyspaceEnabledVersioning(a);
+                //boolean enabled = crdf.keyspaceEnabledVersioning(a);
+                */
+                boolean enabled=false;
+                if( ver != null )
+                    enabled = true;
                 int ret = 0;
                 // do the insert here based on versioning flag
                 if( enabled ) {
