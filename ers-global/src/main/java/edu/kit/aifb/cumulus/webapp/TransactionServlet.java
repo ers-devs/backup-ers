@@ -84,7 +84,9 @@ public class TransactionServlet extends AbstractHttpServlet {
 				" (at least BEGIN, COMMIT/ROLLBACK must exist) ");
 			return;
 		}
-			
+
+                _log.info("1 ");
+
 		int r;
 		Integer resp_msg=0; 
 		AbstractCassandraRdfHector crdf = (AbstractCassandraRdfHector)ctx.getAttribute(Listener.STORE);
@@ -109,7 +111,13 @@ public class TransactionServlet extends AbstractHttpServlet {
                                             resp_msg = -1;
                                             break;
                                     }
+
+                                    _log.info("2 - before run ");
+
                                     r = crdf.runTransaction(tr);
+
+                                    _log.info("3 - after run ");
+
                                     if ( r != 0 ) {
                                             _log.info("Error running transaction " + tr.ID + " error: " + r);
                                             //resp_msg.append("\nERROR running transaction " + tr.ID + " error: " + r);
@@ -137,6 +145,7 @@ public class TransactionServlet extends AbstractHttpServlet {
 				}
 			}
 		}
+                _log.info("before end !!!  ");
 		// write 0 if successful, -1 if aborted, otherwise the number of retrials
 		//sendResponse(ctx, req, resp, HttpServletResponse.SC_OK, resp_msg.toString());
 		out_r.println(String.valueOf(resp_msg));
