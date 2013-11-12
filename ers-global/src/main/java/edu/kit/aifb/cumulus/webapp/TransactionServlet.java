@@ -140,6 +140,7 @@ public class TransactionServlet extends AbstractHttpServlet {
 		// write 0 if successful, -1 if aborted, otherwise the number of retrials
 		//sendResponse(ctx, req, resp, HttpServletResponse.SC_OK, resp_msg.toString());
 		out_r.println(String.valueOf(resp_msg));
+                sendError(ctx, req, resp, HttpServletResponse.SC_OK, "ok");
 		return;
 	}
 
