@@ -1,5 +1,5 @@
 .. Entity Registry System documentation master file, created by
-   sphinx-quickstart on Wed Oct 30 15:48:12 2013.
+   sphinx-quickstart on Thu Nov 14 15:24:37 2013.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
@@ -13,7 +13,6 @@ Contents:
 
    installation
    ers
-   
 
 Indices and tables
 ==================

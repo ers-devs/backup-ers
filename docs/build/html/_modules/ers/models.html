@@ -48,22 +48,40 @@
             
   <h1>Source code for ers.models</h1><div class="highlight"><pre>
 <div class="viewcode-block" id="LocalModelBase"><a class="viewcode-back" href="../../ers.html#ers.models.LocalModelBase">[docs]</a><span class="k">class</span> <span class="nc">LocalModelBase</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot; &quot;&quot;&quot;</span>
+    <span class="sd">&quot;&quot;&quot; </span>
+<span class="sd">    Base class for all the serialisations</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">view_name</span> <span class="o">=</span> <span class="s">&#39;_all_docs&#39;</span>
 
 <div class="viewcode-block" id="LocalModelBase.index_doc"><a class="viewcode-back" href="../../ers.html#ers.models.LocalModelBase.index_doc">[docs]</a>    <span class="k">def</span> <span class="nf">index_doc</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Get the default CouchDB index design document.</span>
+<span class="sd">        </span>
+<span class="sd">            :rtype: JSON object</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="p">{</span><span class="s">&quot;_id&quot;</span><span class="p">:</span> <span class="s">&quot;_design/index&quot;</span><span class="p">}</span>
 </div>
 <div class="viewcode-block" id="LocalModelBase.state_doc"><a class="viewcode-back" href="../../ers.html#ers.models.LocalModelBase.state_doc">[docs]</a>    <span class="k">def</span> <span class="nf">state_doc</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Get the default CouchDB state document.</span>
+<span class="sd">        </span>
+<span class="sd">            :rtype: JSON object</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="p">{</span>
             <span class="s">&quot;_id&quot;</span><span class="p">:</span> <span class="s">&quot;_local/state&quot;</span><span class="p">,</span>
             <span class="s">&quot;peers&quot;</span><span class="p">:</span> <span class="p">{}</span>
         <span class="p">}</span>
 </div>
 <div class="viewcode-block" id="LocalModelBase.cache_key"><a class="viewcode-back" href="../../ers.html#ers.models.LocalModelBase.cache_key">[docs]</a>    <span class="k">def</span> <span class="nf">cache_key</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">couch_key</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Get the default CouchDB cache key.</span>
+<span class="sd">        </span>
+<span class="sd">            :rtype: str.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="n">couch_key</span>
 </div>
 <div class="viewcode-block" id="LocalModelBase.couch_key"><a class="viewcode-back" href="../../ers.html#ers.models.LocalModelBase.couch_key">[docs]</a>    <span class="k">def</span> <span class="nf">couch_key</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cache_key</span><span class="p">,</span> <span class="n">graph</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Get the default CouchDB key.</span>
+<span class="sd">        </span>
+<span class="sd">            :rtype: str.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="n">cache_key</span>
 </div>
 <div class="viewcode-block" id="LocalModelBase.get_data"><a class="viewcode-back" href="../../ers.html#ers.models.LocalModelBase.get_data">[docs]</a>    <span class="k">def</span> <span class="nf">get_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">graph</span><span class="p">):</span>
@@ -72,15 +90,32 @@
 <div class="viewcode-block" id="LocalModelBase.add_data"><a class="viewcode-back" href="../../ers.html#ers.models.LocalModelBase.add_data">[docs]</a>    <span class="k">def</span> <span class="nf">add_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">couch_doc</span><span class="p">,</span> <span class="n">cache</span><span class="p">):</span>
         <span class="k">pass</span>
 </div>
-<div class="viewcode-block" id="LocalModelBase.delete_property"><a class="viewcode-back" href="../../ers.html#ers.models.LocalModelBase.delete_property">[docs]</a>    <span class="k">def</span> <span class="nf">delete_property</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">couch_doc</span><span class="p">,</span> <span class="n">prop</span><span class="p">):</span>
+<div class="viewcode-block" id="LocalModelBase.delete_property"><a class="viewcode-back" href="../../ers.html#ers.models.LocalModelBase.delete_property">[docs]</a>    <span class="k">def</span> <span class="nf">delete_property</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">couch_doc</span><span class="p">,</span> <span class="n">prop</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
         <span class="k">pass</span>
 </div>
 <div class="viewcode-block" id="LocalModelBase.initial_docs"><a class="viewcode-back" href="../../ers.html#ers.models.LocalModelBase.initial_docs">[docs]</a>    <span class="k">def</span> <span class="nf">initial_docs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Get the default initial CouchDB documents (index design document and state document).</span>
+<span class="sd">        </span>
+<span class="sd">            :rtype: array</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="p">[</span> <span class="bp">self</span><span class="o">.</span><span class="n">index_doc</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">state_doc</span><span class="p">()</span> <span class="p">]</span>
+</div>
+<div class="viewcode-block" id="LocalModelBase.content_doc"><a class="viewcode-back" href="../../ers.html#ers.models.LocalModelBase.content_doc">[docs]</a>    <span class="k">def</span> <span class="nf">content_doc</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c"># TODO: check if the method is used</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s">&quot;_id&quot;</span><span class="p">:</span> <span class="s">&quot;_local/content&quot;</span><span class="p">,</span> <span class="s">&#39;entity_name&#39;</span><span class="p">:</span> <span class="p">[]}</span>
+    </div>
+<div class="viewcode-block" id="LocalModelBase.initial_docs_public"><a class="viewcode-back" href="../../ers.html#ers.models.LocalModelBase.initial_docs_public">[docs]</a>    <span class="k">def</span> <span class="nf">initial_docs_public</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span> <span class="bp">self</span><span class="o">.</span><span class="n">index_doc</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">state_doc</span><span class="p">()</span> <span class="p">]</span>
+    </div>
+<div class="viewcode-block" id="LocalModelBase.initial_docs_private"><a class="viewcode-back" href="../../ers.html#ers.models.LocalModelBase.initial_docs_private">[docs]</a>    <span class="k">def</span> <span class="nf">initial_docs_private</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span> <span class="bp">self</span><span class="o">.</span><span class="n">index_doc</span><span class="p">()</span> <span class="p">]</span>
+    </div>
+<div class="viewcode-block" id="LocalModelBase.initial_docs_cache"><a class="viewcode-back" href="../../ers.html#ers.models.LocalModelBase.initial_docs_cache">[docs]</a>    <span class="k">def</span> <span class="nf">initial_docs_cache</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span> <span class="bp">self</span><span class="o">.</span><span class="n">index_doc</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">content_doc</span><span class="p">()</span> <span class="p">]</span>
 
 </div></div>
 <div class="viewcode-block" id="ModelS"><a class="viewcode-back" href="../../ers.html#ers.models.ModelS">[docs]</a><span class="k">class</span> <span class="nc">ModelS</span><span class="p">(</span><span class="n">LocalModelBase</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
+    <span class="sd">&quot;&quot;&quot; The model class for document model type S.</span>
 
 <span class="sd">    Example document:</span>
 
@@ -100,40 +135,90 @@
 
     <span class="nd">@classmethod</span>
 <div class="viewcode-block" id="ModelS.index_doc"><a class="viewcode-back" href="../../ers.html#ers.models.ModelS.index_doc">[docs]</a>    <span class="k">def</span> <span class="nf">index_doc</span><span class="p">(</span><span class="n">cls</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Get the CouchDB index design document (containing two views).</span>
+<span class="sd">        </span>
+<span class="sd">            :rtype: JSON object </span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span>  <span class="p">{</span>
-                    <span class="s">&quot;_id&quot;</span><span class="p">:</span> <span class="s">&quot;_design/index&quot;</span><span class="p">,</span>
-                    <span class="s">&quot;views&quot;</span><span class="p">:</span> <span class="p">{</span>
-                        <span class="s">&quot;by_entity&quot;</span><span class="p">:</span> <span class="p">{</span>
-                            <span class="s">&quot;map&quot;</span><span class="p">:</span> <span class="s">&quot;function(doc) {var a = doc._id.split(&#39; &#39;); if (a.length == 2 &amp;&amp; a[1].length &gt; 0) {emit(a[1], {&#39;rev&#39;: doc._rev, &#39;g&#39;: a[0]})}}&quot;</span>
-                        <span class="p">},</span>
-                        <span class="s">&quot;by_property_value&quot;</span><span class="p">:</span> <span class="p">{</span>
-                            <span class="s">&quot;map&quot;</span><span class="p">:</span> <span class="s">&quot;&quot;&quot;function(doc) {</span>
-<span class="s">                                        var a = doc._id.split(&#39; &#39;); </span>
-<span class="s">                                        if (a.length == 2 &amp;&amp; a[1].length &gt; 0) {</span>
-<span class="s">                                          for (property in doc) {</span>
-<span class="s">                                            if (property[0] != &#39;_&#39;) {</span>
-<span class="s">                                              doc[property].forEach(function(value) {emit([property, value], [a[1], a[0]])});</span>
-<span class="s">                                            }</span>
-<span class="s">                                          }</span>
-<span class="s">                                        }</span>
-<span class="s">                                      }</span>
-<span class="s">                                    &quot;&quot;&quot;</span>
-                        <span class="p">}</span>
-                    <span class="p">}</span>
+            <span class="s">&quot;_id&quot;</span><span class="p">:</span> <span class="s">&quot;_design/index&quot;</span><span class="p">,</span>
+            <span class="s">&quot;views&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s">&quot;by_entity&quot;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s">&quot;map&quot;</span><span class="p">:</span> <span class="s">&quot;function(doc) {if (&#39;@id&#39; in doc) {emit(doc[&#39;@id&#39;], {&#39;rev&#39;: doc._rev, &#39;g&#39;: doc._id})}}&quot;</span>
+                <span class="p">},</span>
+                <span class="s">&quot;by_property_value&quot;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s">&quot;map&quot;</span><span class="p">:</span> <span class="s">&quot;&quot;&quot;</span>
+<span class="s">                        function(doc) {</span>
+<span class="s">                            if (&#39;@id&#39; in doc) {</span>
+<span class="s">                                var entity = doc[&#39;@id&#39;];</span>
+<span class="s">                                for (property in doc) {</span>
+<span class="s">                                    if (property[0] != &#39;_&#39; &amp;&amp; property[0] != &#39;@&#39;) {</span>
+<span class="s">                                        doc[property].forEach(</span>
+<span class="s">                                          function(value) {emit([property, value], entity)}</span>
+<span class="s">                                        );</span>
+<span class="s">                                    }</span>
+<span class="s">                                }</span>
+<span class="s">                            }</span>
+<span class="s">                        }  &quot;&quot;&quot;</span>
                 <span class="p">}</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
 </div>
 <div class="viewcode-block" id="ModelS.cache_key"><a class="viewcode-back" href="../../ers.html#ers.models.ModelS.cache_key">[docs]</a>    <span class="k">def</span> <span class="nf">cache_key</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">couch_key</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Get the CouchDB cache key.</span>
+<span class="sd">        </span>
+<span class="sd">            :param couch_key: the CouchDB key</span>
+<span class="sd">            :type couch_key: str.</span>
+<span class="sd">            :rtype: str.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="n">couch_key</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39; &#39;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
 </div>
 <div class="viewcode-block" id="ModelS.couch_key"><a class="viewcode-back" href="../../ers.html#ers.models.ModelS.couch_key">[docs]</a>    <span class="k">def</span> <span class="nf">couch_key</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cache_key</span><span class="p">,</span> <span class="n">graph</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Get the CouchDB key.</span>
+<span class="sd">        </span>
+<span class="sd">            :param cache_key: the CouchDB cache key</span>
+<span class="sd">            :type cache_key: str.</span>
+<span class="sd">            :param graph: the RDF graph</span>
+<span class="sd">            :type graph: str.</span>
+<span class="sd">            :rtype: str.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="s">&quot;{0} {1}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">cache_key</span><span class="p">)</span>
 </div>
-<div class="viewcode-block" id="ModelS.delete_property"><a class="viewcode-back" href="../../ers.html#ers.models.ModelS.delete_property">[docs]</a>    <span class="k">def</span> <span class="nf">delete_property</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">couch_doc</span><span class="p">,</span> <span class="n">prop</span><span class="p">):</span>
-        <span class="n">couch_doc</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">prop</span><span class="p">,</span> <span class="p">[])</span>
+<div class="viewcode-block" id="ModelS.delete_property"><a class="viewcode-back" href="../../ers.html#ers.models.ModelS.delete_property">[docs]</a>    <span class="k">def</span> <span class="nf">delete_property</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">couch_doc</span><span class="p">,</span> <span class="n">prop</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Deletes a property from the given CouchDB document.</span>
+<span class="sd">            </span>
+<span class="sd">            :param couch_doc: the CouchDB document</span>
+<span class="sd">            :type couch_doc: CouchDB document object</span>
+<span class="sd">            :param prop: the property to delete</span>
+<span class="sd">            :type prop: str.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">prop</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">couch_doc</span><span class="p">:</span>
+            <span class="k">return</span>
+        
+        <span class="n">couch_doc</span><span class="p">[</span><span class="n">prop</span><span class="p">]</span> <span class="o">=</span> <span class="nb">filter</span><span class="p">(</span><span class="k">lambda</span> <span class="n">a</span><span class="p">:</span> <span class="n">a</span> <span class="o">!=</span> <span class="n">value</span><span class="p">,</span> <span class="n">couch_doc</span><span class="p">[</span><span class="n">prop</span><span class="p">])</span>
+</div>
+<div class="viewcode-block" id="ModelS.add_property"><a class="viewcode-back" href="../../ers.html#ers.models.ModelS.add_property">[docs]</a>    <span class="k">def</span> <span class="nf">add_property</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">couch_doc</span><span class="p">,</span> <span class="n">prop</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">prop</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">couch_doc</span><span class="p">:</span>
+            <span class="n">couch_doc</span><span class="p">[</span><span class="n">prop</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">couch_doc</span><span class="p">[</span><span class="n">prop</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+    
+    <span class="c">#      </span>
+    <span class="c"># def delete_property(self, couch_doc, prop):</span>
+    <span class="c">#     &quot;&quot;&quot;&quot;</span>
+    <span class="c">#      Deletes all values while the new function </span>
+    <span class="c">#      deletes only the given prop value pair</span>
+    <span class="c">#     &quot;&quot;&quot;</span>
+    <span class="c">#     couch_doc.pop(prop, [])</span>
 </div>
 <div class="viewcode-block" id="ModelS.get_data"><a class="viewcode-back" href="../../ers.html#ers.models.ModelS.get_data">[docs]</a>    <span class="k">def</span> <span class="nf">get_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">graph</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Return property-value dictionary. Call with subject=None, graph=None to get data from a doc without an _id.</span>
+        <span class="sd">&quot;&quot;&quot; Get data from a CouchDB document given a subject and graph (call with subject=None and graph=None to get data from a document without an _id).</span>
+<span class="sd">        </span>
+<span class="sd">            :param doc: the CouchDB document from which to get data</span>
+<span class="sd">            :type doc: CouchDB document object</span>
+<span class="sd">            :param subject: the subject to get data for</span>
+<span class="sd">            :type subject: str.</span>
+<span class="sd">            :param graph: the graph to get data for</span>
+<span class="sd">            :type graph: str.</span>
+<span class="sd">            :rtype: property-value dictionary</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">data_dict</span> <span class="o">=</span> <span class="n">doc</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
         <span class="n">data_dict</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s">&#39;_rev&#39;</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
@@ -147,81 +232,16 @@
         <span class="k">return</span> <span class="p">{}</span>
 </div>
 <div class="viewcode-block" id="ModelS.add_data"><a class="viewcode-back" href="../../ers.html#ers.models.ModelS.add_data">[docs]</a>    <span class="k">def</span> <span class="nf">add_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">couch_doc</span><span class="p">,</span> <span class="n">cache</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Add cache data to a CouchDB document.</span>
+<span class="sd">            </span>
+<span class="sd">            :param couch_doc: the CouchDB document to add data to</span>
+<span class="sd">            :type couch_doc: CouchDB document object</span>
+<span class="sd">            :param cache: the cache data to add</span>
+<span class="sd">            :type cache: dict.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">cache_data</span> <span class="o">=</span> <span class="n">cache</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">cache_key</span><span class="p">(</span><span class="n">couch_doc</span><span class="p">[</span><span class="s">&#39;_id&#39;</span><span class="p">])]</span>
         <span class="k">for</span> <span class="n">p</span><span class="p">,</span> <span class="n">oo</span> <span class="ow">in</span> <span class="n">cache_data</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
-            <span class="n">couch_doc</span><span class="p">[</span><span class="n">p</span><span class="p">]</span> <span class="o">=</span> <span class="n">couch_doc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="p">[])</span> <span class="o">+</span> <span class="nb">list</span><span class="p">(</span><span class="n">oo</span><span class="p">)</span>
-</div></div>
-<div class="viewcode-block" id="ModelT"><a class="viewcode-back" href="../../ers.html#ers.models.ModelT">[docs]</a><span class="k">class</span> <span class="nc">ModelT</span><span class="p">(</span><span class="n">LocalModelBase</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-
-<span class="sd">    Example document:</span>
-
-<span class="sd">    {</span>
-<span class="sd">        &quot;_id&quot;: &quot;http://www.w3.org/People/Berners-Lee/card#i#http://graph.name&quot;,</span>
-<span class="sd">        &quot;_rev&quot;: &quot;1-d7841397d995f90480553919cff49bd8&quot;,</span>
-<span class="sd">        &quot;p&quot;: [</span>
-<span class="sd">           &quot;http://xmlns.com/foaf/0.1/nick&quot;,</span>
-<span class="sd">           &quot;http://xmlns.com/foaf/0.1/nick&quot;,</span>
-<span class="sd">           &quot;http://www.w3.org/2000/01/rdf-schema#label&quot;,</span>
-<span class="sd">        ],</span>
-<span class="sd">        &quot;s&quot;: &quot;http://www.w3.org/People/Berners-Lee/card#i&quot;,</span>
-<span class="sd">        &quot;g&quot;: &quot;http://graph.name&quot;,</span>
-<span class="sd">        &quot;o&quot;: [</span>
-<span class="sd">           &quot;TimBL&quot;,</span>
-<span class="sd">           &quot;timbl&quot;,</span>
-<span class="sd">           &quot;Tim Berners-Lee&quot;,</span>
-<span class="sd">        ]</span>
-<span class="sd">    }</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="nd">@classmethod</span>
-<div class="viewcode-block" id="ModelT.index_doc"><a class="viewcode-back" href="../../ers.html#ers.models.ModelT.index_doc">[docs]</a>    <span class="k">def</span> <span class="nf">index_doc</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span>  <span class="p">{</span>
-                    <span class="s">&quot;_id&quot;</span><span class="p">:</span> <span class="s">&quot;_design/index&quot;</span><span class="p">,</span>
-                    <span class="s">&quot;views&quot;</span><span class="p">:</span> <span class="p">{</span>
-                        <span class="s">&quot;by_entity&quot;</span><span class="p">:</span> <span class="p">{</span>
-                            <span class="s">&quot;map&quot;</span><span class="p">:</span> <span class="s">&quot;function(doc) {var separatorPosition = doc._id.lastIndexOf(&#39;#&#39;); if (separatorPosition &gt; 0 &amp;&amp; separatorPosition &lt; doc._id.length - 1) {emit(doc._id.slice(0, separatorPosition), {&#39;rev&#39;: doc._rev, &#39;g&#39;: doc._id.slice(separatorPosition+1)})}}&quot;</span>
-                        <span class="p">}</span>
-                    <span class="p">}</span>
-                <span class="p">}</span>
-</div>
-<div class="viewcode-block" id="ModelT.cache_key"><a class="viewcode-back" href="../../ers.html#ers.models.ModelT.cache_key">[docs]</a>    <span class="k">def</span> <span class="nf">cache_key</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">couch_key</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">couch_key</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="s">&#39;#&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
-</div>
-<div class="viewcode-block" id="ModelT.couch_key"><a class="viewcode-back" href="../../ers.html#ers.models.ModelT.couch_key">[docs]</a>    <span class="k">def</span> <span class="nf">couch_key</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cache_key</span><span class="p">,</span> <span class="n">graph</span><span class="p">):</span>
-        <span class="k">return</span> <span class="s">&quot;{0}#{1}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">cache_key</span><span class="p">,</span> <span class="n">graph</span><span class="p">)</span>
-</div>
-<div class="viewcode-block" id="ModelT.delete_property"><a class="viewcode-back" href="../../ers.html#ers.models.ModelT.delete_property">[docs]</a>    <span class="k">def</span> <span class="nf">delete_property</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">couch_doc</span><span class="p">,</span> <span class="n">prop</span><span class="p">):</span>
-        <span class="n">couch_doc</span><span class="p">[</span><span class="s">&#39;p&#39;</span><span class="p">],</span> <span class="n">couch_doc</span><span class="p">[</span><span class="s">&#39;o&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="p">[(</span><span class="n">p</span><span class="p">,</span> <span class="n">o</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span><span class="p">,</span> <span class="n">o</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">couch_doc</span><span class="p">[</span><span class="s">&#39;p&#39;</span><span class="p">],</span> <span class="n">couch_doc</span><span class="p">[</span><span class="s">&#39;o&#39;</span><span class="p">])</span> <span class="k">if</span> <span class="n">p</span> <span class="o">!=</span> <span class="n">prop</span><span class="p">])</span>
-</div>
-<div class="viewcode-block" id="ModelT.get_data"><a class="viewcode-back" href="../../ers.html#ers.models.ModelT.get_data">[docs]</a>    <span class="k">def</span> <span class="nf">get_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">graph</span><span class="p">):</span>
-        <span class="n">data_dict</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="k">if</span> <span class="p">(</span><span class="n">subject</span> <span class="o">!=</span> <span class="bp">None</span><span class="p">)</span> <span class="ow">and</span> <span class="p">((</span><span class="n">doc</span><span class="p">[</span><span class="s">&#39;s&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="n">subject</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">graph</span> <span class="o">!=</span> <span class="bp">None</span> <span class="ow">and</span> <span class="p">(</span><span class="n">doc</span><span class="p">[</span><span class="s">&#39;g&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="n">graph</span><span class="p">))):</span>
-            <span class="k">return</span> <span class="p">{}</span>
-        <span class="k">for</span> <span class="n">p</span><span class="p">,</span> <span class="n">o</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">doc</span><span class="p">[</span><span class="s">&#39;p&#39;</span><span class="p">],</span> <span class="n">doc</span><span class="p">[</span><span class="s">&#39;o&#39;</span><span class="p">]):</span>
-            <span class="n">data_dict</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">o</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">data_dict</span>
-</div>
-<div class="viewcode-block" id="ModelT.add_data"><a class="viewcode-back" href="../../ers.html#ers.models.ModelT.add_data">[docs]</a>    <span class="k">def</span> <span class="nf">add_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">couch_doc</span><span class="p">,</span> <span class="n">cache</span><span class="p">):</span>
-        <span class="n">s</span><span class="p">,</span> <span class="n">g</span> <span class="o">=</span> <span class="n">couch_doc</span><span class="p">[</span><span class="s">&#39;_id&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="s">&#39;#&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-        <span class="n">couch_doc</span><span class="p">[</span><span class="s">&#39;g&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">g</span>
-        <span class="n">couch_doc</span><span class="p">[</span><span class="s">&#39;s&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">s</span>
-        <span class="n">pp</span><span class="p">,</span> <span class="n">oo</span> <span class="o">=</span> <span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="p">[(</span><span class="n">p</span><span class="p">,</span> <span class="n">o</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span><span class="p">,</span> <span class="n">oo</span> <span class="ow">in</span> <span class="n">cache</span><span class="p">[</span><span class="n">s</span><span class="p">]</span><span class="o">.</span><span class="n">iteritems</span><span class="p">()</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">oo</span><span class="p">])</span>
-        <span class="n">couch_doc</span><span class="p">[</span><span class="s">&#39;p&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">couch_doc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;p&#39;</span><span class="p">,</span> <span class="p">()))</span> <span class="o">+</span> <span class="n">pp</span>
-        <span class="n">couch_doc</span><span class="p">[</span><span class="s">&#39;o&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">couch_doc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">&#39;o&#39;</span><span class="p">,</span> <span class="p">()))</span> <span class="o">+</span> <span class="n">oo</span>
-
-</div></div>
-<div class="viewcode-block" id="ModelH"><a class="viewcode-back" href="../../ers.html#ers.models.ModelH">[docs]</a><span class="k">class</span> <span class="nc">ModelH</span><span class="p">(</span><span class="n">ModelT</span><span class="p">):</span>
-    <span class="n">view_name</span> <span class="o">=</span> <span class="s">&#39;by_graph_subject&#39;</span>
-
-<div class="viewcode-block" id="ModelH.cache_key"><a class="viewcode-back" href="../../ers.html#ers.models.ModelH.cache_key">[docs]</a>    <span class="k">def</span> <span class="nf">cache_key</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">couch_key</span><span class="p">):</span>
-        <span class="k">pass</span>
-</div>
-<div class="viewcode-block" id="ModelH.couch_key"><a class="viewcode-back" href="../../ers.html#ers.models.ModelH.couch_key">[docs]</a>    <span class="k">def</span> <span class="nf">couch_key</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cache_key</span><span class="p">,</span> <span class="n">graph</span><span class="p">):</span>
-        <span class="k">pass</span>
-</div>
-<div class="viewcode-block" id="ModelH.add_data"><a class="viewcode-back" href="../../ers.html#ers.models.ModelH.add_data">[docs]</a>    <span class="k">def</span> <span class="nf">add_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">couch_doc</span><span class="p">,</span> <span class="n">cache</span><span class="p">):</span>
-        <span class="k">pass</span></div></div>
+            <span class="n">couch_doc</span><span class="p">[</span><span class="n">p</span><span class="p">]</span> <span class="o">=</span> <span class="n">couch_doc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="p">[])</span> <span class="o">+</span> <span class="nb">list</span><span class="p">(</span><span class="n">oo</span><span class="p">)</span></div></div>
 </pre></div>
 
           </div>

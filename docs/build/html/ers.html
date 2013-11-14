@@ -60,169 +60,392 @@
 <span id="ers-module"></span><h2><tt class="xref py py-mod docutils literal"><span class="pre">ers</span></tt> Module<a class="headerlink" href="#module-ers.ers" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="ers.ers.ERSLocal">
-<em class="property">class </em><tt class="descclassname">ers.ers.</tt><tt class="descname">ERSLocal</tt><big>(</big><em>server_url='http://admin:admin&#64;127.0.0.1:5984/'</em>, <em>dbname='ers'</em>, <em>model=&lt;ers.models.ModelS object at 0x1048e17d0&gt;</em>, <em>fixed_peers=()</em>, <em>reset_database=False</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSLocal"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSLocal" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#ers.ers.ERSReadWrite" title="ers.ers.ERSReadWrite"><tt class="xref py py-class docutils literal"><span class="pre">ers.ers.ERSReadWrite</span></tt></a></p>
+<em class="property">class </em><tt class="descclassname">ers.ers.</tt><tt class="descname">ERSLocal</tt><big>(</big><em>server_url='http://admin:admin&#64;127.0.0.1:5984/'</em>, <em>dbname='ers'</em>, <em>model=&lt;ers.models.ModelS object at 0x10e793f50&gt;</em>, <em>fixed_peers=()</em>, <em>local_only=False</em>, <em>reset_database=False</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSLocal"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSLocal" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#ers.ers.ERSReadOnly" title="ers.ers.ERSReadOnly"><tt class="xref py py-class docutils literal"><span class="pre">ers.ers.ERSReadOnly</span></tt></a></p>
+<p>The read-write local class for an ERS peer.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>server_url</strong> (<em>str.</em>) &#8211; peer&#8217;s server URL</li>
+<li><strong>dbname</strong> (<em>str.</em>) &#8211; CouchDB database name</li>
+<li><strong>model</strong> (<em>LocalModelBase instance</em>) &#8211; document model</li>
+<li><strong>fixed_peers</strong> (<em>tuple</em>) &#8211; known peers</li>
+<li><strong>local_only</strong> (<em>bool.</em>) &#8211; whether or not the peer is local-only</li>
+<li><strong>reset_database</strong> &#8211; whether or not to reset the CouchDB database on the given server</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
 <dl class="method">
-<dt id="ers.ers.ERSLocal.get_annotation">
-<tt class="descname">get_annotation</tt><big>(</big><em>entity</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSLocal.get_annotation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSLocal.get_annotation" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="ers.ers.ERSLocal.get_peers">
-<tt class="descname">get_peers</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSLocal.get_peers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSLocal.get_peers" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="ers.ers.ERSLocal.get_values">
-<tt class="descname">get_values</tt><big>(</big><em>entity</em>, <em>prop</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSLocal.get_values"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSLocal.get_values" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="ers.ers.ERSLocal.search">
-<tt class="descname">search</tt><big>(</big><em>prop</em>, <em>value=None</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSLocal.search"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSLocal.search" title="Permalink to this definition">¶</a></dt>
-<dd><p>Search entities by property or property+value
-Return a list of unique (entity, graph) pairs.</p>
+<dt id="ers.ers.ERSLocal.add_data">
+<tt class="descname">add_data</tt><big>(</big><em>s</em>, <em>p</em>, <em>o</em>, <em>g</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSLocal.add_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSLocal.add_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add a value for a property in an entity in the given graph (create the entity if it does not exist yet).</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>s</strong> (<em>str.</em>) &#8211; RDF subject</li>
+<li><strong>p</strong> (<em>str.</em>) &#8211; RDF property</li>
+<li><strong>o</strong> (<em>str.</em>) &#8211; RDF object</li>
+<li><strong>g</strong> (<em>str.</em>) &#8211; RDF graph</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
+<dl class="method">
+<dt id="ers.ers.ERSLocal.cache_entity">
+<tt class="descname">cache_entity</tt><big>(</big><em>entity</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSLocal.cache_entity"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSLocal.cache_entity" title="Permalink to this definition">¶</a></dt>
+<dd><p>Place an entity in the cache. This mark the entity as being
+cached and store the currently loaded documents in the cache.
+Later on, ERS will automatically update the description of
+this entity with new / updated documents
+&#64;param entity An entity object</p>
 </dd></dl>
 
-<dl class="class">
-<dt id="ers.ers.ERSPeerInfo">
-<em class="property">class </em><tt class="descclassname">ers.ers.</tt><tt class="descname">ERSPeerInfo</tt><big>(</big><em>service_name</em>, <em>host</em>, <em>ip</em>, <em>port</em>, <em>dbname='ers'</em>, <em>peer_type='contrib'</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSPeerInfo"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSPeerInfo" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#ers.zeroconf.ServicePeer" title="ers.zeroconf.ServicePeer"><tt class="xref py py-class docutils literal"><span class="pre">ers.zeroconf.ServicePeer</span></tt></a></p>
-<p>This class contains information on an ERS peer.</p>
-<dl class="attribute">
-<dt id="ers.ers.ERSPeerInfo.dbname">
-<tt class="descname">dbname</tt><em class="property"> = None</em><a class="headerlink" href="#ers.ers.ERSPeerInfo.dbname" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="staticmethod">
-<dt id="ers.ers.ERSPeerInfo.from_service_peer">
-<em class="property">static </em><tt class="descname">from_service_peer</tt><big>(</big><em>svc_peer</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSPeerInfo.from_service_peer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSPeerInfo.from_service_peer" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="attribute">
-<dt id="ers.ers.ERSPeerInfo.peer_type">
-<tt class="descname">peer_type</tt><em class="property"> = None</em><a class="headerlink" href="#ers.ers.ERSPeerInfo.peer_type" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dl class="method">
+<dt id="ers.ers.ERSLocal.create_entity">
+<tt class="descname">create_entity</tt><big>(</big><em>entity_name</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSLocal.create_entity"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSLocal.create_entity" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a new entity, return it and store in as a new document in the public store</p>
+</dd></dl>
 
 <dl class="method">
-<dt id="ers.ers.ERSPeerInfo.to_json">
-<tt class="descname">to_json</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSPeerInfo.to_json"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSPeerInfo.to_json" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dt id="ers.ers.ERSLocal.delete_entity">
+<tt class="descname">delete_entity</tt><big>(</big><em>entity</em>, <em>graph=None</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSLocal.delete_entity"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSLocal.delete_entity" title="Permalink to this definition">¶</a></dt>
+<dd><p>Delete an entity from the given graph.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>entity</strong> (<em>str.</em>) &#8211; entity to delete</li>
+<li><strong>graph</strong> (<em>str.</em>) &#8211; graph to delete from</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">success status</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">bool.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ers.ers.ERSLocal.delete_value">
+<tt class="descname">delete_value</tt><big>(</big><em>entity</em>, <em>prop</em>, <em>graph=None</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSLocal.delete_value"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSLocal.delete_value" title="Permalink to this definition">¶</a></dt>
+<dd><p>Delete all of the peer&#8217;s values for a property in an entity from the given graph.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>entity</strong> (<em>str.</em>) &#8211; entity to delete for</li>
+<li><strong>prop</strong> (<em>str.</em>) &#8211; property to delete for</li>
+<li><strong>graph</strong> (<em>str.</em>) &#8211; graph to delete from</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">success status</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">bool.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ers.ers.ERSLocal.get_machine_uuid">
+<tt class="descname">get_machine_uuid</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSLocal.get_machine_uuid"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSLocal.get_machine_uuid" title="Permalink to this definition">¶</a></dt>
+<dd><p>&#64;return a unique identifier for this ERS node</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ers.ers.ERSLocal.is_cached">
+<tt class="descname">is_cached</tt><big>(</big><em>entity_name</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSLocal.is_cached"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSLocal.is_cached" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check if an entity is listed as being cached</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ers.ers.ERSLocal.persist_entity">
+<tt class="descname">persist_entity</tt><big>(</big><em>entity</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSLocal.persist_entity"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSLocal.persist_entity" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save an updated entity</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ers.ers.ERSLocal.update_value">
+<tt class="descname">update_value</tt><big>(</big><em>subject</em>, <em>object</em>, <em>graph=None</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSLocal.update_value"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSLocal.update_value" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update a value for an identifier + property pair (create it if it does not exist yet).
+[Not yet implemented]</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>subject</strong> (<em>str.</em>) &#8211; subject to update for</li>
+<li><strong>object</strong> (<em>str.</em>) &#8211; object to update</li>
+<li><strong>graph</strong> (<em>str.</em>) &#8211; graph to use for updating</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ers.ers.ERSLocal.write_cache">
+<tt class="descname">write_cache</tt><big>(</big><em>cache</em>, <em>graph</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSLocal.write_cache"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSLocal.write_cache" title="Permalink to this definition">¶</a></dt>
+<dd><p>Write cache to the given graph.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>cache</strong> (<em>array</em>) &#8211; cache to write</li>
+<li><strong>graph</strong> (<em>str.</em>) &#8211; graph to write to</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
 
 </dd></dl>
 
 <dl class="class">
 <dt id="ers.ers.ERSReadOnly">
-<em class="property">class </em><tt class="descclassname">ers.ers.</tt><tt class="descname">ERSReadOnly</tt><big>(</big><em>server_url='http://admin:admin&#64;127.0.0.1:5984/'</em>, <em>dbname='ers'</em>, <em>model=&lt;ers.models.ModelS object at 0x1048e17d0&gt;</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSReadOnly"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSReadOnly" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><tt class="descclassname">ers.ers.</tt><tt class="descname">ERSReadOnly</tt><big>(</big><em>server_url='http://admin:admin&#64;127.0.0.1:5984/'</em>, <em>dbname='ers'</em>, <em>model=&lt;ers.models.ModelS object at 0x10e793f50&gt;</em>, <em>fixed_peers=()</em>, <em>local_only=False</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSReadOnly"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSReadOnly" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>The read-only class for an ERS peer.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>server_url</strong> (<em>str.</em>) &#8211; peer&#8217;s server URL</li>
+<li><strong>dbname</strong> (<em>str.</em>) &#8211; CouchDB database name</li>
+<li><strong>model</strong> (<em>LocalModelBase instance</em>) &#8211; document model</li>
+<li><strong>fixed_peers</strong> (<em>tuple</em>) &#8211; known peers</li>
+<li><strong>local_only</strong> (<em>bool.</em>) &#8211; whether or not the peer is local-only</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="ers.ers.ERSReadOnly.contains_entity">
+<tt class="descname">contains_entity</tt><big>(</big><em>entity_name</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSReadOnly.contains_entity"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSReadOnly.contains_entity" title="Permalink to this definition">¶</a></dt>
+<dd><p>Search in the public DB is there is already a document for describing that entity</p>
+</dd></dl>
+
 <dl class="method">
 <dt id="ers.ers.ERSReadOnly.exist">
 <tt class="descname">exist</tt><big>(</big><em>subject</em>, <em>graph</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSReadOnly.exist"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSReadOnly.exist" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Check whether a subject exists in a given graph.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>subject</strong> (<em>str.</em>) &#8211; subject to check for</li>
+<li><strong>graph</strong> (<em>str.</em>) &#8211; graph to use for checking</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">bool.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ers.ers.ERSReadOnly.get_annotation">
+<tt class="descname">get_annotation</tt><big>(</big><em>entity</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSReadOnly.get_annotation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSReadOnly.get_annotation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get data from self and known peers for a given subject.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>entity</strong> (<em>str.</em>) &#8211; subject to get data for</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">dict.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
 
 <dl class="method">
 <dt id="ers.ers.ERSReadOnly.get_data">
 <tt class="descname">get_data</tt><big>(</big><em>subject</em>, <em>graph=None</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSReadOnly.get_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSReadOnly.get_data" title="Permalink to this definition">¶</a></dt>
-<dd><p>get all property+values for an identifier</p>
+<dd><p>Get all property + value pairs for a given subject and graph.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>subject</strong> (<em>str.</em>) &#8211; subject to get data for</li>
+<li><strong>graph</strong> (<em>str.</em>) &#8211; graph to get data for</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">property-value dictionary</p>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="method">
 <dt id="ers.ers.ERSReadOnly.get_doc">
 <tt class="descname">get_doc</tt><big>(</big><em>subject</em>, <em>graph</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSReadOnly.get_doc"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSReadOnly.get_doc" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Get the documents for a given subject and graph.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>subject</strong> (<em>str.</em>) &#8211; subject to get data for</li>
+<li><strong>graph</strong> (<em>str.</em>) &#8211; graph to get data for</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">array</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ers.ers.ERSReadOnly.get_entity">
+<tt class="descname">get_entity</tt><big>(</big><em>entity_name</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSReadOnly.get_entity"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSReadOnly.get_entity" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create an entity object, fill it will all the relevant documents</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ers.ers.ERSReadOnly.get_peers">
+<tt class="descname">get_peers</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSReadOnly.get_peers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSReadOnly.get_peers" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the known peers.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">array</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
 
 <dl class="method">
 <dt id="ers.ers.ERSReadOnly.get_values">
-<tt class="descname">get_values</tt><big>(</big><em>subject</em>, <em>predicate</em>, <em>graph=None</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSReadOnly.get_values"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSReadOnly.get_values" title="Permalink to this definition">¶</a></dt>
-<dd><p>Get the value for a identifier+property (return null or a special value if it does not exist)
-Return a list of values or an empty list</p>
+<tt class="descname">get_values</tt><big>(</big><em>entity</em>, <em>prop</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSReadOnly.get_values"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSReadOnly.get_values" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the value for an identifier + property pair (return null or a special value if it does not exist).</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>entity</strong> (<em>str.</em>) &#8211; entity to get data for</li>
+<li><strong>prop</strong> (<em>str.</em>) &#8211; property to get data for</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">list of values or an empty list</p>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="method">
 <dt id="ers.ers.ERSReadOnly.search">
 <tt class="descname">search</tt><big>(</big><em>prop</em>, <em>value=None</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSReadOnly.search"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSReadOnly.search" title="Permalink to this definition">¶</a></dt>
-<dd><p>Search local entities by property or property+value
-Return a list of (entity, graph) pairs.</p>
+<dd><p>Search entities by property or property + value pair.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>prop</strong> (<em>str.</em>) &#8211; property to search for</li>
+<li><strong>value</strong> (<em>str.</em>) &#8211; value to search for</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">list of unique (entity, graph) pairs</p>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 </dd></dl>
 
 <dl class="class">
-<dt id="ers.ers.ERSReadWrite">
-<em class="property">class </em><tt class="descclassname">ers.ers.</tt><tt class="descname">ERSReadWrite</tt><big>(</big><em>server_url='http://admin:admin&#64;127.0.0.1:5984/'</em>, <em>dbname='ers'</em>, <em>model=&lt;ers.models.ModelS object at 0x1048e17d0&gt;</em>, <em>reset_database=False</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSReadWrite"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSReadWrite" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#ers.ers.ERSReadOnly" title="ers.ers.ERSReadOnly"><tt class="xref py py-class docutils literal"><span class="pre">ers.ers.ERSReadOnly</span></tt></a></p>
+<dt id="ers.ers.Entity">
+<em class="property">class </em><tt class="descclassname">ers.ers.</tt><tt class="descname">Entity</tt><big>(</big><em>entity_name</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#Entity"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.Entity" title="Permalink to this definition">¶</a></dt>
+<dd><p>An entity description is contained in various CouchDB documents</p>
 <dl class="method">
-<dt id="ers.ers.ERSReadWrite.add_data">
-<tt class="descname">add_data</tt><big>(</big><em>s</em>, <em>p</em>, <em>o</em>, <em>g</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSReadWrite.add_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSReadWrite.add_data" title="Permalink to this definition">¶</a></dt>
-<dd><p>Adds the value for the given property in the given entity. Create the entity if it does not exist yet)</p>
+<dt id="ers.ers.Entity.add_document">
+<tt class="descname">add_document</tt><big>(</big><em>document</em>, <em>source</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#Entity.add_document"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.Entity.add_document" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add a document to the list of documents that compose this entity</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="ers.ers.ERSReadWrite.delete_entity">
-<tt class="descname">delete_entity</tt><big>(</big><em>entity</em>, <em>graph=None</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSReadWrite.delete_entity"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSReadWrite.delete_entity" title="Permalink to this definition">¶</a></dt>
-<dd><p>Deletes the entity.</p>
+<dt id="ers.ers.Entity.add_property">
+<tt class="descname">add_property</tt><big>(</big><em>property</em>, <em>value</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#Entity.add_property"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.Entity.add_property" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add a property to the description of the entity
+TODO: we can only edit the local or private documents</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="ers.ers.ERSReadWrite.delete_value">
-<tt class="descname">delete_value</tt><big>(</big><em>entity</em>, <em>prop</em>, <em>graph=None</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSReadWrite.delete_value"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSReadWrite.delete_value" title="Permalink to this definition">¶</a></dt>
-<dd><p>Deletes all of the user&#8217;s values for the given property in the given entity.</p>
+<dt id="ers.ers.Entity.delete_property">
+<tt class="descname">delete_property</tt><big>(</big><em>property</em>, <em>value</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#Entity.delete_property"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.Entity.delete_property" title="Permalink to this definition">¶</a></dt>
+<dd><p>Delete a property to the description of the entity
+TODO: we can only edit the local or private documents</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="ers.ers.ERSReadWrite.import_nt">
-<tt class="descname">import_nt</tt><big>(</big><em>file_name</em>, <em>target_graph</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSReadWrite.import_nt"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSReadWrite.import_nt" title="Permalink to this definition">¶</a></dt>
-<dd><p>Import N-Triples file.</p>
+<dt id="ers.ers.Entity.get_documents">
+<tt class="descname">get_documents</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ers/ers.html#Entity.get_documents"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.Entity.get_documents" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return all the documents associated to this entity and their source</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="ers.ers.ERSReadWrite.import_nt_rdflib">
-<tt class="descname">import_nt_rdflib</tt><big>(</big><em>file_name</em>, <em>target_graph</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSReadWrite.import_nt_rdflib"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSReadWrite.import_nt_rdflib" title="Permalink to this definition">¶</a></dt>
-<dd><p>Import N-Triples file using rdflib.</p>
+<dt id="ers.ers.Entity.get_documents_ids">
+<tt class="descname">get_documents_ids</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ers/ers.html#Entity.get_documents_ids"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.Entity.get_documents_ids" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the identifiers of all the documents associated to the entity</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="ers.ers.ERSReadWrite.update_value">
-<tt class="descname">update_value</tt><big>(</big><em>subject</em>, <em>object</em>, <em>graph=None</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSReadWrite.update_value"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSReadWrite.update_value" title="Permalink to this definition">¶</a></dt>
-<dd><p>update a value for an identifier+property (create it if it does not exist yet)</p>
+<dt id="ers.ers.Entity.get_name">
+<tt class="descname">get_name</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ers/ers.html#Entity.get_name"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.Entity.get_name" title="Permalink to this definition">¶</a></dt>
+<dd><p>&#64;return the name of that entity</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="ers.ers.ERSReadWrite.write_cache">
-<tt class="descname">write_cache</tt><big>(</big><em>cache</em>, <em>graph</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSReadWrite.write_cache"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSReadWrite.write_cache" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
-<dl class="class">
-<dt id="ers.ers.EntityCache">
-<em class="property">class </em><tt class="descclassname">ers.ers.</tt><tt class="descname">EntityCache</tt><a class="reference internal" href="_modules/ers/ers.html#EntityCache"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.EntityCache" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">collections.defaultdict</span></tt></p>
-<p>Equivalent to defaultdict(lambda: defaultdict(set)).</p>
-<dl class="method">
-<dt id="ers.ers.EntityCache.add">
-<tt class="descname">add</tt><big>(</big><em>s</em>, <em>p</em>, <em>o</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#EntityCache.add"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.EntityCache.add" title="Permalink to this definition">¶</a></dt>
-<dd><p>Add &lt;s, p, o&gt; to cache.</p>
+<dt id="ers.ers.Entity.get_properties">
+<tt class="descname">get_properties</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ers/ers.html#Entity.get_properties"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.Entity.get_properties" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the aggregated properties out of all the individual documents</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="ers.ers.EntityCache.parse_nt">
-<tt class="descname">parse_nt</tt><big>(</big><em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#EntityCache.parse_nt"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.EntityCache.parse_nt" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="ers.ers.EntityCache.parse_nt_rdflib">
-<tt class="descname">parse_nt_rdflib</tt><big>(</big><em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#EntityCache.parse_nt_rdflib"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.EntityCache.parse_nt_rdflib" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
+<dt id="ers.ers.Entity.get_raw_documents">
+<tt class="descname">get_raw_documents</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ers/ers.html#Entity.get_raw_documents"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.Entity.get_raw_documents" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the content of all the documents associated to the entity</p>
 </dd></dl>
 
-<dl class="function">
-<dt id="ers.ers.merge_annotations">
-<tt class="descclassname">ers.ers.</tt><tt class="descname">merge_annotations</tt><big>(</big><em>a</em>, <em>b</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#merge_annotations"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.merge_annotations" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+</dd></dl>
 
 </div>
 <div class="section" id="module-ers.models">
@@ -231,6 +454,7 @@ Return a list of (entity, graph) pairs.</p>
 <dt id="ers.models.LocalModelBase">
 <em class="property">class </em><tt class="descclassname">ers.models.</tt><tt class="descname">LocalModelBase</tt><a class="reference internal" href="_modules/ers/models.html#LocalModelBase"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.LocalModelBase" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Base class for all the serialisations</p>
 <dl class="method">
 <dt id="ers.models.LocalModelBase.add_data">
 <tt class="descname">add_data</tt><big>(</big><em>couch_doc</em>, <em>cache</em><big>)</big><a class="reference internal" href="_modules/ers/models.html#LocalModelBase.add_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.LocalModelBase.add_data" title="Permalink to this definition">¶</a></dt>
@@ -239,16 +463,39 @@ Return a list of (entity, graph) pairs.</p>
 <dl class="method">
 <dt id="ers.models.LocalModelBase.cache_key">
 <tt class="descname">cache_key</tt><big>(</big><em>couch_key</em><big>)</big><a class="reference internal" href="_modules/ers/models.html#LocalModelBase.cache_key"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.LocalModelBase.cache_key" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the default CouchDB cache key.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">str.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ers.models.LocalModelBase.content_doc">
+<tt class="descname">content_doc</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ers/models.html#LocalModelBase.content_doc"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.LocalModelBase.content_doc" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="method">
 <dt id="ers.models.LocalModelBase.couch_key">
 <tt class="descname">couch_key</tt><big>(</big><em>cache_key</em>, <em>graph</em><big>)</big><a class="reference internal" href="_modules/ers/models.html#LocalModelBase.couch_key"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.LocalModelBase.couch_key" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Get the default CouchDB key.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">str.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
 
 <dl class="method">
 <dt id="ers.models.LocalModelBase.delete_property">
-<tt class="descname">delete_property</tt><big>(</big><em>couch_doc</em>, <em>prop</em><big>)</big><a class="reference internal" href="_modules/ers/models.html#LocalModelBase.delete_property"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.LocalModelBase.delete_property" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">delete_property</tt><big>(</big><em>couch_doc</em>, <em>prop</em>, <em>value</em><big>)</big><a class="reference internal" href="_modules/ers/models.html#LocalModelBase.delete_property"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.LocalModelBase.delete_property" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="method">
@@ -259,17 +506,59 @@ Return a list of (entity, graph) pairs.</p>
 <dl class="method">
 <dt id="ers.models.LocalModelBase.index_doc">
 <tt class="descname">index_doc</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ers/models.html#LocalModelBase.index_doc"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.LocalModelBase.index_doc" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Get the default CouchDB index design document.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">JSON object</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
 
 <dl class="method">
 <dt id="ers.models.LocalModelBase.initial_docs">
 <tt class="descname">initial_docs</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ers/models.html#LocalModelBase.initial_docs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.LocalModelBase.initial_docs" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the default initial CouchDB documents (index design document and state document).</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">array</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ers.models.LocalModelBase.initial_docs_cache">
+<tt class="descname">initial_docs_cache</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ers/models.html#LocalModelBase.initial_docs_cache"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.LocalModelBase.initial_docs_cache" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="ers.models.LocalModelBase.initial_docs_private">
+<tt class="descname">initial_docs_private</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ers/models.html#LocalModelBase.initial_docs_private"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.LocalModelBase.initial_docs_private" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="ers.models.LocalModelBase.initial_docs_public">
+<tt class="descname">initial_docs_public</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ers/models.html#LocalModelBase.initial_docs_public"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.LocalModelBase.initial_docs_public" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="method">
 <dt id="ers.models.LocalModelBase.state_doc">
 <tt class="descname">state_doc</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ers/models.html#LocalModelBase.state_doc"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.LocalModelBase.state_doc" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Get the default CouchDB state document.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">JSON object</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
 
 <dl class="attribute">
 <dt id="ers.models.LocalModelBase.view_name">
@@ -279,35 +568,10 @@ Return a list of (entity, graph) pairs.</p>
 </dd></dl>
 
 <dl class="class">
-<dt id="ers.models.ModelH">
-<em class="property">class </em><tt class="descclassname">ers.models.</tt><tt class="descname">ModelH</tt><a class="reference internal" href="_modules/ers/models.html#ModelH"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.ModelH" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#ers.models.ModelT" title="ers.models.ModelT"><tt class="xref py py-class docutils literal"><span class="pre">ers.models.ModelT</span></tt></a></p>
-<dl class="method">
-<dt id="ers.models.ModelH.add_data">
-<tt class="descname">add_data</tt><big>(</big><em>couch_doc</em>, <em>cache</em><big>)</big><a class="reference internal" href="_modules/ers/models.html#ModelH.add_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.ModelH.add_data" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="ers.models.ModelH.cache_key">
-<tt class="descname">cache_key</tt><big>(</big><em>couch_key</em><big>)</big><a class="reference internal" href="_modules/ers/models.html#ModelH.cache_key"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.ModelH.cache_key" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="ers.models.ModelH.couch_key">
-<tt class="descname">couch_key</tt><big>(</big><em>cache_key</em>, <em>graph</em><big>)</big><a class="reference internal" href="_modules/ers/models.html#ModelH.couch_key"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.ModelH.couch_key" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="attribute">
-<dt id="ers.models.ModelH.view_name">
-<tt class="descname">view_name</tt><em class="property"> = 'by_graph_subject'</em><a class="headerlink" href="#ers.models.ModelH.view_name" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
-<dl class="class">
 <dt id="ers.models.ModelS">
 <em class="property">class </em><tt class="descclassname">ers.models.</tt><tt class="descname">ModelS</tt><a class="reference internal" href="_modules/ers/models.html#ModelS"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.ModelS" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#ers.models.LocalModelBase" title="ers.models.LocalModelBase"><tt class="xref py py-class docutils literal"><span class="pre">ers.models.LocalModelBase</span></tt></a></p>
+<p>The model class for document model type S.</p>
 <p>Example document:</p>
 <dl class="docutils">
 <dt>{</dt>
@@ -328,91 +592,116 @@ Return a list of (entity, graph) pairs.</p>
 <dl class="method">
 <dt id="ers.models.ModelS.add_data">
 <tt class="descname">add_data</tt><big>(</big><em>couch_doc</em>, <em>cache</em><big>)</big><a class="reference internal" href="_modules/ers/models.html#ModelS.add_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.ModelS.add_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add cache data to a CouchDB document.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>couch_doc</strong> (<em>CouchDB document object</em>) &#8211; the CouchDB document to add data to</li>
+<li><strong>cache</strong> (<em>dict.</em>) &#8211; the cache data to add</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ers.models.ModelS.add_property">
+<tt class="descname">add_property</tt><big>(</big><em>couch_doc</em>, <em>prop</em>, <em>value</em><big>)</big><a class="reference internal" href="_modules/ers/models.html#ModelS.add_property"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.ModelS.add_property" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="method">
 <dt id="ers.models.ModelS.cache_key">
 <tt class="descname">cache_key</tt><big>(</big><em>couch_key</em><big>)</big><a class="reference internal" href="_modules/ers/models.html#ModelS.cache_key"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.ModelS.cache_key" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Get the CouchDB cache key.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>couch_key</strong> (<em>str.</em>) &#8211; the CouchDB key</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">str.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
 
 <dl class="method">
 <dt id="ers.models.ModelS.couch_key">
 <tt class="descname">couch_key</tt><big>(</big><em>cache_key</em>, <em>graph</em><big>)</big><a class="reference internal" href="_modules/ers/models.html#ModelS.couch_key"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.ModelS.couch_key" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Get the CouchDB key.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>cache_key</strong> (<em>str.</em>) &#8211; the CouchDB cache key</li>
+<li><strong>graph</strong> (<em>str.</em>) &#8211; the RDF graph</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">str.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
 
 <dl class="method">
 <dt id="ers.models.ModelS.delete_property">
-<tt class="descname">delete_property</tt><big>(</big><em>couch_doc</em>, <em>prop</em><big>)</big><a class="reference internal" href="_modules/ers/models.html#ModelS.delete_property"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.ModelS.delete_property" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<tt class="descname">delete_property</tt><big>(</big><em>couch_doc</em>, <em>prop</em>, <em>value</em><big>)</big><a class="reference internal" href="_modules/ers/models.html#ModelS.delete_property"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.ModelS.delete_property" title="Permalink to this definition">¶</a></dt>
+<dd><p>Deletes a property from the given CouchDB document.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>couch_doc</strong> (<em>CouchDB document object</em>) &#8211; the CouchDB document</li>
+<li><strong>prop</strong> (<em>str.</em>) &#8211; the property to delete</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
 
 <dl class="method">
 <dt id="ers.models.ModelS.get_data">
 <tt class="descname">get_data</tt><big>(</big><em>doc</em>, <em>subject</em>, <em>graph</em><big>)</big><a class="reference internal" href="_modules/ers/models.html#ModelS.get_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.ModelS.get_data" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return property-value dictionary. Call with subject=None, graph=None to get data from a doc without an _id.</p>
+<dd><p>Get data from a CouchDB document given a subject and graph (call with subject=None and graph=None to get data from a document without an _id).</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>doc</strong> (<em>CouchDB document object</em>) &#8211; the CouchDB document from which to get data</li>
+<li><strong>subject</strong> (<em>str.</em>) &#8211; the subject to get data for</li>
+<li><strong>graph</strong> (<em>str.</em>) &#8211; the graph to get data for</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">property-value dictionary</p>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="classmethod">
 <dt id="ers.models.ModelS.index_doc">
 <em class="property">classmethod </em><tt class="descname">index_doc</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ers/models.html#ModelS.index_doc"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.ModelS.index_doc" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
+<dd><p>Get the CouchDB index design document (containing two views).</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">JSON object</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
-
-<dl class="class">
-<dt id="ers.models.ModelT">
-<em class="property">class </em><tt class="descclassname">ers.models.</tt><tt class="descname">ModelT</tt><a class="reference internal" href="_modules/ers/models.html#ModelT"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.ModelT" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#ers.models.LocalModelBase" title="ers.models.LocalModelBase"><tt class="xref py py-class docutils literal"><span class="pre">ers.models.LocalModelBase</span></tt></a></p>
-<p>Example document:</p>
-<dl class="docutils">
-<dt>{</dt>
-<dd><p class="first">&#8220;_id&#8221;: &#8220;<a class="reference external" href="http://www.w3.org/People/Berners-Lee">http://www.w3.org/People/Berners-Lee</a>/card#i#http://graph.name&#8221;,
-&#8220;_rev&#8221;: &#8220;1-d7841397d995f90480553919cff49bd8&#8221;,
-&#8220;p&#8221;: [</p>
-<blockquote>
-<div>&#8220;<a class="reference external" href="http://xmlns.com/foaf/0.1/nick">http://xmlns.com/foaf/0.1/nick</a>&#8221;,
-&#8220;<a class="reference external" href="http://xmlns.com/foaf/0.1/nick">http://xmlns.com/foaf/0.1/nick</a>&#8221;,
-&#8220;<a class="reference external" href="http://www.w3.org/2000/01/rdf-schema#label">http://www.w3.org/2000/01/rdf-schema#label</a>&#8221;,</div></blockquote>
-<p>],
-&#8220;s&#8221;: &#8220;<a class="reference external" href="http://www.w3.org/People/Berners-Lee/card#i">http://www.w3.org/People/Berners-Lee/card#i</a>&#8221;,
-&#8220;g&#8221;: &#8220;<a class="reference external" href="http://graph.name">http://graph.name</a>&#8221;,
-&#8220;o&#8221;: [</p>
-<blockquote>
-<div>&#8220;TimBL&#8221;,
-&#8220;timbl&#8221;,
-&#8220;Tim Berners-Lee&#8221;,</div></blockquote>
-<p class="last">]</p>
-</dd>
-</dl>
-<p>}</p>
-<dl class="method">
-<dt id="ers.models.ModelT.add_data">
-<tt class="descname">add_data</tt><big>(</big><em>couch_doc</em>, <em>cache</em><big>)</big><a class="reference internal" href="_modules/ers/models.html#ModelT.add_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.ModelT.add_data" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="ers.models.ModelT.cache_key">
-<tt class="descname">cache_key</tt><big>(</big><em>couch_key</em><big>)</big><a class="reference internal" href="_modules/ers/models.html#ModelT.cache_key"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.ModelT.cache_key" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="ers.models.ModelT.couch_key">
-<tt class="descname">couch_key</tt><big>(</big><em>cache_key</em>, <em>graph</em><big>)</big><a class="reference internal" href="_modules/ers/models.html#ModelT.couch_key"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.ModelT.couch_key" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="ers.models.ModelT.delete_property">
-<tt class="descname">delete_property</tt><big>(</big><em>couch_doc</em>, <em>prop</em><big>)</big><a class="reference internal" href="_modules/ers/models.html#ModelT.delete_property"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.ModelT.delete_property" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="ers.models.ModelT.get_data">
-<tt class="descname">get_data</tt><big>(</big><em>doc</em>, <em>subject</em>, <em>graph</em><big>)</big><a class="reference internal" href="_modules/ers/models.html#ModelT.get_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.ModelT.get_data" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="classmethod">
-<dt id="ers.models.ModelT.index_doc">
-<em class="property">classmethod </em><tt class="descname">index_doc</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ers/models.html#ModelT.index_doc"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.models.ModelT.index_doc" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
 
 </dd></dl>
 
@@ -423,36 +712,102 @@ Return a list of (entity, graph) pairs.</p>
 <dt id="ers.sync_global.GraphSynch">
 <em class="property">class </em><tt class="descclassname">ers.sync_global.</tt><tt class="descname">GraphSynch</tt><big>(</big><em>ERSReadWrite</em>, <em>name</em>, <em>graph</em><big>)</big><a class="reference internal" href="_modules/ers/sync_global.html#GraphSynch"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.sync_global.GraphSynch" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">threading.Thread</span></tt></p>
-<p>Creates a synch thread for a given graph using _changes feed</p>
+<p>Synchronizes a peer&#8217;s graph data with the global aggregator (creates a synch thread for a given graph using _changes feed).</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>ERSReadWrite</strong> (<em>ERSReadWrite instance</em>) &#8211; ERSReadWrite to used for synchronization</li>
+<li><strong>name</strong> (<em>str.</em>) &#8211; thread name</li>
+<li><strong>graph</strong> (<em>str.</em>) &#8211; graph to use for synchronization</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
 <dl class="method">
 <dt id="ers.sync_global.GraphSynch.dump_changes_to_file">
 <tt class="descname">dump_changes_to_file</tt><big>(</big><em>prev_seq</em>, <em>stream</em><big>)</big><a class="reference internal" href="_modules/ers/sync_global.html#GraphSynch.dump_changes_to_file"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.sync_global.GraphSynch.dump_changes_to_file" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Save the changes made to a log file.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>prev_seq</strong> (<em>int.</em>) &#8211; sequence number of the previous successfully synchronized sequence from the global aggregator</li>
+<li><strong>stream</strong> (<em>ChangesStream instance</em>) &#8211; stream of made changes</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">last synchronized sequence number</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
 
 <dl class="method">
 <dt id="ers.sync_global.GraphSynch.filter_by_graph_doc">
 <tt class="descname">filter_by_graph_doc</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ers/sync_global.html#GraphSynch.filter_by_graph_doc"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.sync_global.GraphSynch.filter_by_graph_doc" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Defines the filter document by graph. One DB stores multiple graphs.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">a CouchDB filter design document</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">JSON object</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
 
 <dl class="method">
 <dt id="ers.sync_global.GraphSynch.get_previous_seq_num">
 <tt class="descname">get_previous_seq_num</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ers/sync_global.html#GraphSynch.get_previous_seq_num"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.sync_global.GraphSynch.get_previous_seq_num" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Ask global server what was the last synchronized sequence number for this graph.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">previous sequence number (-1 if server request didn&#8217;t succeed)</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">int.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
 
 <dl class="method">
 <dt id="ers.sync_global.GraphSynch.run">
 <tt class="descname">run</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ers/sync_global.html#GraphSynch.run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.sync_global.GraphSynch.run" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Start the synchronization process</p>
+</dd></dl>
 
 <dl class="method">
 <dt id="ers.sync_global.GraphSynch.set_finished">
 <tt class="descname">set_finished</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ers/sync_global.html#GraphSynch.set_finished"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.sync_global.GraphSynch.set_finished" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Set the synchronization status to finished.</p>
+</dd></dl>
 
 <dl class="method">
 <dt id="ers.sync_global.GraphSynch.set_new_seq_num">
 <tt class="descname">set_new_seq_num</tt><big>(</big><em>new_seq</em><big>)</big><a class="reference internal" href="_modules/ers/sync_global.html#GraphSynch.set_new_seq_num"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.sync_global.GraphSynch.set_new_seq_num" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Update the global last synchronized sequence number for this graph.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>new_seq</strong> (<em>int.</em>) &#8211; new sequence number</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">success status</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">bool.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
 
 </dd></dl>
 
@@ -460,24 +815,83 @@ Return a list of (entity, graph) pairs.</p>
 <dt id="ers.sync_global.SynchronizationManager">
 <em class="property">class </em><tt class="descclassname">ers.sync_global.</tt><tt class="descname">SynchronizationManager</tt><big>(</big><em>ERSReadWrite</em><big>)</big><a class="reference internal" href="_modules/ers/sync_global.html#SynchronizationManager"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.sync_global.SynchronizationManager" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Manages a synchronization process.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>ERSReadWrite</strong> (<em>ERSReadWrite instance</em>) &#8211; ERSReadWrite to used for synchronization</td>
+</tr>
+</tbody>
+</table>
 <dl class="method">
 <dt id="ers.sync_global.SynchronizationManager.exists_synch_thread">
 <tt class="descname">exists_synch_thread</tt><big>(</big><em>graph</em><big>)</big><a class="reference internal" href="_modules/ers/sync_global.html#SynchronizationManager.exists_synch_thread"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.sync_global.SynchronizationManager.exists_synch_thread" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Check whether a synchronization process exists for the given graph.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>graph</strong> (<em>str.</em>) &#8211; graph to use for synchronization</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">bool.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
 
 <dl class="method">
 <dt id="ers.sync_global.SynchronizationManager.get_thread_name">
 <tt class="descname">get_thread_name</tt><big>(</big><em>graph</em><big>)</big><a class="reference internal" href="_modules/ers/sync_global.html#SynchronizationManager.get_thread_name"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.sync_global.SynchronizationManager.get_thread_name" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Get the tread name of the synchronization process.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>graph</strong> (<em>str.</em>) &#8211; graph used for synchronization</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">str.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
 
 <dl class="method">
 <dt id="ers.sync_global.SynchronizationManager.start_synch">
 <tt class="descname">start_synch</tt><big>(</big><em>graph</em><big>)</big><a class="reference internal" href="_modules/ers/sync_global.html#SynchronizationManager.start_synch"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.sync_global.SynchronizationManager.start_synch" title="Permalink to this definition">¶</a></dt>
+<dd><p>Start the synchronization process.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>graph</strong> (<em>str.</em>) &#8211; graph to use for synchronization</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ers.sync_global.SynchronizationManager.start_synch_everything">
+<tt class="descname">start_synch_everything</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ers/sync_global.html#SynchronizationManager.start_synch_everything"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.sync_global.SynchronizationManager.start_synch_everything" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="method">
 <dt id="ers.sync_global.SynchronizationManager.stop_synch">
 <tt class="descname">stop_synch</tt><big>(</big><em>graph</em><big>)</big><a class="reference internal" href="_modules/ers/sync_global.html#SynchronizationManager.stop_synch"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.sync_global.SynchronizationManager.stop_synch" title="Permalink to this definition">¶</a></dt>
+<dd><p>Stop the synchronization process.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>graph</strong> (<em>str.</em>) &#8211; graph used for synchronization</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ers.sync_global.SynchronizationManager.stop_synch_everything">
+<tt class="descname">stop_synch_everything</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ers/sync_global.html#SynchronizationManager.stop_synch_everything"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.sync_global.SynchronizationManager.stop_synch_everything" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
@@ -488,8 +902,100 @@ Return a list of (entity, graph) pairs.</p>
 <dd></dd></dl>
 
 </div>
-<div class="section" id="utils-module">
-<h2><tt class="xref py py-mod docutils literal"><span class="pre">utils</span></tt> Module<a class="headerlink" href="#utils-module" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="module-ers.utils">
+<span id="utils-module"></span><h2><tt class="xref py py-mod docutils literal"><span class="pre">utils</span></tt> Module<a class="headerlink" href="#module-ers.utils" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="ers.utils.EntityCache">
+<em class="property">class </em><tt class="descclassname">ers.utils.</tt><tt class="descname">EntityCache</tt><a class="reference internal" href="_modules/ers/utils.html#EntityCache"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.utils.EntityCache" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">collections.defaultdict</span></tt></p>
+<p>Equivalent to defaultdict(lambda: defaultdict(set)).</p>
+<dl class="method">
+<dt id="ers.utils.EntityCache.add">
+<tt class="descname">add</tt><big>(</big><em>s</em>, <em>p</em>, <em>o</em><big>)</big><a class="reference internal" href="_modules/ers/utils.html#EntityCache.add"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.utils.EntityCache.add" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add &lt;s, p, o&gt; to cache.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>s</strong> (<em>str.</em>) &#8211; RDF subject</li>
+<li><strong>p</strong> (<em>str.</em>) &#8211; RDF property</li>
+<li><strong>o</strong> (<em>str.</em>) &#8211; RDF object</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ers.utils.EntityCache.parse_nt">
+<tt class="descname">parse_nt</tt><big>(</big><em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/ers/utils.html#EntityCache.parse_nt"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.utils.EntityCache.parse_nt" title="Permalink to this definition">¶</a></dt>
+<dd><p>Parse N-Triples data.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">self</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ers.utils.EntityCache.parse_nt_rdflib">
+<tt class="descname">parse_nt_rdflib</tt><big>(</big><em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/ers/utils.html#EntityCache.parse_nt_rdflib"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.utils.EntityCache.parse_nt_rdflib" title="Permalink to this definition">¶</a></dt>
+<dd><p>Parse N-Triples data using rdflib.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">self</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="ers.utils.import_nt">
+<tt class="descclassname">ers.utils.</tt><tt class="descname">import_nt</tt><big>(</big><em>registry</em>, <em>file_name</em>, <em>target_graph</em><big>)</big><a class="reference internal" href="_modules/ers/utils.html#import_nt"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.utils.import_nt" title="Permalink to this definition">¶</a></dt>
+<dd><p>Import N-Triples file.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>registry</strong> (<em>ERSLocal instance</em>) &#8211; registry used for writing the data</li>
+<li><strong>file_name</strong> (<em>str.</em>) &#8211; file name</li>
+<li><strong>target_graph</strong> (<em>str.</em>) &#8211; graph to write to</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="ers.utils.import_nt_rdflib">
+<tt class="descclassname">ers.utils.</tt><tt class="descname">import_nt_rdflib</tt><big>(</big><em>registry</em>, <em>file_name</em>, <em>target_graph</em><big>)</big><a class="reference internal" href="_modules/ers/utils.html#import_nt_rdflib"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.utils.import_nt_rdflib" title="Permalink to this definition">¶</a></dt>
+<dd><p>Import N-Triples file using rdflib.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>registry</strong> (<em>ERSLocal instance</em>) &#8211; registry used for writing the data</li>
+<li><strong>file_name</strong> (<em>str.</em>) &#8211; file name</li>
+<li><strong>target_graph</strong> (<em>str.</em>) &#8211; graph to write to</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
 </div>
 <div class="section" id="module-ers.zeroconf">
 <span id="zeroconf-module"></span><h2><tt class="xref py py-mod docutils literal"><span class="pre">zeroconf</span></tt> Module<a class="headerlink" href="#module-ers.zeroconf" title="Permalink to this headline">¶</a></h2>
@@ -660,7 +1166,7 @@ even if the service was published some time in the past.</li>
 <li><a class="reference internal" href="#module-ers.ers"><tt class="docutils literal"><span class="pre">ers</span></tt> Module</a></li>
 <li><a class="reference internal" href="#module-ers.models"><tt class="docutils literal"><span class="pre">models</span></tt> Module</a></li>
 <li><a class="reference internal" href="#module-ers.sync_global"><tt class="docutils literal"><span class="pre">sync_global</span></tt> Module</a></li>
-<li><a class="reference internal" href="#utils-module"><tt class="docutils literal"><span class="pre">utils</span></tt> Module</a></li>
+<li><a class="reference internal" href="#module-ers.utils"><tt class="docutils literal"><span class="pre">utils</span></tt> Module</a></li>
 <li><a class="reference internal" href="#module-ers.zeroconf"><tt class="docutils literal"><span class="pre">zeroconf</span></tt> Module</a></li>
 </ul>
 </li>
