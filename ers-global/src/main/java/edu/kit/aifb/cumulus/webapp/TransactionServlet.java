@@ -84,7 +84,7 @@ public class TransactionServlet extends AbstractHttpServlet {
 				" (at least BEGIN, COMMIT/ROLLBACK must exist) ");
 			return;
 		}
-			
+
 		int r;
 		Integer resp_msg=0; 
 		AbstractCassandraRdfHector crdf = (AbstractCassandraRdfHector)ctx.getAttribute(Listener.STORE);

@@ -53,7 +53,6 @@ public class QueryVersionsStatsServlet extends AbstractHttpServlet {
 			return;
                 }
                 String encoded_graph = Store.encodeKeyspace(graph);
-                int total_entities=0;
                 int total_versions=0;
                 int total_aborts=0;
                 int total_conflicts=0;
@@ -68,6 +67,7 @@ public class QueryVersionsStatsServlet extends AbstractHttpServlet {
                 }
                 HashSet<String> different_versions = new HashSet<String>();
                 HashSet<String> aborted = new HashSet<String>();
+                HashSet<String> total_entities = new HashSet<String>();
                 // first of all get all entities for that graph, then the versions tree
                 List<String> keys = crdf.queryAllRowKeys(encoded_graph, Integer.MAX_VALUE);
                 Iterator<String> it = keys.iterator();
@@ -78,7 +78,7 @@ public class QueryVersionsStatsServlet extends AbstractHttpServlet {
                     if( key.endsWith("URN>") )
                         continue;
 
-                    ++total_entities;
+                    total_entities.add(key);
                     // remove the brackets and the VER suffix
                     key = key.substring(1, key.lastIndexOf("-"));
 
@@ -124,14 +124,14 @@ public class QueryVersionsStatsServlet extends AbstractHttpServlet {
                         String.valueOf(HttpServletResponse.SC_OK) + "\n";
                 msg += " total no entities, total no versions, total no of conflits, " +
                         "total no of aborted tx, avg get lastCID time, max get lastCID time \n";
-                msg+= total_entities+", "+total_versions+", "+total_conflicts+", " +
+                msg+= total_entities.size()+", "+total_versions+", "+total_conflicts+", " +
                         total_aborts + ", " + (total_get_lCID_time/get_lCID_time.size()) +
                         "ms, " + max_get_lCID_time +"ms";
                 resp.getWriter().println(msg);
                 out.close();
                 resp.getWriter().print(buffer.toString());
 		_log.info("[dataset] QUERY versions stats " + (System.currentTimeMillis() - start)
-                        + "ms " + total_entities+ "t"); 
+                        + "ms " + total_entities.size()+ "t");
 	}
 
 	private Node getNode(String value, String varName) throws ParseException {
