@@ -1,13 +1,16 @@
 package edu.kit.aifb.cumulus.store;
 
+import org.semanticweb.yars.nx.Node;
 import edu.kit.aifb.cumulus.webapp.Listener;
+import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.Iterator;
 import java.util.Hashtable;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.apache.curator.framework.recipes.locks.InterProcessReadWriteLock;
+import org.semanticweb.yars.nx.parser.NxParser;
 
 public class ExecuteTransactions 
 {
@@ -73,7 +76,164 @@ public class ExecuteTransactions
                 }
         }
 
-        // USE CURATOR (ZOOKEEPER) FOR LOCKING
+        public int executeTransaction_MVCC(Transaction t, AbstractCassandraRdfHector store) throws Exception {
+            // create a batch of all operations
+            // !!! TRANSACTION MUST CONTAIN SAME TYPE OF OPERATIONS OVER SAME GRAPH
+            List<Node[]> batch = new ArrayList<Node[]>();
+            String keyspace = null;
+            for( int j=0; j < t.ops.size(); ++j) {
+                Operation c_op = t.ops.get(j);
+                if( c_op.just_for_locking )
+                    continue;
+                
+                String triple="";
+                for( int i=0; i<c_op.params.length; ++i) {
+                    if( i != 3 )
+                        triple += c_op.params[i] + " ";
+                    else
+                        if( keyspace == null )
+                            keyspace = Store.encodeKeyspace(c_op.params[3]);
+                }
+                triple += "."; 
+                Node[] nx = NxParser.parseNodes(triple);
+                batch.add(nx);
+            }
+
+            int r=0;
+            String URN_author = t.getURN();
+            // get transaction ID from Snowflake here
+            String txID = Listener.SNOWFLAKE_GENERATOR.getStringId();
+
+            // put this txID into "NOT_YET_COMMITED" list
+            // this is neccessary in case a multiple-e tx is half way commited, so
+            //it won't be half-way read
+            store.addCIDToPendingTXList(keyspace, txID);
+            
+            switch( t.txType ) {
+                // insert property
+                case IP:
+                    r = store.addDataVersioning(batch.iterator(), keyspace,
+                            0, URN_author, txID);
+                    break;
+                // update property
+                case UP:
+                    r = store.updateDataVersioning(batch.iterator(), keyspace,
+                            0, URN_author, txID);
+                    break;
+                // delete property
+                case DP:
+                    break;
+                // delete entity
+                case DE:
+                    break;
+                // insert link
+                case IL:
+                     r = store.addDataVersioning(batch.iterator(), keyspace,
+                             1, URN_author, txID);
+                    break;
+                // delete link
+                case DL:
+                    break;
+                // shallow copy
+                case SC:
+                    break;
+                // deep copy
+                case DC:
+                    break;
+                default:
+                    break;
+            }
+
+             // as the tx was finished, then remove it from pending list
+            store.removeCIDFromPendingTXList(keyspace, txID);
+            
+            switch(r) {
+                case -3:
+                    // exception has been thrown
+                    break;
+                case -2:
+                    _log.info("COMMIT "+t.txType.toString()+" FAILED " +
+                            "- keyspace " + keyspace + "does not exist!");
+                    break;
+                case -1:
+                    _log.info("COMMIT "+t.txType.toString()+" FAILED - " +
+                            "it has been aborted!" );
+                    break;
+                case 1:
+                    /*_log.info("COMMIT "+t.txType.toString()+" SUCCESSFUL " +
+                            "- it has been committed!" );*/
+                    break;
+                case 2:
+                    _log.info("COMMIT "+t.txType.toString()+" FAILED - cannot " +
+                            "fetch all previous versions with CID<txID" +
+                            "; it means that another tx has added in the meantime " +
+                            "another version with higher CID!" );
+                    break;
+                default:
+                    break;
+            }
+
+                                    /*
+                        case INSERT_LINK:
+                                r = store.addData(c_op.params[0], c_op.params[1],
+                                        c_op.params[2], Store.encodeKeyspace(c_op.params[3]), 1);
+                                if ( r != 0 )
+                                        _log.info("COMMIT INSERT LINK " + c_op.params[0] + " FAILED with exit code " + r);
+                                break;
+                        case UPDATE:
+                                r = store.updateData(c_op.params[0], c_op.params[1],
+                                   c_op.params[4], c_op.params[2],
+                                   Store.encodeKeyspace(c_op.params[3]), 0);
+                                if ( r != 0 )
+                                        _log.info("COMMIT UPDATE " + c_op.params[0] + " FAILED with exit code " + r);
+                                break;
+                        case UPDATE_LINK:
+                                r = store.updateData(c_op.params[0], c_op.params[1],
+                                   c_op.params[4], c_op.params[2],
+                                   Store.encodeKeyspace(c_op.params[3]), 1);
+                                if ( r != 0 )
+                                        _log.info("COMMIT UPDATE LINK " + c_op.params[0] + " FAILED with exit code " + r);
+                                break;
+                        case DELETE:
+                                r = store.deleteData(c_op.params[0], c_op.params[1],
+                                        c_op.params[2],
+                                        Store.encodeKeyspace(c_op.params[3]), 0);
+                                if ( r != 0 )
+                                        _log.info("COMMIT DELETE " + c_op.params[0] + " FAILED with exit code " + r);
+                                break;
+                        case DELETE_LINK:
+                                r = store.deleteData(c_op.params[0], c_op.params[1],
+                                        c_op.params[2],
+                                        Store.encodeKeyspace(c_op.params[3]), 1);
+                                if ( r != 0 )
+                                        _log.info("COMMIT DELETE LINK " + c_op.params[0] + " FAILED with exit code " + r);
+                                break;
+                        case ENT_SHALLOW_CLONE:
+                                r = store.shallowClone(c_op.params[0], Store.encodeKeyspace(c_op.params[1]),
+                                        c_op.params[2], Store.encodeKeyspace(c_op.params[3]), c_op.params[1],
+                                        c_op.params[3] );
+                                if ( r != 0 )
+                                    _log.info("COMMIT SHALLOW CLONE " + c_op.params[0] + " FAILED with exit code " + r);
+                                break;
+                        case ENT_DEEP_CLONE:
+                                r = store.deepClone(c_op.params[0], Store.encodeKeyspace(c_op.params[1]),
+                                        c_op.params[2], Store.encodeKeyspace(c_op.params[3]));
+                                if ( r != 0 )
+                                    _log.info("COMMIT DEEP CLONE " + c_op.params[0] + " FAILED with exit code " + r);
+                                break;
+                        case ENT_DELETE:
+                                r = store.deleteByRowKey(c_op.params[0], Store.encodeKeyspace(c_op.params[1]), 1);
+                                if ( r != 0 )
+                                    _log.info("COMMIT ENTITY DELETE " + c_op.params[0] + " FAILED with exit code " + r);
+                                break;
+                                     
+                        default:
+                                break;
+                }*/
+            return r;
+        }
+
+        // USE CAGE (ZOOKEEPER) FOR LOCKING
         public int executeTransaction_Zookeeper(Transaction t, AbstractCassandraRdfHector store) throws Exception
 	{
 		if( t == null )
@@ -415,8 +575,6 @@ public class ExecuteTransactions
                         this.print(locks_hold, t);*/
 		}
 	}
-
-
 
        /**
         * 

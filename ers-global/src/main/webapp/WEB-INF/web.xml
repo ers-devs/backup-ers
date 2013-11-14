@@ -19,13 +19,13 @@
     <!-- see: ers-transactional-locking-zookeeper parameter -->
   	<context-param> 
  		<param-name>zookeeper-hosts</param-name>
-  		<param-value>134.21.73.204:2181,134.21.73.206:2181,134.21.73.208:2182</param-value>  
+  		<param-value>134.21.73.204:2181,134.21.73.206:2181,134.21.73.208:2181</param-value>  -->
 	</context-param>
 
 	<!-- NOTE: just one of the two following parameters can be set true !! not both in the same time -->
 	<context-param>	
 		<param-name>start-embedded</param-name> 
-		<param-value>yes</param-value>  <!-- possible values: yes,no; if 'yes', the replication is set to 1 -->
+		<param-value>no</param-value>  <!-- possible values: yes,no; if 'yes', the replication is set to 1 -->
 	</context-param>
 	<context-param>	
 		<param-name>run-on-openshift</param-name> 
@@ -73,7 +73,19 @@
    <!-- if not set, default value is 0 -->
    <context-param> 
       <param-name>ers-transactional-locking-zookeeper</param-name>
+      <param-value>1</param-value>
+   </context-param>
+
+   <!-- set this to 1 if you want to use MVCC transactional support -->
+   <context-param>
+      <param-name>ers-transactional-mvcc</param-name> 
       <param-value>0</param-value>
+   </context-param>
+
+   <!-- set this to 1 if you want to use Check My Writes consistency level -->
+   <context-param>
+      <param-name>ers-transactional-check-my-writes</param-name> 
+      <param-value>1</param-value>
    </context-param>
 
    <!-- if set to yes, any operation will also handle links  -->
@@ -175,6 +187,14 @@
 	<servlet-name>query_bridges_stats</servlet-name>
 	<servlet-class>edu.kit.aifb.cumulus.webapp.QueryBridgesStatsServlet</servlet-class>
   </servlet>
+  <servlet>
+	<servlet-name>query_versions_stats</servlet-name>
+	<servlet-class>edu.kit.aifb.cumulus.webapp.QueryVersionsStatsServlet</servlet-class>
+  </servlet>
+  <servlet>
+	<servlet-name>query_zookeeper</servlet-name>
+	<servlet-class>edu.kit.aifb.cumulus.webapp.QueryZookeeperStatsServlet</servlet-class>
+  </servlet>
 
   <servlet>
   	<servlet-name>query</servlet-name>
@@ -229,6 +249,14 @@
   <servlet-mapping>
     <servlet-name>query_bridges_stats</servlet-name>
     <url-pattern>/query_bridges_stats</url-pattern>
+  </servlet-mapping>
+  <servlet-mapping>
+    <servlet-name>query_versions_stats</servlet-name>
+    <url-pattern>/query_versions_stats</url-pattern>
+  </servlet-mapping>
+  <servlet-mapping>
+    <servlet-name>query_zookeeper</servlet-name>
+    <url-pattern>/query_zookeeper</url-pattern>
   </servlet-mapping>
   <servlet-mapping>
     <servlet-name>query_bridges</servlet-name>

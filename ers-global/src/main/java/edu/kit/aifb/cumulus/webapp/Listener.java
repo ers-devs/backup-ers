@@ -1,12 +1,12 @@
 package edu.kit.aifb.cumulus.webapp;
 
+import edu.kit.aifb.cumulus.snowflake.UniqueId;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.servlet.ServletContext;
@@ -61,19 +61,22 @@ public class Listener implements ServletContextListener {
 	private static final String PARAM_TUPLE_LENGTH = "tuple_length";
 	private static final String PARAM_DEFAULT_REPLICATION_FACTOR = "default-replication-factor";
 	private static final String PARAM_START_EMBEDDED = "start-embedded";
-    private static final String PARAM_TRANS_LOCKING_GRANULARITY = "ers-transactional-locking-granularity";
-    private static final String PARAM_TRANS_LOCKING_ZOOKEEPER = "ers-transactional-locking-zookeeper";
+        private static final String PARAM_TRANS_LOCKING_GRANULARITY = "ers-transactional-locking-granularity";
+        private static final String PARAM_TRANS_LOCKING_ZOOKEEPER = "ers-transactional-locking-zookeeper";
+        private static final String PARAM_TRANS_MVCC = "ers-transactional-mvcc";
+        private static final String PARAM_TRANS_CHECK_MY_WRITES = "ers-transactional-check-my-writes";
 	
 	// add here the params stored in web.xml
 	private static final String[] CONFIG_PARAMS = new String[] {
 		PARAM_HOSTS, PARAM_EMBEDDED_HOST, PARAM_ZOOKEEPER_HOSTS,
-        PARAM_ERS_KEYSPACES_PREFIX, 
+                PARAM_ERS_KEYSPACES_PREFIX,
 		PARAM_LAYOUT, PARAM_PROXY_MODE, PARAM_RUN_ON_OPENSHIFT,
 		//PARAM_RESOURCE_PREFIX, PARAM_DATA_PREFIX,
 		PARAM_TRIPLES_OBJECT,
 		PARAM_TRIPLES_SUBJECT, PARAM_QUERY_LIMIT,
 		PARAM_DEFAULT_REPLICATION_FACTOR, PARAM_START_EMBEDDED,
-        PARAM_TRANS_LOCKING_GRANULARITY, PARAM_TRANS_LOCKING_ZOOKEEPER
+                PARAM_TRANS_LOCKING_GRANULARITY, PARAM_TRANS_LOCKING_ZOOKEEPER,
+                PARAM_TRANS_MVCC, PARAM_TRANS_CHECK_MY_WRITES
 		};
 	
 //	private static final String DEFAULT_RESOURCE_PREFIX = "resource";
@@ -90,7 +93,9 @@ public class Listener implements ServletContextListener {
 	public static String DEFAULT_ERS_KEYSPACES_PREFIX = "ERS_";
 	//public static final String AUTHOR_KEYSPACE = "ERS_authors";
 	public static final String GRAPHS_NAMES_KEYSPACE = "ERS_graphs";
+        // keep track of IDs committed and aborted
         public static final String GRAPHS_VERSIONS_KEYSPACE = "ERS_versions";
+        // keep track of bridges statistical information
         public static final String BRIDGES_KEYSPACE = "ERS_bridges";
         // keep here a blacklist of the keyspaces that do not need to be queried  for normal use 
         public static List<String> BLACKLIST_KEYSPACES = new ArrayList<String>();
@@ -154,6 +159,10 @@ public class Listener implements ServletContextListener {
         public static CuratorFramework curator_client;
         public static int USE_ZOOKEEPER;
         public static String zookeeperHosts; 
+
+        public static int USE_MVCC;
+        public static int CHECK_MY_WRITES;
+        public static UniqueId SNOWFLAKE_GENERATOR = new UniqueId();
 
 	@SuppressWarnings("unchecked")
 	public void contextInitialized(ServletContextEvent event) {
@@ -325,6 +334,10 @@ public class Listener implements ServletContextListener {
 
         USE_ZOOKEEPER = config.containsKey(PARAM_TRANS_LOCKING_ZOOKEEPER) ?
                         Integer.parseInt(config.get(PARAM_TRANS_LOCKING_ZOOKEEPER)) : 0;
+        USE_MVCC = config.containsKey(PARAM_TRANS_MVCC) ?
+                        Integer.parseInt(config.get(PARAM_TRANS_MVCC)) : 0;
+        CHECK_MY_WRITES = config.containsKey(PARAM_TRANS_CHECK_MY_WRITES) ?
+                        Integer.parseInt(config.get(PARAM_TRANS_CHECK_MY_WRITES)) : 0;
         Listener.zookeeperHosts = config.get(PARAM_ZOOKEEPER_HOSTS);
         Listener.initOrCleanCurator(_log);
     }
@@ -354,7 +367,8 @@ public class Listener implements ServletContextListener {
                     }*/
                     if( _log != null )
                         _log.info("Closing Curator client ... ");
-                    curator_client.close();
+                    if( curator_client != null )
+                        curator_client.close();
                     return;
             } 
         }
@@ -455,6 +469,10 @@ public class Listener implements ServletContextListener {
             Listener.DEFAULT_REPLICATION_FACTOR = factor;
         }
 
+        public static void changeCheckMyWritesConsistency(int value) {
+            Listener.CHECK_MY_WRITES = value;
+        }
+
         public static void changeTransactionalSupport(String mode) {
             if( mode.equals("zookeeper") )  {
                 if( Listener.USE_ZOOKEEPER != 1) {
@@ -467,6 +485,11 @@ public class Listener implements ServletContextListener {
                     Listener.USE_ZOOKEEPER = -1;  
                     Listener.initOrCleanCurator(null);
                 }
+                if( mode.equals("mvcc") )
+                    Listener.USE_MVCC = 1;
+                else
+                    // default: no zookeeper, no mvcc
+                    Listener.USE_MVCC = -1;
             }
         }
 }

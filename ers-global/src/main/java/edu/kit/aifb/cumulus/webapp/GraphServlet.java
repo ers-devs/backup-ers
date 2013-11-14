@@ -201,6 +201,8 @@ public class GraphServlet extends AbstractHttpServlet {
 
 		// do the deletion of entities associated with this graph  
 		String encoded_keyspace = Store.encodeKeyspace(a_id);
+                if( a_id.replace("<","").replace(">","").equals(Listener.GRAPHS_VERSIONS_KEYSPACE) )
+                    encoded_keyspace = a_id.replace("<","").replace(">","");
                 int r;
                 if( truncate != null )
                     r = crdf.truncateKeyspace(encoded_keyspace);

@@ -24,8 +24,7 @@ ERS_DEFAULT_DBNAME = 'ers-public'
 ERS_DEFAULT_PEER_TYPE = ERS_PEER_TYPE_CONTRIB
 
 class ERSPeerInfo(zeroconf.ServicePeer):
-    """
-    This class contains information on an ERS peer.
+    """ This class contains information on an ERS peer.
     """
     dbname = None
     peer_type = None
@@ -39,6 +38,10 @@ class ERSPeerInfo(zeroconf.ServicePeer):
         return "ERS peer on {0.host}(={0.ip}):{0.port} (dbname={0.dbname}, type={0.peer_type})".format(self)
 
     def to_json(self):
+        """ Returns the ERS peer information from this instance in JSON format.
+        
+            :rtype: dict.
+        """
         return {
             'name': self.service_name,
             'host': self.host,
@@ -50,6 +53,12 @@ class ERSPeerInfo(zeroconf.ServicePeer):
 
     @staticmethod
     def from_service_peer(svc_peer):
+        """ Get an ERSPeerInfo instance from a given service peer.
+        
+            :param svc_peer: a service peer
+            :type svc_peer: ServicePeer instance
+            :rtype: ERSPeerInfo instance
+        """
         dbname = ERS_DEFAULT_DBNAME
         peer_type = ERS_DEFAULT_PEER_TYPE
 
@@ -69,6 +78,21 @@ class ERSPeerInfo(zeroconf.ServicePeer):
 
 
 class ERSDaemon:
+    """ The daemon class for the ERS daemon.
+    
+        :param peer_type: type of daemon instance
+        :type peer_type: 'contrib' or 'bridge'
+        :param port: TCP port number of CouchDB
+        :type port: int.
+        :param dbname: CouchDB database name
+        :type dbname: str.
+        :param pidfile: filepath to a PID file for this ERS daemon instance
+        :type pidfile: str.
+        :param tries: number of tries to connect to CouchDB
+        :type tries: int.
+        :param logger: logger for the daemon to use
+        :type logger: Logger instance
+    """
     peer_type = None
     port = None
     dbname = None
@@ -102,6 +126,8 @@ class ERSDaemon:
         self._bridges = {}
 
     def start(self):
+        """ Starting up an ERS daemon.
+        """
         self.logger.info("Starting ERS daemon")
 
         self._check_already_running()
@@ -134,6 +160,7 @@ class ERSDaemon:
                 try:
                     server = couchdbkit.Server(server_url)
                     self._db = server.get_or_create_db(self.dbname)
+                    self._cache_db = server.get_or_create_db('ers-cache')
                     self._repl_db = server.get_db('_replicator')
                     break
                 except Exception as e:
@@ -148,6 +175,11 @@ class ERSDaemon:
             for doc in self._model.initial_docs():
                 if not self._db.doc_exist(doc['_id']):
                     self._db.save_doc(doc)
+
+            for doc in self._model.initial_docs_cache():
+                if not self._cache_db.doc_exist(doc['_id']):
+                    self._cache_db.save_doc(doc)
+
         except Exception as e:
             raise RuntimeError("Error connecting to CouchDB: {0}".format(str(e)))
 
@@ -164,6 +196,8 @@ class ERSDaemon:
                 pass
 
     def stop(self):
+        """ Stopping an ERS daemon.
+        """
         if not self._active:
             return
 
@@ -200,6 +234,8 @@ class ERSDaemon:
         self._update_peers_in_couchdb()
         self._update_replication_links()
 
+        self._update_cache()
+
     def _on_leave(self, peer):
         if not peer.service_name in self._peers:
             return
@@ -209,7 +245,7 @@ class ERSDaemon:
         self.logger.debug("Peer left: " + str(ex_peer))
 
         del self._peers[peer.service_name]
-        if peer.peer_type == ERS_PEER_TYPE_BRIDGE:
+        if peer.service_type == ERS_PEER_TYPE_BRIDGE:
             del self._bridges[peer.service_name]
 
         self._update_peers_in_couchdb()
@@ -265,6 +301,23 @@ class ERSDaemon:
 
         return [doc['value'] for doc in self._repl_db.temp_view(search_view)]
 
+    def _get_cache_contents(self):
+        return [doc_id for doc_id in self._cache_db.all_docs(wrapper=lambda r: r['id'])
+                            if not doc_id.startswith('_design/')]
+
+    def _update_cache(self):
+        cache_contents = self._get_cache_contents()
+        for peer in self._peers.values():
+            for dbname in ('ers-public', 'ers-cache'):
+                source_db = r'http://admin:admin@{0}:{1}/{2}'.format(peer.ip, peer.port, dbname)
+                repl_doc = {
+                    'target': 'ers-cache',
+                    'source': source_db,
+                    'continuous': False,
+                    'doc_ids' : cache_contents                
+                }
+                self._repl_db.save_doc(repl_doc)
+
     def _check_already_running(self):
         if self.pidfile is not None and os.path.exists(self.pidfile):
             raise RuntimeError("The ERS daemon seems to be already running. If this is not the case, " +
@@ -274,6 +327,12 @@ LOG_LEVELS = ['debug', 'info', 'warning', 'error', 'critical']
 
 
 def setup_logging(args):
+    """ Setup a file or system logger.
+    
+        :param args: has a logtype attribute (which can be 'file' or 'syslog').
+        :type args: Object
+        :rtype: Logger instance
+    """
     logger = logging.getLogger('ers-daemon')
     logger.setLevel(10 + 10 * LOG_LEVELS.index(args.loglevel))
 
@@ -293,6 +352,8 @@ def setup_logging(args):
 
 
 def run():
+    """ Parse the given arguments for setting up the daemon and run it.
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("-p", "--port", help="CouchDB port", type=int, default=5984)
     parser.add_argument("-d", "--dbname", help="CouchDB database name", type=str, default=ERS_DEFAULT_DBNAME)
