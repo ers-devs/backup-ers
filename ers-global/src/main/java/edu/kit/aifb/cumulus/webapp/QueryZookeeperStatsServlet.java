@@ -44,7 +44,7 @@ public class QueryZookeeperStatsServlet extends AbstractHttpServlet {
                 int trials_int = 100;
 		String trials = req.getParameter("trials");
                 String id = req.getParameter("id");
-                if( trials == null || trials.isEmpty() ) {
+                if( trials != null && ! trials.isEmpty() ) {
                     trials_int = Integer.parseInt(trials);
                 }
                 InterProcessReadWriteLock rw_lock;
