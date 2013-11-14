@@ -1,5 +1,3 @@
-
-
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
@@ -15,7 +13,7 @@
     
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
-        URL_ROOT:    '',
+        URL_ROOT:    './',
         VERSION:     '0.11',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
@@ -62,51 +60,66 @@
 <span id="ers-module"></span><h2><tt class="xref py py-mod docutils literal"><span class="pre">ers</span></tt> Module<a class="headerlink" href="#module-ers.ers" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="ers.ers.ERSLocal">
-<em class="property">class </em><tt class="descclassname">ers.ers.</tt><tt class="descname">ERSLocal</tt><big>(</big><em>server_url='http://admin:admin&#64;127.0.0.1:5984/'</em>, <em>dbname='ers'</em>, <em>model=&lt;ers.models.ModelS object at 0x10d49d390&gt;</em>, <em>fixed_peers=()</em>, <em>local_only=False</em>, <em>reset_database=False</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSLocal"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSLocal" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#ers.ers.ERSReadOnly" title="ers.ers.ERSReadOnly"><tt class="xref py py-class docutils literal"><span class="pre">ers.ers.ERSReadOnly</span></tt></a></p>
+<em class="property">class </em><tt class="descclassname">ers.ers.</tt><tt class="descname">ERSLocal</tt><big>(</big><em>server_url='http://admin:admin&#64;127.0.0.1:5984/'</em>, <em>dbname='ers'</em>, <em>model=&lt;ers.models.ModelS object at 0x105d2bd90&gt;</em>, <em>fixed_peers=()</em>, <em>reset_database=False</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSLocal"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSLocal" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#ers.ers.ERSReadWrite" title="ers.ers.ERSReadWrite"><tt class="xref py py-class docutils literal"><span class="pre">ers.ers.ERSReadWrite</span></tt></a></p>
 <dl class="method">
-<dt id="ers.ers.ERSLocal.add_data">
-<tt class="descname">add_data</tt><big>(</big><em>s</em>, <em>p</em>, <em>o</em>, <em>g</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSLocal.add_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSLocal.add_data" title="Permalink to this definition">¶</a></dt>
-<dd><p>Adds the value for the given property in the given entity. Create the entity if it does not exist yet)</p>
-</dd></dl>
+<dt id="ers.ers.ERSLocal.get_annotation">
+<tt class="descname">get_annotation</tt><big>(</big><em>entity</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSLocal.get_annotation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSLocal.get_annotation" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
 
 <dl class="method">
-<dt id="ers.ers.ERSLocal.delete_entity">
-<tt class="descname">delete_entity</tt><big>(</big><em>entity</em>, <em>graph=None</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSLocal.delete_entity"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSLocal.delete_entity" title="Permalink to this definition">¶</a></dt>
-<dd><p>Deletes the entity.</p>
-</dd></dl>
+<dt id="ers.ers.ERSLocal.get_peers">
+<tt class="descname">get_peers</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSLocal.get_peers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSLocal.get_peers" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
 
 <dl class="method">
-<dt id="ers.ers.ERSLocal.delete_value">
-<tt class="descname">delete_value</tt><big>(</big><em>entity</em>, <em>prop</em>, <em>graph=None</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSLocal.delete_value"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSLocal.delete_value" title="Permalink to this definition">¶</a></dt>
-<dd><p>Deletes all of the user&#8217;s values for the given property in the given entity.</p>
-</dd></dl>
+<dt id="ers.ers.ERSLocal.get_values">
+<tt class="descname">get_values</tt><big>(</big><em>entity</em>, <em>prop</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSLocal.get_values"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSLocal.get_values" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
 
 <dl class="method">
-<dt id="ers.ers.ERSLocal.update_value">
-<tt class="descname">update_value</tt><big>(</big><em>subject</em>, <em>object</em>, <em>graph=None</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSLocal.update_value"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSLocal.update_value" title="Permalink to this definition">¶</a></dt>
-<dd><p>update a value for an identifier+property (create it if it does not exist yet)</p>
+<dt id="ers.ers.ERSLocal.search">
+<tt class="descname">search</tt><big>(</big><em>prop</em>, <em>value=None</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSLocal.search"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSLocal.search" title="Permalink to this definition">¶</a></dt>
+<dd><p>Search entities by property or property+value
+Return a list of unique (entity, graph) pairs.</p>
 </dd></dl>
 
+</dd></dl>
+
+<dl class="class">
+<dt id="ers.ers.ERSPeerInfo">
+<em class="property">class </em><tt class="descclassname">ers.ers.</tt><tt class="descname">ERSPeerInfo</tt><big>(</big><em>service_name</em>, <em>host</em>, <em>ip</em>, <em>port</em>, <em>dbname='ers'</em>, <em>peer_type='contrib'</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSPeerInfo"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSPeerInfo" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#ers.zeroconf.ServicePeer" title="ers.zeroconf.ServicePeer"><tt class="xref py py-class docutils literal"><span class="pre">ers.zeroconf.ServicePeer</span></tt></a></p>
+<p>This class contains information on an ERS peer.</p>
+<dl class="attribute">
+<dt id="ers.ers.ERSPeerInfo.dbname">
+<tt class="descname">dbname</tt><em class="property"> = None</em><a class="headerlink" href="#ers.ers.ERSPeerInfo.dbname" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="staticmethod">
+<dt id="ers.ers.ERSPeerInfo.from_service_peer">
+<em class="property">static </em><tt class="descname">from_service_peer</tt><big>(</big><em>svc_peer</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSPeerInfo.from_service_peer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSPeerInfo.from_service_peer" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="ers.ers.ERSPeerInfo.peer_type">
+<tt class="descname">peer_type</tt><em class="property"> = None</em><a class="headerlink" href="#ers.ers.ERSPeerInfo.peer_type" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
 <dl class="method">
-<dt id="ers.ers.ERSLocal.write_cache">
-<tt class="descname">write_cache</tt><big>(</big><em>cache</em>, <em>graph</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSLocal.write_cache"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSLocal.write_cache" title="Permalink to this definition">¶</a></dt>
+<dt id="ers.ers.ERSPeerInfo.to_json">
+<tt class="descname">to_json</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSPeerInfo.to_json"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSPeerInfo.to_json" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
 
 <dl class="class">
 <dt id="ers.ers.ERSReadOnly">
-<em class="property">class </em><tt class="descclassname">ers.ers.</tt><tt class="descname">ERSReadOnly</tt><big>(</big><em>server_url='http://admin:admin&#64;127.0.0.1:5984/'</em>, <em>dbname='ers'</em>, <em>model=&lt;ers.models.ModelS object at 0x10d49d390&gt;</em>, <em>fixed_peers=()</em>, <em>local_only=False</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSReadOnly"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSReadOnly" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><tt class="descclassname">ers.ers.</tt><tt class="descname">ERSReadOnly</tt><big>(</big><em>server_url='http://admin:admin&#64;127.0.0.1:5984/'</em>, <em>dbname='ers'</em>, <em>model=&lt;ers.models.ModelS object at 0x105d2bd90&gt;</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSReadOnly"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSReadOnly" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
 <dl class="method">
 <dt id="ers.ers.ERSReadOnly.exist">
 <tt class="descname">exist</tt><big>(</big><em>subject</em>, <em>graph</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSReadOnly.exist"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSReadOnly.exist" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="ers.ers.ERSReadOnly.get_annotation">
-<tt class="descname">get_annotation</tt><big>(</big><em>entity</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSReadOnly.get_annotation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSReadOnly.get_annotation" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="method">
@@ -121,13 +134,8 @@
 <dd></dd></dl>
 
 <dl class="method">
-<dt id="ers.ers.ERSReadOnly.get_peers">
-<tt class="descname">get_peers</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSReadOnly.get_peers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSReadOnly.get_peers" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
 <dt id="ers.ers.ERSReadOnly.get_values">
-<tt class="descname">get_values</tt><big>(</big><em>entity</em>, <em>prop</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSReadOnly.get_values"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSReadOnly.get_values" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">get_values</tt><big>(</big><em>subject</em>, <em>predicate</em>, <em>graph=None</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSReadOnly.get_values"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSReadOnly.get_values" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get the value for a identifier+property (return null or a special value if it does not exist)
 Return a list of values or an empty list</p>
 </dd></dl>
@@ -135,11 +143,86 @@ Return a list of values or an empty list</p>
 <dl class="method">
 <dt id="ers.ers.ERSReadOnly.search">
 <tt class="descname">search</tt><big>(</big><em>prop</em>, <em>value=None</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSReadOnly.search"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSReadOnly.search" title="Permalink to this definition">¶</a></dt>
-<dd><p>Search entities by property or property+value
-Return a list of unique (entity, graph) pairs.</p>
+<dd><p>Search local entities by property or property+value
+Return a list of (entity, graph) pairs.</p>
 </dd></dl>
 
 </dd></dl>
+
+<dl class="class">
+<dt id="ers.ers.ERSReadWrite">
+<em class="property">class </em><tt class="descclassname">ers.ers.</tt><tt class="descname">ERSReadWrite</tt><big>(</big><em>server_url='http://admin:admin&#64;127.0.0.1:5984/'</em>, <em>dbname='ers'</em>, <em>model=&lt;ers.models.ModelS object at 0x105d2bd90&gt;</em>, <em>reset_database=False</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSReadWrite"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSReadWrite" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#ers.ers.ERSReadOnly" title="ers.ers.ERSReadOnly"><tt class="xref py py-class docutils literal"><span class="pre">ers.ers.ERSReadOnly</span></tt></a></p>
+<dl class="method">
+<dt id="ers.ers.ERSReadWrite.add_data">
+<tt class="descname">add_data</tt><big>(</big><em>s</em>, <em>p</em>, <em>o</em>, <em>g</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSReadWrite.add_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSReadWrite.add_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Adds the value for the given property in the given entity. Create the entity if it does not exist yet)</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ers.ers.ERSReadWrite.delete_entity">
+<tt class="descname">delete_entity</tt><big>(</big><em>entity</em>, <em>graph=None</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSReadWrite.delete_entity"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSReadWrite.delete_entity" title="Permalink to this definition">¶</a></dt>
+<dd><p>Deletes the entity.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ers.ers.ERSReadWrite.delete_value">
+<tt class="descname">delete_value</tt><big>(</big><em>entity</em>, <em>prop</em>, <em>graph=None</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSReadWrite.delete_value"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSReadWrite.delete_value" title="Permalink to this definition">¶</a></dt>
+<dd><p>Deletes all of the user&#8217;s values for the given property in the given entity.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ers.ers.ERSReadWrite.import_nt">
+<tt class="descname">import_nt</tt><big>(</big><em>file_name</em>, <em>target_graph</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSReadWrite.import_nt"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSReadWrite.import_nt" title="Permalink to this definition">¶</a></dt>
+<dd><p>Import N-Triples file.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ers.ers.ERSReadWrite.import_nt_rdflib">
+<tt class="descname">import_nt_rdflib</tt><big>(</big><em>file_name</em>, <em>target_graph</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSReadWrite.import_nt_rdflib"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSReadWrite.import_nt_rdflib" title="Permalink to this definition">¶</a></dt>
+<dd><p>Import N-Triples file using rdflib.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ers.ers.ERSReadWrite.update_value">
+<tt class="descname">update_value</tt><big>(</big><em>subject</em>, <em>object</em>, <em>graph=None</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSReadWrite.update_value"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSReadWrite.update_value" title="Permalink to this definition">¶</a></dt>
+<dd><p>update a value for an identifier+property (create it if it does not exist yet)</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ers.ers.ERSReadWrite.write_cache">
+<tt class="descname">write_cache</tt><big>(</big><em>cache</em>, <em>graph</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#ERSReadWrite.write_cache"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.ERSReadWrite.write_cache" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="ers.ers.EntityCache">
+<em class="property">class </em><tt class="descclassname">ers.ers.</tt><tt class="descname">EntityCache</tt><a class="reference internal" href="_modules/ers/ers.html#EntityCache"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.EntityCache" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">collections.defaultdict</span></tt></p>
+<p>Equivalent to defaultdict(lambda: defaultdict(set)).</p>
+<dl class="method">
+<dt id="ers.ers.EntityCache.add">
+<tt class="descname">add</tt><big>(</big><em>s</em>, <em>p</em>, <em>o</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#EntityCache.add"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.EntityCache.add" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add &lt;s, p, o&gt; to cache.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ers.ers.EntityCache.parse_nt">
+<tt class="descname">parse_nt</tt><big>(</big><em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#EntityCache.parse_nt"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.EntityCache.parse_nt" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="ers.ers.EntityCache.parse_nt_rdflib">
+<tt class="descname">parse_nt_rdflib</tt><big>(</big><em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#EntityCache.parse_nt_rdflib"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.EntityCache.parse_nt_rdflib" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="ers.ers.merge_annotations">
+<tt class="descclassname">ers.ers.</tt><tt class="descname">merge_annotations</tt><big>(</big><em>a</em>, <em>b</em><big>)</big><a class="reference internal" href="_modules/ers/ers.html#merge_annotations"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.ers.merge_annotations" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
 
 </div>
 <div class="section" id="module-ers.models">
@@ -405,43 +488,8 @@ Return a list of unique (entity, graph) pairs.</p>
 <dd></dd></dl>
 
 </div>
-<div class="section" id="module-ers.utils">
-<span id="utils-module"></span><h2><tt class="xref py py-mod docutils literal"><span class="pre">utils</span></tt> Module<a class="headerlink" href="#module-ers.utils" title="Permalink to this headline">¶</a></h2>
-<dl class="class">
-<dt id="ers.utils.EntityCache">
-<em class="property">class </em><tt class="descclassname">ers.utils.</tt><tt class="descname">EntityCache</tt><a class="reference internal" href="_modules/ers/utils.html#EntityCache"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.utils.EntityCache" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">collections.defaultdict</span></tt></p>
-<p>Equivalent to defaultdict(lambda: defaultdict(set)).</p>
-<dl class="method">
-<dt id="ers.utils.EntityCache.add">
-<tt class="descname">add</tt><big>(</big><em>s</em>, <em>p</em>, <em>o</em><big>)</big><a class="reference internal" href="_modules/ers/utils.html#EntityCache.add"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.utils.EntityCache.add" title="Permalink to this definition">¶</a></dt>
-<dd><p>Add &lt;s, p, o&gt; to cache.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="ers.utils.EntityCache.parse_nt">
-<tt class="descname">parse_nt</tt><big>(</big><em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/ers/utils.html#EntityCache.parse_nt"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.utils.EntityCache.parse_nt" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="ers.utils.EntityCache.parse_nt_rdflib">
-<tt class="descname">parse_nt_rdflib</tt><big>(</big><em>**kwargs</em><big>)</big><a class="reference internal" href="_modules/ers/utils.html#EntityCache.parse_nt_rdflib"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.utils.EntityCache.parse_nt_rdflib" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
-<dl class="function">
-<dt id="ers.utils.import_nt">
-<tt class="descclassname">ers.utils.</tt><tt class="descname">import_nt</tt><big>(</big><em>registry</em>, <em>file_name</em>, <em>target_graph</em><big>)</big><a class="reference internal" href="_modules/ers/utils.html#import_nt"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.utils.import_nt" title="Permalink to this definition">¶</a></dt>
-<dd><p>Import N-Triples file.</p>
-</dd></dl>
-
-<dl class="function">
-<dt id="ers.utils.import_nt_rdflib">
-<tt class="descclassname">ers.utils.</tt><tt class="descname">import_nt_rdflib</tt><big>(</big><em>registry</em>, <em>file_name</em>, <em>target_graph</em><big>)</big><a class="reference internal" href="_modules/ers/utils.html#import_nt_rdflib"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ers.utils.import_nt_rdflib" title="Permalink to this definition">¶</a></dt>
-<dd><p>Import N-Triples file using rdflib.</p>
-</dd></dl>
-
+<div class="section" id="utils-module">
+<h2><tt class="xref py py-mod docutils literal"><span class="pre">utils</span></tt> Module<a class="headerlink" href="#utils-module" title="Permalink to this headline">¶</a></h2>
 </div>
 <div class="section" id="module-ers.zeroconf">
 <span id="zeroconf-module"></span><h2><tt class="xref py py-mod docutils literal"><span class="pre">zeroconf</span></tt> Module<a class="headerlink" href="#module-ers.zeroconf" title="Permalink to this headline">¶</a></h2>
@@ -612,7 +660,7 @@ even if the service was published some time in the past.</li>
 <li><a class="reference internal" href="#module-ers.ers"><tt class="docutils literal"><span class="pre">ers</span></tt> Module</a></li>
 <li><a class="reference internal" href="#module-ers.models"><tt class="docutils literal"><span class="pre">models</span></tt> Module</a></li>
 <li><a class="reference internal" href="#module-ers.sync_global"><tt class="docutils literal"><span class="pre">sync_global</span></tt> Module</a></li>
-<li><a class="reference internal" href="#module-ers.utils"><tt class="docutils literal"><span class="pre">utils</span></tt> Module</a></li>
+<li><a class="reference internal" href="#utils-module"><tt class="docutils literal"><span class="pre">utils</span></tt> Module</a></li>
 <li><a class="reference internal" href="#module-ers.zeroconf"><tt class="docutils literal"><span class="pre">zeroconf</span></tt> Module</a></li>
 </ul>
 </li>
@@ -660,7 +708,7 @@ even if the service was published some time in the past.</li>
     </div>
     <div class="footer">
         &copy; Copyright 2013, ers-devs.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2b3.
     </div>
   </body>
 </html>
